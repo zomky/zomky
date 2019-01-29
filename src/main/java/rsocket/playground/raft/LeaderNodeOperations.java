@@ -1,16 +1,53 @@
 package rsocket.playground.raft;
 
+import io.rsocket.Payload;
+import io.rsocket.RSocket;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import rsocket.playground.raft.transport.ObjectPayload;
 
-public class LeaderNodeOperations implements NodeOperations{
+import java.time.Duration;
+
+public class LeaderNodeOperations extends BaseNodeOperations {
+
+    private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(50);
 
     @Override
-    public Mono<Void> onInit(Node node) {
+    public void onInit(Node node) {
+        sendAppendEntries(node).subscribe();
+    }
+
+    @Override
+    public void onExit(Node node) {
+
+    }
+
+    @Override
+    public Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries) {
         return null;
     }
 
     @Override
-    public Mono<Void> onExit(Node node) {
+    public Mono<RequestVoteResult> onRequestVote(Node node, RequestVote requestVote) {
         return null;
+    }
+
+    private Mono<Void> sendAppendEntries(Node node) {
+        AppendEntries appendEntries = new AppendEntries().term(1);
+
+        return node.senders
+                .publishOn(Schedulers.newElastic("append-entries"))
+                .flatMap(rSocket -> sendAppendEntries(rSocket, appendEntries))
+                // if appendEntriesResult#term > current term T, set currentTerm = T and convert to follower
+                .then();
+    }
+
+    private Flux<AppendEntriesResult> sendAppendEntries(RSocket rSocket, AppendEntries appendEntries) {
+        Payload payload = ObjectPayload.create(appendEntries);
+        Publisher<Payload> publisher = Flux.interval(HEARTBEAT_TIMEOUT).map(i -> payload);
+
+        return rSocket.requestChannel(publisher).map(payload1 -> ObjectPayload.dataFromPayload(payload1, AppendEntriesResult.class));
     }
 }

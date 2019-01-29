@@ -7,6 +7,16 @@ import java.io.*;
 
 public class ObjectPayload {
 
+    public static Payload create(Object data) {
+        byte[] dataByte;
+        try {
+            dataByte = serialize(data);
+        } catch (Exception e) {
+            throw new ObjectPayloadException(e);
+        }
+        return DefaultPayload.create(dataByte);
+    }
+
     public static Payload create(Object data, Object metadata) {
         byte[] dataByte;
         byte[] metadataByte;
