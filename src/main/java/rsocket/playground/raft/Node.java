@@ -80,14 +80,17 @@ public class Node {
     }
 
     void convertToFollower() {
+        LOGGER.info("Node {} is being converted to follower", this.nodeId);
         transitionBetweenStates(this.nodeState, NodeState.FOLLOWER);
     }
 
     void convertToCandidate() {
+        LOGGER.info("Node {} is being converted to candidate", this.nodeId);
         transitionBetweenStates(NodeState.FOLLOWER, NodeState.CANDIDATE);
     }
 
     void convertToLeader() {
+        LOGGER.info("Node {} is being converted to leader", this.nodeId);
         transitionBetweenStates(NodeState.CANDIDATE, NodeState.LEADER);
     }
 

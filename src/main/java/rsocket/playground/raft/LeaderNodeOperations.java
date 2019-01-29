@@ -26,7 +26,7 @@ public class LeaderNodeOperations extends BaseNodeOperations {
 
     @Override
     public Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries) {
-        return null;
+        throw new RaftException("leader does not support onAppendEntries!");
     }
 
     @Override
@@ -35,7 +35,9 @@ public class LeaderNodeOperations extends BaseNodeOperations {
     }
 
     private Mono<Void> sendAppendEntries(Node node) {
-        AppendEntries appendEntries = new AppendEntries().term(1);
+        AppendEntries appendEntries = new AppendEntries()
+                .term(node.getCurrentTerm())
+                .leaderId(node.nodeId);
 
         return node.senders
                 .publishOn(Schedulers.newElastic("append-entries"))

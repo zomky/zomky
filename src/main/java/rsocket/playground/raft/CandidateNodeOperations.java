@@ -2,6 +2,7 @@ package rsocket.playground.raft;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import rsocket.playground.raft.transport.ObjectPayload;
@@ -14,16 +15,18 @@ public class CandidateNodeOperations extends BaseNodeOperations {
 
     @Override
     public void onInit(Node node) {
-        long votes = sendVotes(node);
-        // TODO in loop
-        if (votes >= 1) { // TODO majority
-            node.convertToLeader();
-        }
+        disposable = sendVotes(node)
+                .doOnNext(votes -> {
+                    if (votes >= 1) { // TODO majority
+                        node.convertToLeader();
+                    }
+                })
+                .subscribe();
     }
 
     @Override
     public void onExit(Node node) {
-
+        disposable.dispose();
     }
 
     @Override
@@ -39,10 +42,13 @@ public class CandidateNodeOperations extends BaseNodeOperations {
         if (node.isGreaterThanCurrentTerm(requestVote.getTerm())) {
 
         }
-        return null;
+        RequestVoteResult requestVoteResult = new RequestVoteResult()
+                .voteGranted(requestVote.getTerm() >= node.getCurrentTerm())
+                .term(requestVote.getTerm());
+        return Mono.just(requestVoteResult);
     }
 
-    private long sendVotes(Node node) {
+    private Mono<Long> sendVotes(Node node) {
         RequestVote requestVote = new RequestVote()
                 .term(node.getCurrentTerm())
                 .candidateId(node.nodeId);
@@ -55,9 +61,9 @@ public class CandidateNodeOperations extends BaseNodeOperations {
                         .map(RequestVoteResult::isVoteGranted)
                         .filter(Boolean::booleanValue)
                         .count() + 1
-                )
+                ).next();
                 // if RequestVoteResult#term > current term T, set currentTerm = T and convert to follower
-                .blockLast(ELECTION_TIMEOUT);
+                //.blockLast(ELECTION_TIMEOUT);
     }
 
     private Mono<RequestVoteResult> sendVoteRequest(RSocket rSocket, RequestVote requestVote) {
