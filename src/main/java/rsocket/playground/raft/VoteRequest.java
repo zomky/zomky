@@ -1,8 +1,6 @@
 package rsocket.playground.raft;
 
-import java.io.Serializable;
-
-public class RequestVote implements Serializable {
+public class VoteRequest implements TermAware {
 
     private long term;
     private int candidateId;
@@ -12,7 +10,7 @@ public class RequestVote implements Serializable {
      * @param term
      * @return
      */
-    public RequestVote term(long term) {
+    public VoteRequest term(long term) {
         this.term = term;
         return this;
     }
@@ -22,12 +20,13 @@ public class RequestVote implements Serializable {
      * @param candidateId
      * @return
      */
-    public RequestVote candidateId(int candidateId) {
+    public VoteRequest candidateId(int candidateId) {
         this.candidateId = candidateId;
         return this;
 
     }
 
+    @Override
     public long getTerm() {
         return term;
     }
@@ -38,7 +37,7 @@ public class RequestVote implements Serializable {
 
     @Override
     public String toString() {
-        return "RequestVote{" +
+        return "VoteRequest{" +
                 "term=" + term +
                 ", candidateId=" + candidateId +
                 '}';

@@ -9,9 +9,9 @@ public interface NodeOperations {
 
     void onExit(Node node);
 
-    Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries);
+    Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries);
 
-    Mono<RequestVoteResult> onRequestVote(Node node, RequestVote requestVote);
+    Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote);
 
-    Mono<Payload> onPayloadRequest(Payload payload);
+    Mono<Payload> onPayloadRequest(Node node, Payload payload);
 }

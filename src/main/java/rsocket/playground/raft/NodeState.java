@@ -28,18 +28,18 @@ public enum NodeState implements NodeOperations {
     }
 
     @Override
-    public Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
         return this.nodeOperations.onAppendEntries(node, appendEntries);
     }
 
     @Override
-    public Mono<RequestVoteResult> onRequestVote(Node node, RequestVote requestVote) {
+    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
         return this.nodeOperations.onRequestVote(node, requestVote);
     }
 
     @Override
-    public Mono<Payload> onPayloadRequest(Payload payload) {
-        return this.nodeOperations.onPayloadRequest(payload);
+    public Mono<Payload> onPayloadRequest(Node node, Payload payload) {
+        return this.nodeOperations.onPayloadRequest(node, payload);
     }
 
 }

@@ -7,76 +7,85 @@ import io.rsocket.transport.netty.server.TcpServerTransport;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
-import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import rsocket.playground.raft.h2.H2;
 import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.util.List;
 
 public class Node {
 
+    // TODO node configuration
+    private static final String BIND_ADDRESS = "localhost";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
     NodeState nodeState;
-    NodeData nodeData;
     int nodeId;
+    long currentTerm;
 
     Mono<CloseableChannel> receiver;
     Flux<RSocket> senders;
 
     public Node(int port, List<Integer> clientPorts) {
         this.nodeId = port;
-        // TODO node data should be read from persistent storage
-        this.nodeData = new NodeData().currentTerm(0);
         this.nodeState = NodeState.FOLLOWER;
+        this.currentTerm = getNodeData().getCurrentTerm();
+
         this.receiver = RSocketFactory.receive()
                 .acceptor(new SocketAcceptorImpl(this))
-                .transport(TcpServerTransport.create("localhost", port))
+                .transport(TcpServerTransport.create(BIND_ADDRESS, port))
                 .start();
 
         this.senders = Flux.fromIterable(clientPorts)
                .flatMap(clientPort -> RSocketFactory.connect()
-                       .transport(TcpClientTransport.create("localhost", clientPort))
+                       .transport(TcpClientTransport.create(BIND_ADDRESS, clientPort))
                        .start())
                .cache();
     }
 
     public void start() {
         nodeState.onInit(this);
-        receiver.subscribe();
+        receiver.subscribeOn(Schedulers.newElastic("dupa")).subscribe();
     }
 
     void increaseCurrentTerm() {
-        this.nodeData.currentTerm(nodeData.getCurrentTerm() + 1);
+        H2.updateTerm(nodeId);
+        currentTerm++;
+    }
+
+    void setCurrentTerm(long term) {
+        H2.updateTerm(nodeId, term);
+        currentTerm = term;
+    }
+
+    NodeData getNodeData() {
+        return H2.nodeDataFromDB(nodeId).orElseThrow(() -> new RaftException("dupa"));
     }
 
     long getCurrentTerm() {
-        return nodeData.getCurrentTerm();
+        return currentTerm;
     }
 
     private Mono<Payload> onPayloadRequest(Payload payload) {
-        return nodeState.onPayloadRequest(payload);
+        return nodeState.onPayloadRequest(this, payload);
     }
 
-    private Mono<AppendEntriesResult> onAppendEntries(AppendEntries appendEntries) {
-        boolean makeFollower = isGreaterThanCurrentTerm(appendEntries.getTerm());
-
-        return makeFollower(makeFollower)
-                .then(nodeState.onAppendEntries(this, appendEntries));
+    private Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
+        return nodeState.onAppendEntries(this, appendEntries);
     }
 
-    private Mono<RequestVoteResult> onRequestVote(RequestVote requestVote) {
-        boolean makeFollower = isGreaterThanCurrentTerm(requestVote.getTerm());
-
-        return makeFollower(makeFollower)
-                .then(nodeState.onRequestVote(this, requestVote));
+    private Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
+          return nodeState.onRequestVote(this, requestVote);
     }
 
-    public Mono<Void> makeFollower(boolean makeFollower) {
-        return Mono.empty();
+    void convertToFollower(long term) {
+        if (term > getCurrentTerm()) {
+            setCurrentTerm(term);
+            convertToFollower();
+        }
     }
 
     void convertToFollower() {
@@ -101,10 +110,6 @@ public class Node {
         nodeState.onInit(this);
     }
 
-    boolean isGreaterThanCurrentTerm(long term) {
-        return getCurrentTerm() < term;
-    }
-
     private static class SocketAcceptorImpl implements SocketAcceptor {
 
         private Node node;
@@ -123,7 +128,7 @@ public class Node {
                     return Flux.from(payloads)
                                .flatMap(node::onPayloadRequest)
                                .flatMap(payload -> {
-                                   AppendEntries appendEntries = ObjectPayload.dataFromPayload(payload, AppendEntries.class);
+                                   AppendEntriesRequest appendEntries = ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class);
                                    return node.onAppendEntries(appendEntries);
                                })
                                .map(ObjectPayload::create);
@@ -134,7 +139,7 @@ public class Node {
                     // request vote
                     return node.onPayloadRequest(payload)
                                 .flatMap(payload1 -> {
-                                    RequestVote requestVote = ObjectPayload.dataFromPayload(payload1, RequestVote.class);
+                                    VoteRequest requestVote = ObjectPayload.dataFromPayload(payload1, VoteRequest.class);
                                     return node.onRequestVote(requestVote);
                                 })
                                 .map(ObjectPayload::create);

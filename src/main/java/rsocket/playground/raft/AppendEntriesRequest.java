@@ -1,8 +1,6 @@
 package rsocket.playground.raft;
 
-import java.io.Serializable;
-
-public class AppendEntries implements Serializable {
+public class AppendEntriesRequest implements TermAware {
 
     private long term;
     private long leaderId;
@@ -12,7 +10,7 @@ public class AppendEntries implements Serializable {
      * @param term
      * @return
      */
-    public AppendEntries term(long term) {
+    public AppendEntriesRequest term(long term) {
         this.term = term;
         return this;
     }
@@ -22,11 +20,12 @@ public class AppendEntries implements Serializable {
      * @param leaderId
      * @return
      */
-    public AppendEntries leaderId(long leaderId) {
+    public AppendEntriesRequest leaderId(long leaderId) {
         this.leaderId = leaderId;
         return this;
     }
 
+    @Override
     public long getTerm() {
         return term;
     }
@@ -37,7 +36,7 @@ public class AppendEntries implements Serializable {
 
     @Override
     public String toString() {
-        return "AppendEntries{" +
+        return "AppendEntriesRequest{" +
                 "term=" + term +
                 ", leaderId=" + leaderId +
                 '}';

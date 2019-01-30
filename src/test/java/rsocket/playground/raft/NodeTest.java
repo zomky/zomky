@@ -1,41 +1,26 @@
 package rsocket.playground.raft;
 
-import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
-import io.rsocket.transport.netty.client.TcpClientTransport;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
-import rsocket.playground.raft.transport.ObjectPayload;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.Arrays;
 
 public class NodeTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(NodeTest.class);
+
     @Test
     public void name() throws InterruptedException {
-        Node node1 = new Node(7000, Arrays.asList(7001));
-        Node node2 = new Node(7001, Arrays.asList(7000));
+        Node node1 = new Node(7000, Arrays.asList(7001, 7002));
+        Node node2 = new Node(7001, Arrays.asList(7000, 7002));
+        Node node3 = new Node(7002, Arrays.asList(7000, 7001));
 
         node1.start();
+        Thread.sleep(2000);
         node2.start();
-        /*
-        RSocket socket =
-                RSocketFactory.connect()
-                        .transport(TcpClientTransport.create("localhost", 7000))
-                        .start()
-                        .block();
+        node3.start();
 
-        socket.requestChannel(Flux.interval(Duration.ofMillis(500)).map(i -> {
-            RequestVote requestVote = new RequestVote().term(i);
-            return ObjectPayload.create(requestVote, "2");
-        })).subscribe();
-
-        socket.requestChannel(Flux.interval(Duration.ofMillis(500)).map(i -> {
-            RequestVote requestVote = new RequestVote().term(i);
-            return ObjectPayload.create(requestVote, "2");
-        })).subscribe();*/
-
-        Thread.sleep(10000);
+        Thread.sleep(1000000);
     }
 }

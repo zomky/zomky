@@ -2,26 +2,24 @@ package rsocket.playground.raft;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import reactor.core.Disposable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+import reactor.retry.Repeat;
 import rsocket.playground.raft.transport.ObjectPayload;
-
-import java.time.Duration;
 
 public class CandidateNodeOperations extends BaseNodeOperations {
 
-    private static final Duration ELECTION_TIMEOUT = Duration.ofMillis(150);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CandidateNodeOperations.class);
+
+    private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
 
     @Override
     public void onInit(Node node) {
-        disposable = sendVotes(node)
-                .doOnNext(votes -> {
-                    if (votes >= 1) { // TODO majority
-                        node.convertToLeader();
-                    }
-                })
-                .subscribe();
+        ElectionContext electionContext = new ElectionContext(false);
+        disposable = Mono.defer(() -> startElection(node, electionContext))
+            .repeatWhen(leaderNotElected(electionContext))
+            .subscribe();
     }
 
     @Override
@@ -30,48 +28,81 @@ public class CandidateNodeOperations extends BaseNodeOperations {
     }
 
     @Override
-    public Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries) {
-        AppendEntriesResult appendEntriesResult = new AppendEntriesResult()
-                .term(node.getCurrentTerm());
-
-        return Mono.just(appendEntriesResult).doOnNext(r -> node.convertToFollower());
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
+        return Mono.just(appendEntries)
+                   .map(appendEntries1 -> new AppendEntriesResponse().term(node.getCurrentTerm()));
     }
 
     @Override
-    public Mono<RequestVoteResult> onRequestVote(Node node, RequestVote requestVote) {
-        if (node.isGreaterThanCurrentTerm(requestVote.getTerm())) {
+    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
+        return Mono.just(requestVote)
+                   .map(requestVote1 -> {
+                       boolean voteGranted = requestVote.getTerm() > node.getCurrentTerm();
 
-        }
-        RequestVoteResult requestVoteResult = new RequestVoteResult()
-                .voteGranted(requestVote.getTerm() >= node.getCurrentTerm())
-                .term(requestVote.getTerm());
-        return Mono.just(requestVoteResult);
+                       return new VoteResponse()
+                               .voteGranted(voteGranted)
+                               .term(node.getCurrentTerm());
+                   });
     }
 
-    private Mono<Long> sendVotes(Node node) {
-        RequestVote requestVote = new RequestVote()
+    private Mono<Void> startElection(Node node, ElectionContext electionContext) {
+        return Mono.just(node)
+                   .doOnNext(Node::increaseCurrentTerm)
+                   .then(sendVotes(node, electionContext));
+    }
+
+    private Mono<Void> sendVotes(Node node, ElectionContext electionContext) {
+        VoteRequest requestVote = new VoteRequest()
                 .term(node.getCurrentTerm())
                 .candidateId(node.nodeId);
 
         return node.senders
-                .publishOn(Schedulers.newElastic("vote-request"))
                 .flatMap(rSocket -> sendVoteRequest(rSocket, requestVote))
-                .buffer()
-                .map(list -> list.stream()
-                        .map(RequestVoteResult::isVoteGranted)
-                        .filter(Boolean::booleanValue)
-                        .count() + 1
-                ).next();
-                // if RequestVoteResult#term > current term T, set currentTerm = T and convert to follower
-                //.blockLast(ELECTION_TIMEOUT);
+                .doOnNext(voteResponse -> node.convertToFollower(voteResponse.getTerm()))
+                .filter(VoteResponse::isVoteGranted)
+                // wait until quorum achieved or election timeout elapsed
+                .buffer(QUORUM - 1)
+                .timeout(ElectionTimeout.nextRandom())
+                .onErrorResume(throwable -> {
+                    electionContext.setRepeatElection(true);
+                    LOGGER.info("Node {}, {}", node.nodeId, throwable.getMessage());
+                    return Mono.empty();
+                })
+                .next()
+                .doOnNext(s -> {
+                    electionContext.setRepeatElection(false);
+                    node.convertToLeader();
+                })
+                .then();
     }
 
-    private Mono<RequestVoteResult> sendVoteRequest(RSocket rSocket, RequestVote requestVote) {
+    private Mono<VoteResponse> sendVoteRequest(RSocket rSocket, VoteRequest requestVote) {
         Payload payload = ObjectPayload.create(requestVote);
         return rSocket.requestResponse(payload)
-                .timeout(Duration.ofMillis(100))
-                .map(payload1 -> ObjectPayload.dataFromPayload(payload1, RequestVoteResult.class))
-                .onErrorResume(throwable -> Mono.just(new RequestVoteResult().voteGranted(true)));
+                .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteResponse.class))
+                .onErrorReturn(VoteResponse.FALLBACK_RESPONSE);
+    }
+
+    private Repeat<ElectionContext> leaderNotElected(ElectionContext electionContext) {
+        return Repeat.<ElectionContext>onlyIf(repeatContext -> repeatContext.applicationContext().repeatElection())
+                .withApplicationContext(electionContext);
+    }
+
+    private static class ElectionContext {
+
+        private boolean repeatElection;
+
+        ElectionContext(boolean repeatElection) {
+            this.repeatElection = repeatElection;
+        }
+
+        public void setRepeatElection(boolean repeatElection) {
+            this.repeatElection = repeatElection;
+        }
+
+        public boolean repeatElection() {
+            return repeatElection;
+        }
     }
 
 }

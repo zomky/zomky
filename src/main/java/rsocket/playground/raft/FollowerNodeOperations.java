@@ -2,22 +2,21 @@ package rsocket.playground.raft;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.time.Duration;
+import rsocket.playground.raft.h2.H2;
 
 public class FollowerNodeOperations extends BaseNodeOperations {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerNodeOperations.class);
 
-    private static final Duration ELECTION_TIMEOUT = Duration.ofMillis(150);
-
     @Override
     public void onInit(Node node) {
-        disposable = processor.timeout(ELECTION_TIMEOUT)
-                .doOnError(throwable -> {
-                    node.increaseCurrentTerm();
+        disposable = processor.timeout(ElectionTimeout.nextRandom())
+                .onErrorResume(throwable -> {
+                    LOGGER.info("node {}, {}", node.nodeId, throwable.getMessage());
                     node.convertToCandidate();
+                    return Flux.empty();
                 })
                 .subscribe();
     }
@@ -28,19 +27,30 @@ public class FollowerNodeOperations extends BaseNodeOperations {
     }
 
     @Override
-    public Mono<AppendEntriesResult> onAppendEntries(Node node, AppendEntries appendEntries) {
-        AppendEntriesResult appendEntriesResult = new AppendEntriesResult()
-                .term(node.getCurrentTerm());
-
-        return Mono.just(appendEntriesResult);
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
+        return Mono.just(appendEntries)
+                   .map(appendEntries1 -> new AppendEntriesResponse()
+                           .term(node.getCurrentTerm())
+                   );
     }
 
     @Override
-    public Mono<RequestVoteResult> onRequestVote(Node node, RequestVote requestVote) {
-        RequestVoteResult requestVoteResult = new RequestVoteResult()
-                .voteGranted(requestVote.getTerm() >= node.getCurrentTerm())
-                .term(requestVote.getTerm());
-        return Mono.just(requestVoteResult);
+    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
+        return Mono.just(requestVote)
+                   .map(requestVote1 -> {
+                       NodeData nodeData = node.getNodeData();
+
+                       boolean voteGranted =
+                               requestVote.getTerm() >= nodeData.getCurrentTerm() &&
+                                       nodeData.getVotedFor() == null;
+
+                       if (voteGranted) {
+                           H2.updateVotedFor(nodeData.getNodeId(), requestVote.getCandidateId());
+                       }
+                       return new VoteResponse()
+                               .voteGranted(voteGranted)
+                               .term(requestVote.getTerm());
+                   });
     }
 
 }
