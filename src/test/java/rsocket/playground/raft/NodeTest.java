@@ -17,7 +17,7 @@ public class NodeTest {
         Node node3 = new Node(7002, Arrays.asList(7000, 7001));
 
         node1.start();
-        Thread.sleep(2000);
+        //Thread.sleep(2000);
         node2.start();
         node3.start();
 

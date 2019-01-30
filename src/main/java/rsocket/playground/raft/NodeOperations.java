@@ -1,6 +1,5 @@
 package rsocket.playground.raft;
 
-import io.rsocket.Payload;
 import reactor.core.publisher.Mono;
 
 public interface NodeOperations {
@@ -13,5 +12,4 @@ public interface NodeOperations {
 
     Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote);
 
-    Mono<Payload> onPayloadRequest(Node node, Payload payload);
 }

@@ -17,8 +17,8 @@ public class H2 {
     private static final Logger LOGGER = LoggerFactory.getLogger(H2.class);
 
     private static Connection connection() {
-        String url = "jdbc:h2:tcp://localhost:9092/testdb";
-        String user = "sa";
+        String url = "jdbc:h2:tcp://localhost:9092/test";
+        String user = "";
         String passwd = "";
         try {
             return DriverManager.getConnection(url, user, passwd);
@@ -68,7 +68,7 @@ public class H2 {
     }
 
     public static void updateTerm(int nodeId) {
-        LOGGER.info("UPDATE TERM node {}", nodeId);
+//        LOGGER.info("UPDATE TERM node {}", nodeId);
         String s = "UPDATE NODES set current_term = current_term + 1, voted_for = ? where id = ?";
         try {
             PreparedStatement preparedStatement = connection().prepareStatement(s);
@@ -82,7 +82,7 @@ public class H2 {
     }
 
     public static void updateTerm(int nodeId, long currentTerm) {
-        LOGGER.info("UPDATE TERM node {}, current term {}", nodeId, currentTerm);
+//        LOGGER.info("UPDATE TERM node {}, current term {}", nodeId, currentTerm);
         String s = "UPDATE NODES set current_term = ?, voted_for = ? where id = ?";
         try {
             PreparedStatement preparedStatement = connection().prepareStatement(s);
@@ -97,7 +97,7 @@ public class H2 {
     }
 
     public static void updateVotedFor(int nodeId, int votedFor) {
-        LOGGER.info("UPDATE VOTED_FOR nodeId {}, voted {}", nodeId, votedFor);
+//        LOGGER.info("UPDATE VOTED_FOR nodeId {}, voted {}", nodeId, votedFor);
         String s = "UPDATE NODES set voted_for = ? where id = ?";
         try {
             PreparedStatement preparedStatement = connection().prepareStatement(s);

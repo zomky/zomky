@@ -3,6 +3,7 @@ package rsocket.playground.raft;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import org.reactivestreams.Publisher;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -10,9 +11,11 @@ import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.time.Duration;
 
-public class LeaderNodeOperations extends BaseNodeOperations {
+public class LeaderNodeOperations implements NodeOperations {
 
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(100);
+
+    private Disposable disposable;
 
     @Override
     public void onInit(Node node) {
@@ -53,7 +56,7 @@ public class LeaderNodeOperations extends BaseNodeOperations {
                 .flatMap(rSocket -> sendAppendEntries(rSocket, appendEntries))
                 .doOnNext(appendEntriesResult -> {
                     if (appendEntriesResult.getTerm() > node.getCurrentTerm()) {
-                        node.convertToFollower(appendEntriesResult.getTerm());
+                        node.convertToFollowerIfObsolete(appendEntriesResult.getTerm());
                     }
                 })
                 .then();

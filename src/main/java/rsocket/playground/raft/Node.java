@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import rsocket.playground.raft.h2.H2;
 import rsocket.playground.raft.transport.ObjectPayload;
 
@@ -42,13 +41,12 @@ public class Node {
         this.senders = Flux.fromIterable(clientPorts)
                .flatMap(clientPort -> RSocketFactory.connect()
                        .transport(TcpClientTransport.create(BIND_ADDRESS, clientPort))
-                       .start())
-               .cache();
+                       .start());
     }
 
     public void start() {
         nodeState.onInit(this);
-        receiver.subscribeOn(Schedulers.newElastic("dupa")).subscribe();
+        receiver.subscribe();
     }
 
     void increaseCurrentTerm() {
@@ -62,15 +60,11 @@ public class Node {
     }
 
     NodeData getNodeData() {
-        return H2.nodeDataFromDB(nodeId).orElseThrow(() -> new RaftException("dupa"));
+        return H2.nodeDataFromDB(nodeId).orElseThrow(() -> new RaftException("no nodeData"));
     }
 
     long getCurrentTerm() {
         return currentTerm;
-    }
-
-    private Mono<Payload> onPayloadRequest(Payload payload) {
-        return nodeState.onPayloadRequest(this, payload);
     }
 
     private Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
@@ -78,13 +72,15 @@ public class Node {
     }
 
     private Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
-          return nodeState.onRequestVote(this, requestVote);
+        return nodeState.onRequestVote(this, requestVote);
     }
 
-    void convertToFollower(long term) {
+    void convertToFollowerIfObsolete(long term) {
         if (term > getCurrentTerm()) {
             setCurrentTerm(term);
-            convertToFollower();
+            if (this.nodeState != NodeState.FOLLOWER) {
+                convertToFollower();
+            }
         }
     }
 
@@ -126,10 +122,10 @@ public class Node {
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     // append entries
                     return Flux.from(payloads)
-                               .flatMap(node::onPayloadRequest)
                                .flatMap(payload -> {
                                    AppendEntriesRequest appendEntries = ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class);
-                                   return node.onAppendEntries(appendEntries);
+                                   return node.onAppendEntries(appendEntries)
+                                           .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(appendEntries.getTerm()));
                                })
                                .map(ObjectPayload::create);
                 }
@@ -137,12 +133,12 @@ public class Node {
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
                     // request vote
-                    return node.onPayloadRequest(payload)
+                    return Mono.just(payload)
                                 .flatMap(payload1 -> {
-                                    VoteRequest requestVote = ObjectPayload.dataFromPayload(payload1, VoteRequest.class);
-                                    return node.onRequestVote(requestVote);
-                                })
-                                .map(ObjectPayload::create);
+                                    VoteRequest voteRequest = ObjectPayload.dataFromPayload(payload1, VoteRequest.class);
+                                    return node.onRequestVote(voteRequest)
+                                               .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(voteRequest.getTerm()));
+                                }).map(ObjectPayload::create);
                 }
             });
         }

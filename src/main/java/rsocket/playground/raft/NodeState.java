@@ -1,6 +1,5 @@
 package rsocket.playground.raft;
 
-import io.rsocket.Payload;
 import reactor.core.publisher.Mono;
 
 public enum NodeState implements NodeOperations {
@@ -35,11 +34,6 @@ public enum NodeState implements NodeOperations {
     @Override
     public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
         return this.nodeOperations.onRequestVote(node, requestVote);
-    }
-
-    @Override
-    public Mono<Payload> onPayloadRequest(Node node, Payload payload) {
-        return this.nodeOperations.onPayloadRequest(node, payload);
     }
 
 }
