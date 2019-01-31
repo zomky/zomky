@@ -106,6 +106,10 @@ public class Node {
         nodeState.onInit(this);
     }
 
+    public void voteFor(int candidateId) {
+        H2.updateVotedFor(nodeId, candidateId);
+    }
+
     private static class SocketAcceptorImpl implements SocketAcceptor {
 
         private Node node;

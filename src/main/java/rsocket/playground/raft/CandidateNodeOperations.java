@@ -55,6 +55,7 @@ public class CandidateNodeOperations implements NodeOperations {
     private Mono<Void> startElection(Node node, ElectionContext electionContext) {
         return Mono.just(node)
                    .doOnNext(Node::increaseCurrentTerm)
+                   .doOnNext(node1 -> node.voteFor(node.nodeId))
                    .then(sendVotes(node, electionContext));
     }
 

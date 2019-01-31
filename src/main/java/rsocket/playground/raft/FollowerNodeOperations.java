@@ -64,7 +64,7 @@ public class FollowerNodeOperations implements NodeOperations {
                                        nodeData.getVotedFor() == null;
 
                        if (voteGranted) {
-                           H2.updateVotedFor(nodeData.getNodeId(), requestVote.getCandidateId());
+                           node.voteFor(requestVote.getCandidateId());
                            restartElectionTimer();
                        }
                        return new VoteResponse()
