@@ -1,61 +1,70 @@
 package rsocket.playground.raft;
 
-import io.rsocket.*;
-import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.transport.netty.server.CloseableChannel;
-import io.rsocket.transport.netty.server.TcpServerTransport;
-import org.reactivestreams.Publisher;
+import io.rsocket.RSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import rsocket.playground.raft.h2.H2;
-import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.util.List;
 
 public class Node {
 
-    // TODO node configuration
-    private static final String BIND_ADDRESS = "localhost";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
-    NodeState nodeState;
+    private NodeState nodeState = NodeState.FOLLOWER;
     int nodeId;
-    long currentTerm;
 
-    Mono<CloseableChannel> receiver;
-    Flux<RSocket> senders;
+    private long currentTerm;
+    private Integer votedFor;
 
-    public Node(int port, List<Integer> clientPorts) {
+    private Receiver receiver;
+    private Sender sender;
+    private NodeRepository nodeRepository;
+
+    public static Node create(int port, NodeRepository nodeRepository, List<Integer> clientPorts) {
+        Node node = new Node(port, nodeRepository);
+        node.receiver = new Receiver(node);
+        node.sender = new Sender(node, clientPorts);
+        LOGGER.info("Node {} finished", node);
+        return node;
+    }
+
+    private Node(int port, NodeRepository nodeRepository) {
         this.nodeId = port;
-        this.nodeState = NodeState.FOLLOWER;
         this.currentTerm = getNodeData().getCurrentTerm();
-
-        this.receiver = RSocketFactory.receive()
-                .acceptor(new SocketAcceptorImpl(this))
-                .transport(TcpServerTransport.create(BIND_ADDRESS, port))
-                .start();
-
-        this.senders = Flux.fromIterable(clientPorts)
-               .flatMap(clientPort -> RSocketFactory.connect()
-                       .transport(TcpClientTransport.create(BIND_ADDRESS, clientPort))
-                       .start());
+        this.nodeRepository = nodeRepository;
     }
 
     public void start() {
+        receiver.start();
+        sender.start();
         nodeState.onInit(this);
-        receiver.subscribe();
     }
 
-    void increaseCurrentTerm() {
-        H2.updateTerm(nodeId);
+    public void stop() {
+        nodeState.onExit(this);
+        receiver.stop();
+        sender.stop();
+    }
+
+    Flux<RSocket> availableClients() {
+        return sender.senders();
+    }
+
+    void voteForMyself() {
+        nodeRepository.voteForMyself(nodeId);
         currentTerm++;
     }
 
     void setCurrentTerm(long term) {
         H2.updateTerm(nodeId, term);
+        currentTerm = term;
+    }
+
+    void voteForCandidate(int candidateId, long term) {
+        nodeRepository.voteForCandidate(nodeId, candidateId, term);
         currentTerm = term;
     }
 
@@ -67,12 +76,14 @@ public class Node {
         return currentTerm;
     }
 
-    private Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
-        return nodeState.onAppendEntries(this, appendEntries);
+    Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
+        return nodeState.onAppendEntries(this, appendEntries)
+                .doOnNext(response -> LOGGER.info("Append entries {}, {}", appendEntries, response));
     }
 
-    private Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
-        return nodeState.onRequestVote(this, requestVote);
+    Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
+        return nodeState.onRequestVote(this, requestVote)
+                .doOnNext(voteResponse -> LOGGER.info("Vote {} , {}", requestVote, voteResponse));
     }
 
     void convertToFollowerIfObsolete(long term) {
@@ -106,47 +117,12 @@ public class Node {
         nodeState.onInit(this);
     }
 
-    public void voteFor(int candidateId) {
-        H2.updateVotedFor(nodeId, candidateId);
+    @Override
+    public String toString() {
+        return "Node{" +
+                "nodeState=" + nodeState +
+                ", nodeId=" + nodeId +
+                ", currentTerm=" + currentTerm +
+                '}';
     }
-
-    private static class SocketAcceptorImpl implements SocketAcceptor {
-
-        private Node node;
-
-        public SocketAcceptorImpl(Node node) {
-            this.node = node;
-        }
-
-        @Override
-        public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket reactiveSocket) {
-            return Mono.just(new AbstractRSocket() {
-
-                @Override
-                public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    // append entries
-                    return Flux.from(payloads)
-                               .flatMap(payload -> {
-                                   AppendEntriesRequest appendEntries = ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class);
-                                   return node.onAppendEntries(appendEntries)
-                                           .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(appendEntries.getTerm()));
-                               })
-                               .map(ObjectPayload::create);
-                }
-
-                @Override
-                public Mono<Payload> requestResponse(Payload payload) {
-                    // request vote
-                    return Mono.just(payload)
-                                .flatMap(payload1 -> {
-                                    VoteRequest voteRequest = ObjectPayload.dataFromPayload(payload1, VoteRequest.class);
-                                    return node.onRequestVote(voteRequest)
-                                               .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(voteRequest.getTerm()));
-                                }).map(ObjectPayload::create);
-                }
-            });
-        }
-
-    }
-
 }

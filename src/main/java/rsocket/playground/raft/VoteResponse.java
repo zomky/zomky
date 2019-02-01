@@ -35,4 +35,12 @@ public class VoteResponse implements TermAware {
     public boolean isVoteGranted() {
         return voteGranted;
     }
+
+    @Override
+    public String toString() {
+        return "VoteResponse{" +
+                "term=" + term +
+                ", voteGranted=" + voteGranted +
+                '}';
+    }
 }

@@ -9,8 +9,6 @@ import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
 import rsocket.playground.raft.transport.ObjectPayload;
 
-import java.time.Duration;
-
 public class CandidateNodeOperations implements NodeOperations {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CandidateNodeOperations.class);
@@ -42,20 +40,20 @@ public class CandidateNodeOperations implements NodeOperations {
     public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
-                       boolean voteGranted = requestVote.getTerm() > node.getCurrentTerm();
+                       long currentTerm = node.getCurrentTerm();
+                       boolean voteGranted = requestVote.getTerm() > currentTerm;
                        if (voteGranted) {
                            node.convertToFollowerIfObsolete(requestVote.getTerm());
                        }
                        return new VoteResponse()
                                .voteGranted(voteGranted)
-                               .term(node.getCurrentTerm());
+                               .term(currentTerm);
                    });
     }
 
     private Mono<Void> startElection(Node node, ElectionContext electionContext) {
         return Mono.just(node)
-                   .doOnNext(Node::increaseCurrentTerm)
-                   .doOnNext(node1 -> node.voteFor(node.nodeId))
+                   .doOnNext(Node::voteForMyself)
                    .then(sendVotes(node, electionContext));
     }
 
@@ -64,7 +62,7 @@ public class CandidateNodeOperations implements NodeOperations {
                 .term(node.getCurrentTerm())
                 .candidateId(node.nodeId);
 
-        return node.senders
+        return node.availableClients()
                 .flatMap(rSocket -> sendVoteRequest(rSocket, requestVote))
                 //.doOnNext(voteResponse -> node.convertToFollowerIfObsolete(voteResponse.getTerm()))
                 .filter(VoteResponse::isVoteGranted)
@@ -73,7 +71,7 @@ public class CandidateNodeOperations implements NodeOperations {
                 .timeout(ElectionTimeout.nextRandom())
                 .onErrorResume(throwable -> {
                     electionContext.setRepeatElection(true);
-                    LOGGER.info("Node {}, {}", node.nodeId, throwable.getMessage());
+                    LOGGER.info("Repeat election - Node {}, {}", node.nodeId, throwable.getMessage());
                     return Mono.empty();
                 })
                 .next()
@@ -90,7 +88,7 @@ public class CandidateNodeOperations implements NodeOperations {
                 .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteResponse.class))
                 .onErrorResume(throwable -> {
                     LOGGER.error("--> {}", throwable.getMessage());
-                    return Mono.just(VoteResponse.FALLBACK_RESPONSE).delayElement(Duration.ofSeconds(100));
+                    return Mono.just(VoteResponse.FALLBACK_RESPONSE);
                 });
     }
 

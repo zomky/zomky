@@ -27,12 +27,10 @@ public class FollowerNodeOperations implements NodeOperations {
     @Override
     public void onInit(Node node) {
         disposable = processor.timeout(ElectionTimeout.nextRandom())
-                .onErrorResume(throwable -> {
-                    LOGGER.info("node {}, {}", node.nodeId, throwable.getMessage());
+                .subscribe(payload -> {}, throwable -> {
+                    LOGGER.info("node {} - {}", node.nodeId, throwable.getMessage());
                     node.convertToCandidate();
-                    return Flux.empty();
-                })
-                .subscribe();
+                });
     }
 
     @Override
@@ -43,15 +41,18 @@ public class FollowerNodeOperations implements NodeOperations {
     @Override
     public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
-                   .doOnNext(appendEntriesRequest -> {
-                       if (appendEntriesRequest.getTerm() >= node.getCurrentTerm()) {
-                           restartElectionTimer();
+                   .map(appendEntriesRequest -> {
+                       long currentTerm = node.getCurrentTerm();
+                       if (appendEntriesRequest.getTerm() >= currentTerm) {
+                           restartElectionTimer(node);
                        }
-                   })
-                   .map(appendEntries1 -> new AppendEntriesResponse()
-                           .term(node.getCurrentTerm())
-                           .success(appendEntries1  .getTerm() >= node.getCurrentTerm())
-                   );
+                       if (appendEntriesRequest.getTerm() > currentTerm) {
+                           node.setCurrentTerm(appendEntriesRequest.getTerm());
+                       }
+                       return new AppendEntriesResponse()
+                               .term(currentTerm)
+                               .success(true); // TODO
+                   });
     }
 
     @Override
@@ -59,21 +60,23 @@ public class FollowerNodeOperations implements NodeOperations {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
                        NodeData nodeData = node.getNodeData();
-
-                       boolean voteGranted = requestVote.getTerm() >= nodeData.getCurrentTerm() &&
-                                       nodeData.getVotedFor() == null;
+                       long currentTerm = nodeData.getCurrentTerm();
+                       Integer votedFor = nodeData.getVotedFor();
+                       boolean voteGranted = requestVote.getTerm() > currentTerm ||
+                               (requestVote.getTerm() == currentTerm && votedFor == null);
 
                        if (voteGranted) {
-                           node.voteFor(requestVote.getCandidateId());
-                           restartElectionTimer();
+                           node.voteForCandidate(requestVote.getCandidateId(), requestVote.getTerm());
+                           restartElectionTimer(node);
                        }
                        return new VoteResponse()
                                .voteGranted(voteGranted)
-                               .term(nodeData.getCurrentTerm());
+                               .term(currentTerm);
                    });
     }
 
-    private void restartElectionTimer() {
+    private void restartElectionTimer(Node node) {
+        LOGGER.info("Node {} restartElectionTimer ...", node);
         sink.next(DefaultPayload.create(""));
     }
 

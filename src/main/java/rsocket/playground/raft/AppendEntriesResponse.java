@@ -29,4 +29,12 @@ public class AppendEntriesResponse implements TermAware {
     public boolean isSuccess() {
         return success;
     }
+
+    @Override
+    public String toString() {
+        return "AppendEntriesResponse{" +
+                "term=" + term +
+                ", success=" + success +
+                '}';
+    }
 }
