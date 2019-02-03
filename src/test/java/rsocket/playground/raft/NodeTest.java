@@ -21,9 +21,12 @@ public class NodeTest {
 
         node1.start();
         node2.start();
+        Thread.sleep(6000);
+//
         node3.start();
 
-        Thread.sleep(5000);
+        Thread.sleep(6000);
+
         node1.stop();
 
         Thread.sleep(1000000);

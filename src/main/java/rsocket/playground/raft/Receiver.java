@@ -47,11 +47,8 @@ public class Receiver {
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     // append entries
                     return Flux.from(payloads)
-                            .flatMap(payload -> {
-                                AppendEntriesRequest appendEntries = ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class);
-                                return node.onAppendEntries(appendEntries)
-                                        .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(appendEntries.getTerm()));
-                            })
+                            .map(payload -> ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class))
+                            .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
                             .map(ObjectPayload::create);
                 }
 
@@ -59,11 +56,9 @@ public class Receiver {
                 public Mono<Payload> requestResponse(Payload payload) {
                     // request vote
                     return Mono.just(payload)
-                            .flatMap(payload1 -> {
-                                VoteRequest voteRequest = ObjectPayload.dataFromPayload(payload1, VoteRequest.class);
-                                return node.onRequestVote(voteRequest)
-                                        .doOnNext(voteResponse -> node.convertToFollowerIfObsolete(voteRequest.getTerm()));
-                            }).map(ObjectPayload::create);
+                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteRequest.class))
+                            .flatMap(voteRequest -> node.onRequestVote(voteRequest))
+                            .map(ObjectPayload::create);
                 }
             });
         }

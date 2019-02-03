@@ -28,7 +28,7 @@ public class FollowerNodeOperations implements NodeOperations {
     public void onInit(Node node) {
         disposable = processor.timeout(ElectionTimeout.nextRandom())
                 .subscribe(payload -> {}, throwable -> {
-                    LOGGER.info("node {} - {}", node.nodeId, throwable.getMessage());
+                    LOGGER.info("Node {} election timeout ({})", node.nodeId, throwable.getMessage());
                     node.convertToCandidate();
                 });
     }
@@ -59,11 +59,13 @@ public class FollowerNodeOperations implements NodeOperations {
     public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
-                       NodeData nodeData = node.getNodeData();
-                       long currentTerm = nodeData.getCurrentTerm();
-                       Integer votedFor = nodeData.getVotedFor();
-                       boolean voteGranted = requestVote.getTerm() > currentTerm ||
-                               (requestVote.getTerm() == currentTerm && votedFor == null);
+                       long currentTerm = node.getCurrentTerm();
+
+                       if (requestVote.getTerm() < currentTerm) {
+                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                       }
+
+                       boolean voteGranted = node.notVoted(requestVote.getTerm());
 
                        if (voteGranted) {
                            node.voteForCandidate(requestVote.getCandidateId(), requestVote.getTerm());
@@ -76,7 +78,7 @@ public class FollowerNodeOperations implements NodeOperations {
     }
 
     private void restartElectionTimer(Node node) {
-        LOGGER.info("Node {} restartElectionTimer ...", node);
+        LOGGER.debug("Node {} restartElectionTimer ...", node.nodeId);
         sink.next(DefaultPayload.create(""));
     }
 

@@ -1,75 +1,52 @@
 package rsocket.playground.raft;
 
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
-import io.rsocket.transport.netty.client.TcpClientTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
+import reactor.util.annotation.Nullable;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Optional;
 
 public class Sender {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Sender.class);
+    private final int nodeId;
+    private final RSocket rSocket;
+    private final boolean available;
 
-    private Node node;
-    private List<Integer> clientPorts;
-
-    private ConcurrentMap<Integer, RSocket> rsockets = new ConcurrentHashMap<>();
-
-    public Sender(Node node, List<Integer> clientPorts) {
-        this.clientPorts = clientPorts;
-        this.node = node;
+    public static Sender availableSender(int nodeId, RSocket rSocket) {
+        return new Sender(nodeId, rSocket, true);
     }
 
-    public void start() {
-        senders().blockLast();
+    public static Sender unavailableSender(int nodeId) {
+        return new Sender(nodeId, null, false);
     }
 
-    public void stop() {
-        // TODO
+    public Sender(int nodeId, RSocket rSocket, boolean available) {
+        this.nodeId = nodeId;
+        this.rSocket = rSocket;
+        this.available = available;
     }
 
-    Flux<RSocket> senders() {
-        return sendersInternal()
-                .doOnSubscribe(subscription -> LOGGER.info("on subscribe {}", node.nodeId))
-                .subscribeOn(Schedulers.newElastic("sender-raft"));
+    @Nullable
+    public RSocket getRSocket() {
+        return rSocket;
     }
 
-    Flux<RSocket> sendersInternal() {
-        return Flux.create(emitter -> {
-            clientPorts.forEach(clientPort -> {
-                RSocket rSocket = rsockets.get(clientPort);
-                if (rSocket != null) {
-                    emitter.next(rSocket);
-                    LOGGER.info("Node {} has access to {} (reused)", node.nodeId, clientPort);
-                } else {
-                    try {
-                        rSocket = RSocketFactory.connect()
-                                .transport(TcpClientTransport.create(clientPort))
-                                .start()
-                                .block();
-                        rSocket.onClose().subscribe(v -> {
-                            rsockets.remove(clientPort);
-                            LOGGER.warn("Node {} has not longer access to {}", node.nodeId, clientPort);
-                        });
-                        LOGGER.info("Node {} has access to {}", node.nodeId, clientPort);
-                        emitter.next(rSocket);
-                        rsockets.putIfAbsent(clientPort, rSocket);
-                    } catch (Exception e) {
-                        LOGGER.warn("Node {} has no access to {}. Reason: {}", node.nodeId, clientPort, e.getMessage());
-                    }
-                }
-            });
-            emitter.complete();
-            emitter.onCancel(() -> {
-                //rsockets.values().forEach(Disposable::dispose);
-            });
-        });
+    public int getNodeId() {
+        return nodeId;
     }
 
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public boolean isNotAvailable() {
+        return !available;
+    }
+
+    @Override
+    public String toString() {
+        return "Sender{" +
+                "nodeId=" + nodeId +
+                ", available=" + available +
+                '}';
+    }
 }

@@ -33,7 +33,13 @@ public class CandidateNodeOperations implements NodeOperations {
     @Override
     public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
-                   .map(appendEntries1 -> new AppendEntriesResponse().term(node.getCurrentTerm()));
+                   .map(appendEntries1 -> {
+                       long currentTerm = node.getCurrentTerm();
+                       if (appendEntries1.getTerm() >= currentTerm) {
+                           node.convertToFollower(appendEntries1.getTerm());
+                       }
+                       return new AppendEntriesResponse().term(currentTerm);
+                   });
     }
 
     @Override
@@ -41,9 +47,9 @@ public class CandidateNodeOperations implements NodeOperations {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
                        long currentTerm = node.getCurrentTerm();
-                       boolean voteGranted = requestVote.getTerm() > currentTerm;
+                       boolean voteGranted = node.notVoted(requestVote.getTerm());
                        if (voteGranted) {
-                           node.convertToFollowerIfObsolete(requestVote.getTerm());
+                           node.convertToFollower(requestVote.getTerm());
                        }
                        return new VoteResponse()
                                .voteGranted(voteGranted)
@@ -62,16 +68,20 @@ public class CandidateNodeOperations implements NodeOperations {
                 .term(node.getCurrentTerm())
                 .candidateId(node.nodeId);
 
-        return node.availableClients()
-                .flatMap(rSocket -> sendVoteRequest(rSocket, requestVote))
-                //.doOnNext(voteResponse -> node.convertToFollowerIfObsolete(voteResponse.getTerm()))
+        return node.availableSenders()
+                .flatMap(sender -> sendVoteRequest(sender, requestVote))
+                .doOnNext(voteResponse -> {
+                    if (voteResponse.getTerm() > node.getCurrentTerm()) {
+                        node.convertToFollower(voteResponse.getTerm());
+                    }
+                })
                 .filter(VoteResponse::isVoteGranted)
                 // wait until quorum achieved or election timeout elapsed
                 .buffer(QUORUM - 1)
                 .timeout(ElectionTimeout.nextRandom())
                 .onErrorResume(throwable -> {
                     electionContext.setRepeatElection(true);
-                    LOGGER.info("Repeat election - Node {}, {}", node.nodeId, throwable.getMessage());
+                    LOGGER.info("Node {}. Repeat election due to timeout {}", node.nodeId, throwable.getMessage());
                     return Mono.empty();
                 })
                 .next()
@@ -82,12 +92,12 @@ public class CandidateNodeOperations implements NodeOperations {
                 .then();
     }
 
-    private Mono<VoteResponse> sendVoteRequest(RSocket rSocket, VoteRequest requestVote) {
+    private Mono<VoteResponse> sendVoteRequest(Sender sender, VoteRequest requestVote) {
         Payload payload = ObjectPayload.create(requestVote);
-        return rSocket.requestResponse(payload)
+        return sender.getRSocket().requestResponse(payload)
                 .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteResponse.class))
                 .onErrorResume(throwable -> {
-                    LOGGER.error("--> {}", throwable.getMessage());
+                    LOGGER.error("Node {}", requestVote.getCandidateId(), throwable);
                     return Mono.just(VoteResponse.FALLBACK_RESPONSE);
                 });
     }
