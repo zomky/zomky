@@ -1,20 +1,15 @@
 package rsocket.playground.raft;
 
 import io.rsocket.Payload;
-import io.rsocket.RSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
-import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
-import reactor.retry.Repeat;
 import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class LeaderNodeOperations implements NodeOperations {
@@ -28,17 +23,17 @@ public class LeaderNodeOperations implements NodeOperations {
     @Override
     public void onInit(Node node) {
         node.availableSenders().subscribe(sender -> {
-            LOGGER.info("sender available {}", sender.getNodeId());
+            LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
             senders.put(sender.getNodeId(), heartbeats(sender, node).subscribe());
         });
 
         node.onSenderAvailable(sender -> {
-            LOGGER.info("sender available {}", sender.getNodeId());
+            LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
             senders.put(sender.getNodeId(), heartbeats(sender, node).subscribe());
         });
 
         node.onSenderUnavailable(sender -> {
-            LOGGER.info("sender unavailable {}", sender.getNodeId());
+            LOGGER.info("[Node {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
             Disposable disposable = senders.remove(sender.getNodeId());
             if (disposable != null) {
                 disposable.dispose();
@@ -76,7 +71,6 @@ public class LeaderNodeOperations implements NodeOperations {
                             .voteGranted(voteGranted)
                             .term(currentTerm);
                 });
-
     }
 
     private Flux<Payload> heartbeats(Sender sender, Node node) {

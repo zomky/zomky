@@ -14,11 +14,11 @@ public class Node {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
-    private NodeState nodeState = NodeState.FOLLOWER;
+    volatile NodeState nodeState = NodeState.FOLLOWER;
     int nodeId;
 
-    private long currentTerm;
-    private Integer votedFor;
+    private volatile long currentTerm;
+    private volatile Integer votedFor;
 
     private Receiver receiver;
     private Senders senders;
@@ -31,7 +31,7 @@ public class Node {
         Node node = new Node(port, nodeRepository);
         node.receiver = new Receiver(node);
         node.senders = new Senders(node, clientPorts);
-        LOGGER.info("Node {} finished", node);
+        LOGGER.info("[Node {}] has been initialized", node);
         return node;
     }
 
@@ -59,7 +59,7 @@ public class Node {
 
     void voteForMyself() {
         nodeRepository.voteForMyself(nodeId);
-        currentTerm++;
+        currentTerm = currentTerm + 1; // TODO non-atomic operation
         votedFor = nodeId;
     }
 
@@ -107,16 +107,18 @@ public class Node {
 
     Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
         return nodeState.onAppendEntries(this, appendEntries)
-                .doOnNext(response -> LOGGER.debug("Node {}. Append entries {}, {}", nodeId, appendEntries, response));
+                .doOnNext(response -> LOGGER.info("[Node {} -> Node {}] Append entries {} -> {}", appendEntries.getLeaderId(), nodeId, appendEntries, response));
     }
 
     Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
         return nodeState.onRequestVote(this, requestVote)
-                .doOnNext(voteResponse -> LOGGER.info("Node {}. Vote {} , {}", nodeId, requestVote, voteResponse));
+                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}] Vote {} -> {}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
     }
 
     void convertToFollower(long term) {
-        assert term >= currentTerm;
+        if (term < currentTerm) {
+            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", nodeId, nodeState, currentTerm, term));
+        }
         if (term > currentTerm) {
             setCurrentTerm(term);
         }
@@ -136,8 +138,10 @@ public class Node {
     }
 
     private void transitionBetweenStates(NodeState stateFrom, NodeState stateTo) {
-        LOGGER.info("Node {}. State transition {} -> {}", nodeId, stateFrom, stateTo);
-        assert nodeState == stateFrom;
+        if (nodeState != stateFrom) {
+            throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", nodeId, nodeState, stateFrom, stateTo));
+        }
+        LOGGER.info("[Node {}] State transition {} -> {}", nodeId, stateFrom, stateTo);
         nodeState.onExit(this);
         nodeState = stateTo;
         nodeState.onInit(this);

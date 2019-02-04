@@ -6,10 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.DirectProcessor;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.h2.H2;
 
 public class FollowerNodeOperations implements NodeOperations {
 
@@ -17,7 +15,7 @@ public class FollowerNodeOperations implements NodeOperations {
 
     private DirectProcessor<Payload> processor;
     private FluxSink<Payload> sink;
-    private Disposable disposable;
+    private Disposable subscription;
 
     public FollowerNodeOperations() {
         this.processor = DirectProcessor.create();
@@ -26,16 +24,16 @@ public class FollowerNodeOperations implements NodeOperations {
 
     @Override
     public void onInit(Node node) {
-        disposable = processor.timeout(ElectionTimeout.nextRandom())
+        subscription = processor.timeout(ElectionTimeout.nextRandom())
                 .subscribe(payload -> {}, throwable -> {
-                    LOGGER.info("Node {} election timeout ({})", node.nodeId, throwable.getMessage());
+                    LOGGER.info("[Node {}] Election timeout ({})", node.nodeId, throwable.getMessage());
                     node.convertToCandidate();
                 });
     }
 
     @Override
     public void onExit(Node node) {
-        disposable.dispose();
+        subscription.dispose();
     }
 
     @Override
@@ -78,7 +76,7 @@ public class FollowerNodeOperations implements NodeOperations {
     }
 
     private void restartElectionTimer(Node node) {
-        LOGGER.debug("Node {} restartElectionTimer ...", node.nodeId);
+        LOGGER.debug("[Node {}] restartElectionTimer ...", node.nodeId);
         sink.next(DefaultPayload.create(""));
     }
 
