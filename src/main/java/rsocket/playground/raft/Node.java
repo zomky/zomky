@@ -9,6 +9,7 @@ import rsocket.playground.raft.h2.H2;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Node {
 
@@ -17,8 +18,37 @@ public class Node {
     volatile NodeState nodeState = NodeState.FOLLOWER;
     int nodeId;
 
+    private AtomicInteger currentLeaderId = new AtomicInteger(0);
     private volatile long currentTerm;
     private volatile Integer votedFor;
+
+    /**
+     * index of highest log entry known to be
+     * committed (initialized to 0, increases
+     * monotonically)
+     */
+    private volatile long commitIndex;
+
+    /**
+     * index of highest log entry applied to state
+     * machine (initialized to 0, increases
+     * monotonically)
+     */
+    private volatile long lastApplied;
+
+    /**
+     * for each server, index of the next log entry
+     * to send to that server (initialized to leader
+     * last log index + 1)
+     */
+    private long nextIndex[];
+
+    /**
+     * for each server, index of highest log entry
+     * known to be replicated on server
+     * (initialized to 0, increases monotonically)
+     */
+    private long matchIndex[];
 
     private Receiver receiver;
     private Senders senders;
@@ -105,9 +135,18 @@ public class Node {
         senderUnavailableCallbacks.forEach(senderUnavailableCallback -> senderUnavailableCallback.handle(sender));
     }
 
+    void setCurrentLeader(int nodeId) {
+        currentLeaderId.set(nodeId);
+    }
+
+    void resetCurrentLeader() {
+        setCurrentLeader(0);
+    }
+
     Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
         return nodeState.onAppendEntries(this, appendEntries)
-                .doOnNext(response -> LOGGER.info("[Node {} -> Node {}] Append entries {} -> {}", appendEntries.getLeaderId(), nodeId, appendEntries, response));
+                .doOnNext(response -> setCurrentLeader(appendEntries.getLeaderId()))
+                .doOnNext(response -> LOGGER.debug("[Node {} -> Node {}] Append entries {} -> {}", appendEntries.getLeaderId(), nodeId, appendEntries, response));
     }
 
     Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
@@ -130,11 +169,13 @@ public class Node {
     }
 
     void convertToCandidate() {
+        resetCurrentLeader();
         transitionBetweenStates(NodeState.FOLLOWER, NodeState.CANDIDATE);
     }
 
     void convertToLeader() {
         transitionBetweenStates(NodeState.CANDIDATE, NodeState.LEADER);
+        setCurrentLeader(nodeId);
     }
 
     private void transitionBetweenStates(NodeState stateFrom, NodeState stateTo) {

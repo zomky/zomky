@@ -55,7 +55,7 @@ public class Senders {
 
     Flux<Sender> availableSenders() {
         return Flux.create(emitter -> {
-            senders.values().stream().filter(Sender::isNotAvailable).forEach(emitter::next);
+            senders.values().stream().filter(Sender::isAvailable).forEach(emitter::next);
             // lack of emitter.complete() is intentional
         });
     }

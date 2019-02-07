@@ -81,6 +81,7 @@ public class CandidateNodeOperations implements NodeOperations {
                     electionContext.setRepeatElection(false);
                 })
                 .onErrorResume(throwable -> {
+                    System.out.println();
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
                         LOGGER.info("[Node {}] Election timeout ({})", node.nodeId, subscription.isDisposed());

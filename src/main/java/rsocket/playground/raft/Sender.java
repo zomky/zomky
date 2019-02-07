@@ -3,8 +3,6 @@ package rsocket.playground.raft;
 import io.rsocket.RSocket;
 import reactor.util.annotation.Nullable;
 
-import java.util.Optional;
-
 public class Sender {
 
     private final int nodeId;

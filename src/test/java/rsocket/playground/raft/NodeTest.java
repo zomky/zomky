@@ -1,5 +1,6 @@
 package rsocket.playground.raft;
 
+import io.rsocket.util.DefaultPayload;
 import org.junit.Test;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -115,31 +116,6 @@ public class NodeTest {
     }
 
     @Test
-    public void ddsf() throws InterruptedException {
-        Flux.create(emitter -> {
-            emitter.next(1);
-            emitter.next(2);
-        })
-        .buffer(2)
-        .doOnNext(s -> LOGGER.info("next {}", s))
-        .doOnNext(s -> {
-            throw new NullPointerException("ss");
-        })
-        .timeout(Duration.ofSeconds(1))
-        .next()
-        .doOnSuccess(s -> {
-            LOGGER.info("dupa");
-        })
-        .onErrorResume(throwable -> {
-            LOGGER.error("dddd", throwable);
-            return Mono.empty();
-        })
-        .subscribe();
-
-        Thread.sleep(10002);
-    }
-
-    @Test
     public void name() throws InterruptedException {
         NodeRepository nodeRepository = new H2RepositoryImpl();
 
@@ -149,13 +125,15 @@ public class NodeTest {
 
         node1.start();
         node2.start();
-        Thread.sleep(6000);
-//
         node3.start();
 
         Thread.sleep(6000);
 
-        node1.stop();
+        Client client = new Client(Arrays.asList(7000,7001));
+        client.start();
+
+        client.send(DefaultPayload.create("Abc"))
+              .subscribe(s -> LOGGER.info("Client received {}", s.getDataUtf8()));
 
         Thread.sleep(1000000);
     }

@@ -14,6 +14,8 @@ public class H2 {
     // Insert into NODES (ID, CURRENT_TERM) Values (7001, 0);
     // Insert into NODES (ID, CURRENT_TERM) Values (7002, 0);
 
+    // CREATE TABLE LOG_ENTRY(term BIGINT, VARCHAR2(100));
+
     private static final Logger LOGGER = LoggerFactory.getLogger(H2.class);
 
     private static Connection connection() {
