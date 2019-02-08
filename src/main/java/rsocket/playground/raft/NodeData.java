@@ -26,6 +26,11 @@ public class NodeData {
         return this;
     }
 
+    public NodeData increaseCurrentTerm() {
+        this.currentTerm = currentTerm + 1;
+        return this;
+    }
+
     /**
      * candidateId that received vote in current
      * term (or null if none)

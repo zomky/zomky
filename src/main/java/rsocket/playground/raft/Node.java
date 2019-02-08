@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.h2.H2;
+import rsocket.playground.raft.storage.ZomkyNodeStorage;
 
 import java.util.HashSet;
 import java.util.List;
@@ -27,48 +27,34 @@ public class Node {
      * committed (initialized to 0, increases
      * monotonically)
      */
-    private volatile long commitIndex;
+    private volatile long commitIndex = 0;
 
     /**
      * index of highest log entry applied to state
      * machine (initialized to 0, increases
      * monotonically)
      */
-    private volatile long lastApplied;
-
-    /**
-     * for each server, index of the next log entry
-     * to send to that server (initialized to leader
-     * last log index + 1)
-     */
-    private long nextIndex[];
-
-    /**
-     * for each server, index of highest log entry
-     * known to be replicated on server
-     * (initialized to 0, increases monotonically)
-     */
-    private long matchIndex[];
+    private volatile long lastApplied = 0;
 
     private Receiver receiver;
     private Senders senders;
-    private NodeRepository nodeRepository;
+    private ZomkyNodeStorage zomkyNodeStorage;
 
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
 
-    public static Node create(int port, NodeRepository nodeRepository, List<Integer> clientPorts) {
-        Node node = new Node(port, nodeRepository);
+    public static Node create(int port, ZomkyNodeStorage zomkyNodeStorage, List<Integer> clientPorts) {
+        Node node = new Node(port, zomkyNodeStorage);
         node.receiver = new Receiver(node);
         node.senders = new Senders(node, clientPorts);
         LOGGER.info("[Node {}] has been initialized", node);
         return node;
     }
 
-    private Node(int port, NodeRepository nodeRepository) {
+    private Node(int port, ZomkyNodeStorage zomkyNodeStorage) {
         this.nodeId = port;
+        this.zomkyNodeStorage = zomkyNodeStorage;
         this.currentTerm = getNodeData().getCurrentTerm();
-        this.nodeRepository = nodeRepository;
     }
 
     public void start() {
@@ -88,21 +74,21 @@ public class Node {
     }
 
     void voteForMyself() {
-        nodeRepository.voteForMyself(nodeId);
+        zomkyNodeStorage.voteForMyself(nodeId);
         currentTerm = currentTerm + 1; // TODO non-atomic operation
         votedFor = nodeId;
     }
 
     void setCurrentTerm(long term) {
         assert term > currentTerm;
-        H2.updateTerm(nodeId, term);
+        zomkyNodeStorage.updateTerm(nodeId, term);
         currentTerm = term;
         votedFor = null;
     }
 
     void voteForCandidate(int candidateId, long term) {
         assert term >= currentTerm;
-        nodeRepository.voteForCandidate(nodeId, candidateId, term);
+        zomkyNodeStorage.voteForCandidate(nodeId, candidateId, term);
         currentTerm = term;
         votedFor = candidateId;
     }
@@ -111,8 +97,28 @@ public class Node {
         return term > currentTerm || (term == currentTerm && votedFor == null);
     }
 
+    LogEntry getLast() {
+        return zomkyNodeStorage.getLast(nodeId);
+    }
+
+    LogEntry getByIndex(long index) {
+        return zomkyNodeStorage.getByIndex(nodeId, index);
+    }
+
+    void appendLogEntry(String content) {
+        zomkyNodeStorage.appendLog(nodeId, commitIndex, currentTerm, content);
+    }
+
+    public long getCommitIndex() {
+        return commitIndex;
+    }
+
+    public long getLastApplied() {
+        return lastApplied;
+    }
+
     NodeData getNodeData() {
-        return H2.nodeDataFromDB(nodeId).orElseThrow(() -> new RaftException("no nodeData"));
+        return zomkyNodeStorage.readNodeData(nodeId);
     }
 
     long getCurrentTerm() {

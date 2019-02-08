@@ -93,9 +93,13 @@ public class CandidateNodeOperations implements NodeOperations {
     }
 
     private Mono<VoteResponse> sendVoteRequest(Node node, Sender sender) {
+        LogEntry lastEntry = node.getLast();
         VoteRequest requestVote = new VoteRequest()
                 .term(node.getCurrentTerm())
-                .candidateId(node.nodeId);
+                .candidateId(node.nodeId)
+                .lastLogIndex(lastEntry.getIndex())
+                .lastLogTerm(lastEntry.getTerm());
+
         Payload payload = ObjectPayload.create(requestVote);
         if (node.nodeState != NodeState.CANDIDATE) {
             LOGGER.info("[Node {} -> Node {}] Vote dropped", node.nodeId, sender.getNodeId());

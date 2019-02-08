@@ -58,9 +58,33 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    // 0. redirect to leader
-                    // 1. append to the leaders log
-                    // 2. send to the followers (on the next heartbeat)
+                    if (node.nodeState != NodeState.LEADER) {
+                        // or maybe redirect to leader ?
+                        return Mono.error(new RaftException("I am not a leader!"));
+                    }
+//                    Mono.just(payload.getDataUtf8())
+                        // 1. append to the leaders log
+//                        .doOnNext(content -> node.appendLogEntry(content))
+                         // 2. send to the followers (on the next heartbeat)
+//                        .flatMap(content -> {
+//                            node.availableSenders()
+//                                .flatMap(sender -> {
+//                                    long prevLogIndex = sender.getNextIndex() - 1;
+//                                    long prevLogTerm = node.getByIndex(prevLogIndex).getTerm();
+//
+//                                    AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest()
+//                                            .term(node.getCurrentTerm())
+//                                            .leaderId(node.nodeId)
+//                                            .prevLogIndex(prevLogIndex)
+//                                            .prevLogTerm(prevLogTerm)
+//                                            .addEntry(content)
+//                                            .leaderCommit(node.getCommitIndex());
+//                                    Payload appendPayload = ObjectPayload.create(appendEntriesRequest);
+//                                    sender.getRSocket().requestResponse(appendPayload)
+//                                });
+//                        });
+
+
                     // 3. commit an entry once a majority of followers acknowledge it
                     // 4. respond to the client
                     return Mono.just(payload)

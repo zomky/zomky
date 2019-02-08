@@ -11,7 +11,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogIndex;
     private long prevLogTerm;
 
-    private Set<LogEntry> entries = new HashSet<>();
+    private Set<String> entries = new HashSet<>();
     private long leaderCommit;
 
     /**
@@ -61,13 +61,13 @@ public class AppendEntriesRequest implements TermAware {
      * @param entries
      * @return
      */
-    public AppendEntriesRequest entries(Set<LogEntry> entries) {
+    public AppendEntriesRequest entries(Set<String> entries) {
         this.entries = entries;
         return this;
     }
 
-    public AppendEntriesRequest addEntry(LogEntry entry) {
-        this.entries.add(entry);
+    public AppendEntriesRequest addEntry(String content) {
+        this.entries.add(content);
         return this;
     }
 
@@ -98,7 +98,7 @@ public class AppendEntriesRequest implements TermAware {
         return prevLogTerm;
     }
 
-    public Set<LogEntry> getEntries() {
+    public Set<String> getEntries() {
         return entries;
     }
 

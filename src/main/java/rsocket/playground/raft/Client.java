@@ -47,6 +47,14 @@ public class Client {
         }
     }
 
+    public Mono<Integer> getLeaderId() {
+        return Mono.just(1);
+    }
+
+    public Mono<Void> fireAndForget(Payload payload) {
+        return rSocket.fireAndForget(payload);
+    }
+
     public Mono<Payload> send(Payload payload) {
         return rSocket.requestResponse(payload);
     }
