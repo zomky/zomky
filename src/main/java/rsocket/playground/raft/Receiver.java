@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import rsocket.playground.raft.storage.ZomkyStorage;
 import rsocket.playground.raft.transport.ObjectPayload;
 
 public class Receiver {
@@ -15,10 +16,12 @@ public class Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
     private Node node;
+    private ZomkyStorage zomkyStorage;
     private Disposable disposable, disposable2;
 
-    public Receiver(Node node) {
+    public Receiver(Node node, ZomkyStorage zomkyStorage) {
         this.node = node;
+        this.zomkyStorage = zomkyStorage;
     }
 
     public void start() {
@@ -31,7 +34,7 @@ public class Receiver {
                 .subscribe();
 
         disposable2 = RSocketFactory.receive()
-                .acceptor(new ClientSocketAcceptor(node))
+                .acceptor(new ClientSocketAcceptor(node, zomkyStorage))
                 .transport(TcpServerTransport.create(node.nodeId + 10000))
                 .start()
                 .block()
@@ -47,9 +50,11 @@ public class Receiver {
     private static class ClientSocketAcceptor implements SocketAcceptor {
 
         private Node node;
+        private ZomkyStorage zomkyStorage;
 
-        public ClientSocketAcceptor(Node node) {
+        public ClientSocketAcceptor(Node node, ZomkyStorage zomkyStorage) {
             this.node = node;
+            this.zomkyStorage = zomkyStorage;
         }
 
         @Override
@@ -58,37 +63,22 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    if (node.nodeState != NodeState.LEADER) {
+                    /*if (node.nodeState != NodeState.LEADER) {
                         // or maybe redirect to leader ?
                         return Mono.error(new RaftException("I am not a leader!"));
-                    }
-//                    Mono.just(payload.getDataUtf8())
-                        // 1. append to the leaders log
-//                        .doOnNext(content -> node.appendLogEntry(content))
-                         // 2. send to the followers (on the next heartbeat)
-//                        .flatMap(content -> {
-//                            node.availableSenders()
-//                                .flatMap(sender -> {
-//                                    long prevLogIndex = sender.getNextIndex() - 1;
-//                                    long prevLogTerm = node.getByIndex(prevLogIndex).getTerm();
-//
-//                                    AppendEntriesRequest appendEntriesRequest = new AppendEntriesRequest()
-//                                            .term(node.getCurrentTerm())
-//                                            .leaderId(node.nodeId)
-//                                            .prevLogIndex(prevLogIndex)
-//                                            .prevLogTerm(prevLogTerm)
-//                                            .addEntry(content)
-//                                            .leaderCommit(node.getCommitIndex());
-//                                    Payload appendPayload = ObjectPayload.create(appendEntriesRequest);
-//                                    sender.getRSocket().requestResponse(appendPayload)
-//                                });
-//                        });
-
-
-                    // 3. commit an entry once a majority of followers acknowledge it
-                    // 4. respond to the client
+                    }*/
+                    zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
                     return Mono.just(payload)
                         .doOnNext(s -> LOGGER.info("Server received payload"));
+                }
+
+                @Override
+                public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
+                    return Flux.from(payloads)
+                            .onBackpressureBuffer()
+                            .doOnNext(payload -> {
+                                zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
+                            });
                 }
             });
         }

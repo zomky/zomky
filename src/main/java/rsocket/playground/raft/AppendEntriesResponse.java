@@ -2,7 +2,7 @@ package rsocket.playground.raft;
 
 public class AppendEntriesResponse implements TermAware {
 
-    private long term;
+    private int term;
     private boolean success;
 
     /**
@@ -10,7 +10,7 @@ public class AppendEntriesResponse implements TermAware {
      * @param term
      * @return
      */
-    public AppendEntriesResponse term(long term) {
+    public AppendEntriesResponse term(int term) {
         this.term = term;
         return this;
     }
@@ -21,7 +21,7 @@ public class AppendEntriesResponse implements TermAware {
     }
 
     @Override
-    public long getTerm() {
+    public int getTerm() {
         return term;
     }
 

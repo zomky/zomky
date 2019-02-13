@@ -2,7 +2,7 @@ package rsocket.playground.raft;
 
 public class VoteRequest implements TermAware {
 
-    private long term;
+    private int term;
     private int candidateId;
 
     private long lastLogIndex;
@@ -13,7 +13,7 @@ public class VoteRequest implements TermAware {
      * @param term
      * @return
      */
-    public VoteRequest term(long term) {
+    public VoteRequest term(int term) {
         this.term = term;
         return this;
     }
@@ -49,7 +49,7 @@ public class VoteRequest implements TermAware {
     }
 
     @Override
-    public long getTerm() {
+    public int getTerm() {
         return term;
     }
 

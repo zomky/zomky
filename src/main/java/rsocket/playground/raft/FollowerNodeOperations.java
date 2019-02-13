@@ -8,6 +8,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import rsocket.playground.raft.storage.ZomkyStorage;
 
 public class FollowerNodeOperations implements NodeOperations {
 
@@ -23,7 +24,7 @@ public class FollowerNodeOperations implements NodeOperations {
     }
 
     @Override
-    public void onInit(Node node) {
+    public void onInit(Node node, ZomkyStorage zomkyStorage) {
         subscription = processor.timeout(ElectionTimeout.nextRandom())
                 .subscribe(payload -> {}, throwable -> {
                     LOGGER.info("[Node {}] Election timeout ({})", node.nodeId, throwable.getMessage());
@@ -32,20 +33,20 @@ public class FollowerNodeOperations implements NodeOperations {
     }
 
     @Override
-    public void onExit(Node node) {
+    public void onExit(Node node, ZomkyStorage zomkyStorage) {
         subscription.dispose();
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, ZomkyStorage zomkyStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                    .map(appendEntriesRequest -> {
-                       long currentTerm = node.getCurrentTerm();
+                       int currentTerm = zomkyStorage.getTerm();
                        if (appendEntriesRequest.getTerm() >= currentTerm) {
                            restartElectionTimer(node);
                        }
                        if (appendEntriesRequest.getTerm() > currentTerm) {
-                           node.setCurrentTerm(appendEntriesRequest.getTerm());
+                           zomkyStorage.update(appendEntriesRequest.getTerm(), 0);
                        }
                        return new AppendEntriesResponse()
                                .term(currentTerm)
@@ -54,10 +55,10 @@ public class FollowerNodeOperations implements NodeOperations {
     }
 
     @Override
-    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
+    public Mono<VoteResponse> onRequestVote(Node node, ZomkyStorage zomkyStorage, VoteRequest requestVote) {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
-                       long currentTerm = node.getCurrentTerm();
+                       int currentTerm = zomkyStorage.getTerm();
 
                        if (requestVote.getTerm() < currentTerm) {
                            return new VoteResponse().term(currentTerm).voteGranted(false);
@@ -66,7 +67,7 @@ public class FollowerNodeOperations implements NodeOperations {
                        boolean voteGranted = node.notVoted(requestVote.getTerm());
 
                        if (voteGranted) {
-                           node.voteForCandidate(requestVote.getCandidateId(), requestVote.getTerm());
+                           zomkyStorage.update(requestVote.getTerm(), requestVote.getCandidateId());
                            restartElectionTimer(node);
                        }
                        return new VoteResponse()

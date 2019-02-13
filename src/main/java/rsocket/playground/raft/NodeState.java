@@ -1,6 +1,7 @@
 package rsocket.playground.raft;
 
 import reactor.core.publisher.Mono;
+import rsocket.playground.raft.storage.ZomkyStorage;
 
 public enum NodeState implements NodeOperations {
 
@@ -17,23 +18,23 @@ public enum NodeState implements NodeOperations {
     }
 
     @Override
-    public void onInit(Node node) {
-        this.nodeOperations.onInit(node);
+    public void onInit(Node node, ZomkyStorage zomkyStorage) {
+        this.nodeOperations.onInit(node, zomkyStorage);
     }
 
     @Override
-    public void onExit(Node node) {
-        this.nodeOperations.onExit(node);
+    public void onExit(Node node, ZomkyStorage zomkyStorage) {
+        this.nodeOperations.onExit(node, zomkyStorage);
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
-        return this.nodeOperations.onAppendEntries(node, appendEntries);
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, ZomkyStorage zomkyStorage, AppendEntriesRequest appendEntries) {
+        return this.nodeOperations.onAppendEntries(node, zomkyStorage, appendEntries);
     }
 
     @Override
-    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
-        return this.nodeOperations.onRequestVote(node, requestVote);
+    public Mono<VoteResponse> onRequestVote(Node node, ZomkyStorage zomkyStorage, VoteRequest requestVote) {
+        return this.nodeOperations.onRequestVote(node, zomkyStorage, requestVote);
     }
 
 }

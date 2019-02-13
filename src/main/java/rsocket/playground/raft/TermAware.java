@@ -4,6 +4,6 @@ import java.io.Serializable;
 
 public interface TermAware extends Serializable {
 
-    long getTerm();
+    int getTerm();
 
 }

@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
+import rsocket.playground.raft.storage.LogEntryInfo;
+import rsocket.playground.raft.storage.ZomkyStorage;
 import rsocket.playground.raft.transport.ObjectPayload;
 
 public class CandidateNodeOperations implements NodeOperations {
@@ -17,56 +19,55 @@ public class CandidateNodeOperations implements NodeOperations {
     private Disposable subscription;
 
     @Override
-    public void onInit(Node node) {
+    public void onInit(Node node, ZomkyStorage zomkyStorage) {
         ElectionContext electionContext = new ElectionContext(false);
-        subscription = Mono.defer(() -> startElection(node, electionContext))
+        subscription = Mono.defer(() -> startElection(node, zomkyStorage, electionContext))
                 .repeatWhen(leaderNotElected(electionContext))
                 .subscribe();
     }
 
     @Override
-    public void onExit(Node node) {
+    public void onExit(Node node, ZomkyStorage zomkyStorage) {
         subscription.dispose();
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(Node node, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(Node node, ZomkyStorage zomkyStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                    .map(appendEntries1 -> {
-                       long currentTerm = node.getCurrentTerm();
+                       int currentTerm = zomkyStorage.getTerm();
                        if (appendEntries1.getTerm() >= currentTerm) {
                            node.convertToFollower(appendEntries1.getTerm());
                        }
-                       return new AppendEntriesResponse().term(currentTerm);
+                       return new AppendEntriesResponse().term(currentTerm).success(true);
                    });
     }
 
     @Override
-    public Mono<VoteResponse> onRequestVote(Node node, VoteRequest requestVote) {
+    public Mono<VoteResponse> onRequestVote(Node node, ZomkyStorage zomkyStorage, VoteRequest requestVote) {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
-                       long currentTerm = node.getCurrentTerm();
                        boolean voteGranted = node.notVoted(requestVote.getTerm());
                        if (voteGranted) {
                            node.convertToFollower(requestVote.getTerm());
                        }
                        return new VoteResponse()
                                .voteGranted(voteGranted)
-                               .term(currentTerm);
+                               .term(zomkyStorage.getTerm());
                    });
     }
 
-    private Mono<Void> startElection(Node node, ElectionContext electionContext) {
+    private Mono<Void> startElection(Node node, ZomkyStorage zomkyStorage, ElectionContext electionContext) {
         return Mono.just(node)
                    .doOnNext(Node::voteForMyself)
-                   .then(sendVotes(node, electionContext));
+                   .then(sendVotes(node, zomkyStorage, electionContext));
     }
 
-    private Mono<Void> sendVotes(Node node, ElectionContext electionContext) {
+    private Mono<Void> sendVotes(Node node, ZomkyStorage zomkyStorage, ElectionContext electionContext) {
         return node.availableSenders()
-                .flatMap(sender -> sendVoteRequest(node, sender))
+                .flatMap(sender -> sendVoteRequest(node, zomkyStorage, sender))
                 .doOnNext(voteResponse -> {
-                    if (voteResponse.getTerm() > node.getCurrentTerm()) {
+                    if (voteResponse.getTerm() > zomkyStorage.getTerm()) {
                         node.convertToFollower(voteResponse.getTerm());
                         electionContext.setRepeatElection(false);
                     }
@@ -81,7 +82,6 @@ public class CandidateNodeOperations implements NodeOperations {
                     electionContext.setRepeatElection(false);
                 })
                 .onErrorResume(throwable -> {
-                    System.out.println();
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
                         LOGGER.info("[Node {}] Election timeout ({})", node.nodeId, subscription.isDisposed());
@@ -92,13 +92,13 @@ public class CandidateNodeOperations implements NodeOperations {
                 .then();
     }
 
-    private Mono<VoteResponse> sendVoteRequest(Node node, Sender sender) {
-        LogEntry lastEntry = node.getLast();
+    private Mono<VoteResponse> sendVoteRequest(Node node, ZomkyStorage zomkyStorage, Sender sender) {
+        LogEntryInfo last = zomkyStorage.getLast();
         VoteRequest requestVote = new VoteRequest()
-                .term(node.getCurrentTerm())
+                .term(zomkyStorage.getTerm())
                 .candidateId(node.nodeId)
-                .lastLogIndex(lastEntry.getIndex())
-                .lastLogTerm(lastEntry.getTerm());
+                .lastLogIndex(last.getIndex())
+                .lastLogTerm(last.getTerm());
 
         Payload payload = ObjectPayload.create(requestVote);
         if (node.nodeState != NodeState.CANDIDATE) {

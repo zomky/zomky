@@ -5,7 +5,7 @@ import java.util.Set;
 
 public class AppendEntriesRequest implements TermAware {
 
-    private long term;
+    private int term;
     private int leaderId;
 
     private long prevLogIndex;
@@ -19,7 +19,7 @@ public class AppendEntriesRequest implements TermAware {
      * @param term
      * @return
      */
-    public AppendEntriesRequest term(long term) {
+    public AppendEntriesRequest term(int term) {
         this.term = term;
         return this;
     }
@@ -82,7 +82,7 @@ public class AppendEntriesRequest implements TermAware {
     }
 
     @Override
-    public long getTerm() {
+    public int getTerm() {
         return term;
     }
 

@@ -4,7 +4,7 @@ public class VoteResponse implements TermAware {
 
     static final VoteResponse FALLBACK_RESPONSE = new VoteResponse().voteGranted(false);
 
-    private long term;
+    private int term;
     private boolean voteGranted;
 
     /**
@@ -12,7 +12,7 @@ public class VoteResponse implements TermAware {
      * @param term
      * @return
      */
-    public VoteResponse term(long term) {
+    public VoteResponse term(int term) {
         this.term = term;
         return this;
     }
@@ -28,7 +28,7 @@ public class VoteResponse implements TermAware {
     }
 
     @Override
-    public long getTerm() {
+    public int getTerm() {
         return term;
     }
 

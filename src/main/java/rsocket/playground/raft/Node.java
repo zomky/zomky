@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.storage.ZomkyNodeStorage;
+import rsocket.playground.raft.storage.ZomkyStorage;
 
 import java.util.HashSet;
 import java.util.List;
@@ -19,8 +19,6 @@ public class Node {
     int nodeId;
 
     private AtomicInteger currentLeaderId = new AtomicInteger(0);
-    private volatile long currentTerm;
-    private volatile Integer votedFor;
 
     /**
      * index of highest log entry known to be
@@ -38,33 +36,32 @@ public class Node {
 
     private Receiver receiver;
     private Senders senders;
-    private ZomkyNodeStorage zomkyNodeStorage;
+    private ZomkyStorage zomkyStorage;
 
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
 
-    public static Node create(int port, ZomkyNodeStorage zomkyNodeStorage, List<Integer> clientPorts) {
-        Node node = new Node(port, zomkyNodeStorage);
-        node.receiver = new Receiver(node);
+    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts) {
+        Node node = new Node(port, zomkyStorage);
+        node.receiver = new Receiver(node, zomkyStorage);
         node.senders = new Senders(node, clientPorts);
         LOGGER.info("[Node {}] has been initialized", node);
         return node;
     }
 
-    private Node(int port, ZomkyNodeStorage zomkyNodeStorage) {
+    private Node(int port, ZomkyStorage zomkyStorage) {
         this.nodeId = port;
-        this.zomkyNodeStorage = zomkyNodeStorage;
-        this.currentTerm = getNodeData().getCurrentTerm();
+        this.zomkyStorage = zomkyStorage;
     }
 
     public void start() {
         receiver.start();
         senders.start();
-        nodeState.onInit(this);
+        nodeState.onInit(this, zomkyStorage);
     }
 
     public void stop() {
-        nodeState.onExit(this);
+        nodeState.onExit(this, zomkyStorage);
         receiver.stop();
         senders.stop();
     }
@@ -74,39 +71,12 @@ public class Node {
     }
 
     void voteForMyself() {
-        zomkyNodeStorage.voteForMyself(nodeId);
-        currentTerm = currentTerm + 1; // TODO non-atomic operation
-        votedFor = nodeId;
-    }
-
-    void setCurrentTerm(long term) {
-        assert term > currentTerm;
-        zomkyNodeStorage.updateTerm(nodeId, term);
-        currentTerm = term;
-        votedFor = null;
-    }
-
-    void voteForCandidate(int candidateId, long term) {
-        assert term >= currentTerm;
-        zomkyNodeStorage.voteForCandidate(nodeId, candidateId, term);
-        currentTerm = term;
-        votedFor = candidateId;
+        int term = zomkyStorage.getTerm();
+        zomkyStorage.update(term + 1, nodeId);
     }
 
     boolean notVoted(long term) {
-        return term > currentTerm || (term == currentTerm && votedFor == null);
-    }
-
-    LogEntry getLast() {
-        return zomkyNodeStorage.getLast(nodeId);
-    }
-
-    LogEntry getByIndex(long index) {
-        return zomkyNodeStorage.getByIndex(nodeId, index);
-    }
-
-    void appendLogEntry(String content) {
-        zomkyNodeStorage.appendLog(nodeId, commitIndex, currentTerm, content);
+        return term > zomkyStorage.getTerm() || (term == zomkyStorage.getTerm() && zomkyStorage.getVotedFor() == 0);
     }
 
     public long getCommitIndex() {
@@ -115,14 +85,6 @@ public class Node {
 
     public long getLastApplied() {
         return lastApplied;
-    }
-
-    NodeData getNodeData() {
-        return zomkyNodeStorage.readNodeData(nodeId);
-    }
-
-    long getCurrentTerm() {
-        return currentTerm;
     }
 
     void onSenderAvailable(SenderAvailableCallback senderAvailableCallback) {
@@ -150,22 +112,22 @@ public class Node {
     }
 
     Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
-        return nodeState.onAppendEntries(this, appendEntries)
+        return nodeState.onAppendEntries(this, zomkyStorage, appendEntries)
                 .doOnNext(response -> setCurrentLeader(appendEntries.getLeaderId()))
                 .doOnNext(response -> LOGGER.debug("[Node {} -> Node {}] Append entries {} -> {}", appendEntries.getLeaderId(), nodeId, appendEntries, response));
     }
 
     Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
-        return nodeState.onRequestVote(this, requestVote)
+        return nodeState.onRequestVote(this, zomkyStorage, requestVote)
                 .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}] Vote {} -> {}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
     }
 
-    void convertToFollower(long term) {
-        if (term < currentTerm) {
-            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", nodeId, nodeState, currentTerm, term));
+    void convertToFollower(int term) {
+        if (term < zomkyStorage.getTerm()) {
+            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", nodeId, nodeState, zomkyStorage.getTerm(), term));
         }
-        if (term > currentTerm) {
-            setCurrentTerm(term);
+        if (term > zomkyStorage.getTerm()) {
+            zomkyStorage.update(term, 0);
         }
         convertToFollower();
     }
@@ -189,9 +151,9 @@ public class Node {
             throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", nodeId, nodeState, stateFrom, stateTo));
         }
         LOGGER.info("[Node {}] State transition {} -> {}", nodeId, stateFrom, stateTo);
-        nodeState.onExit(this);
+        nodeState.onExit(this, zomkyStorage);
         nodeState = stateTo;
-        nodeState.onInit(this);
+        nodeState.onInit(this, zomkyStorage);
     }
 
     @Override
@@ -199,7 +161,6 @@ public class Node {
         return "Node{" +
                 "nodeState=" + nodeState +
                 ", nodeId=" + nodeId +
-                ", currentTerm=" + currentTerm +
                 '}';
     }
 }
