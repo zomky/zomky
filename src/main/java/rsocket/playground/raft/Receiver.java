@@ -67,9 +67,7 @@ public class Receiver {
                         // or maybe redirect to leader ?
                         return Mono.error(new RaftException("I am not a leader!"));
                     }*/
-                    zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
-                    return Mono.just(payload)
-                        .doOnNext(s -> LOGGER.info("Server received payload"));
+                    return node.onClientRequest(payload);
                 }
 
                 @Override

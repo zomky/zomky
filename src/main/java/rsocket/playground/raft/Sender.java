@@ -9,22 +9,6 @@ public class Sender {
     private final RSocket rSocket;
     private final boolean available;
 
-    /**
-     * Reinitialized after election,
-     * index of the next log entry
-     * to send to that server (initialized to leader
-     * last log index + 1)
-     */
-    private volatile long nextIndex;
-
-    /**
-     * Reinitialized after election,
-     * index of highest log entry
-     * known to be replicated on server
-     * (initialized to 0, increases monotonically)
-     */
-    private volatile long matchIndex;
-
     public static Sender availableSender(int nodeId, RSocket rSocket) {
         return new Sender(nodeId, rSocket, true);
     }
@@ -54,14 +38,6 @@ public class Sender {
 
     public boolean isNotAvailable() {
         return !available;
-    }
-
-    public long getNextIndex() {
-        return nextIndex;
-    }
-
-    public long getMatchIndex() {
-        return matchIndex;
     }
 
     @Override

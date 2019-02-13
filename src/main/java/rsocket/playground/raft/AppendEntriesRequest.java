@@ -1,7 +1,8 @@
 package rsocket.playground.raft;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AppendEntriesRequest implements TermAware {
 
@@ -11,7 +12,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogIndex;
     private long prevLogTerm;
 
-    private Set<String> entries = new HashSet<>();
+    private List<ByteBuffer> entries = new ArrayList<>();
     private long leaderCommit;
 
     /**
@@ -61,13 +62,13 @@ public class AppendEntriesRequest implements TermAware {
      * @param entries
      * @return
      */
-    public AppendEntriesRequest entries(Set<String> entries) {
+    public AppendEntriesRequest entries(List<ByteBuffer> entries) {
         this.entries = entries;
         return this;
     }
 
-    public AppendEntriesRequest addEntry(String content) {
-        this.entries.add(content);
+    public AppendEntriesRequest addEntry(ByteBuffer entry) {
+        this.entries.add(entry);
         return this;
     }
 
@@ -98,7 +99,7 @@ public class AppendEntriesRequest implements TermAware {
         return prevLogTerm;
     }
 
-    public Set<String> getEntries() {
+    public List<ByteBuffer> getEntries() {
         return entries;
     }
 

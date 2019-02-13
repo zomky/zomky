@@ -19,6 +19,11 @@ public class CandidateNodeOperations implements NodeOperations {
     private Disposable subscription;
 
     @Override
+    public Mono<Payload> onClientRequest(Node node, ZomkyStorage zomkyStorage, Payload payload) {
+        return Mono.error(new RaftException("I am not a leader!"));
+    }
+
+    @Override
     public void onInit(Node node, ZomkyStorage zomkyStorage) {
         ElectionContext electionContext = new ElectionContext(false);
         subscription = Mono.defer(() -> startElection(node, zomkyStorage, electionContext))

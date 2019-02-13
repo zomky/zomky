@@ -1,5 +1,6 @@
 package rsocket.playground.raft;
 
+import io.rsocket.Payload;
 import reactor.core.publisher.Mono;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
@@ -13,4 +14,5 @@ public interface NodeOperations {
 
     Mono<VoteResponse> onRequestVote(Node node, ZomkyStorage zomkyStorage, VoteRequest requestVote);
 
+    Mono<Payload> onClientRequest(Node node, ZomkyStorage zomkyStorage, Payload payload);
 }

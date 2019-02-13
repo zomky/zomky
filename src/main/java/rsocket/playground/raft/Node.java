@@ -1,5 +1,6 @@
 package rsocket.playground.raft;
 
+import io.rsocket.Payload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -70,6 +71,10 @@ public class Node {
         return senders.availableSenders();
     }
 
+    Mono<Payload> onClientRequest(Payload payload) {
+        return nodeState.onClientRequest(this, zomkyStorage, payload);
+    }
+
     void voteForMyself() {
         int term = zomkyStorage.getTerm();
         zomkyStorage.update(term + 1, nodeId);
@@ -81,6 +86,14 @@ public class Node {
 
     public long getCommitIndex() {
         return commitIndex;
+    }
+
+    public void setCommitIndex(long commitIndex) {
+        this.commitIndex = commitIndex;
+    }
+
+    public void increaseCommitIndex() {
+        commitIndex = commitIndex + 1;
     }
 
     public long getLastApplied() {
