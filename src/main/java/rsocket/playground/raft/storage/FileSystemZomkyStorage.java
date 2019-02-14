@@ -142,6 +142,9 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
     @Override
     public synchronized int getTermByIndex(long index) {
+        if (index == 0) {
+            return 0;
+        }
         try {
             metadataFileChannel.position((index-1) * INDEX_TERM_FILE_ENTRY_SIZE);
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
@@ -149,7 +152,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             metadataBuffer.flip();
             return metadataBuffer.getInt();
         } catch (IOException | BufferUnderflowException e) {
-            throw new ZomkyStorageException(e);
+            throw new ZomkyStorageException("index " + index, e);
         }
     }
 

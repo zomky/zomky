@@ -55,21 +55,23 @@ public class LeaderNodeOperations implements NodeOperations {
 
     @Override
     public void onInit(Node node, ZomkyStorage zomkyStorage) {
-        long lastLogIndex = zomkyStorage.getLast().getIndex();
-
-        long nextIdx = lastLogIndex + 1;
-//        node.nodeIds().forEach(nodeId -> {
-//            nextIndex.put(nodeId, nextIdx);
-//            matchIndex.put(nodeId, 0L);
-//        });
 
         node.availableSenders().subscribe(sender -> {
             LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
+            long lastLogIndex = zomkyStorage.getLast().getIndex();
+            long nextIdx = lastLogIndex + 1;
+            nextIndex.put(sender.getNodeId(), nextIdx);
+            matchIndex.put(sender.getNodeId(), 0L);
             senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
         });
 
         node.onSenderAvailable(sender -> {
             LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
+            long lastLogIndex = zomkyStorage.getLast().getIndex();
+            long nextIdx = lastLogIndex + 1;
+            nextIndex.put(sender.getNodeId(), nextIdx);
+            matchIndex.put(sender.getNodeId(), 0L);
+
             senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
         });
 
@@ -135,11 +137,15 @@ public class LeaderNodeOperations implements NodeOperations {
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, Node node, ZomkyStorage zomkyStorage) {
         List<ByteBuffer> entries = new ArrayList<>();
-        if (zomkyStorage.getLast().getIndex() >= nextIndex.get(sender.getNodeId())) {
-             // entries add [nextIndex, lastLogIndex]
+        while (zomkyStorage.getLast().getIndex() >= nextIndex.get(sender.getNodeId())) {
+            long senderIdxId = nextIndex.get(sender.getNodeId());
+            ByteBuffer entryByIndex = zomkyStorage.getEntryByIndex(senderIdxId);
+            entries.add(entryByIndex);
+            nextIndex.put(sender.getNodeId(), ++senderIdxId);
         }
 
         long prevLogIndex = zomkyStorage.getLast().getIndex() - entries.size();
+
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);
 
         return new AppendEntriesRequest()
