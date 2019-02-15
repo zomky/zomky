@@ -125,4 +125,29 @@ public class FileSystemZomkyStorageTest {
 
         assertThat(new String(entry.array())).isEqualTo("Abc1");
     }
+
+    @Test
+    public void truncateFromIndex() {
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc2".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc3".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc3".getBytes()));
+
+        zomkyStorage.truncateFromIndex(3);
+
+        assertThat(zomkyStorage.getLast().getIndex()).isEqualTo(2);
+    }
+
+    @Test
+    public void truncateFromZeroIndex() {
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc2".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc3".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc3".getBytes()));
+
+        zomkyStorage.truncateFromIndex(0);
+
+        assertThat(zomkyStorage.getLast().getIndex()).isEqualTo(0);
+        assertThat(zomkyStorage.getLast().getTerm()).isEqualTo(0);
+    }
 }

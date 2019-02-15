@@ -130,7 +130,6 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             byteBuffer.putInt(messageSize);
             byteBuffer.flip();
             metadataFileChannel.write(byteBuffer);
-//            metadataFileChannel.force(true);
             lastTerm.set(term);
             return new LogEntryInfo()
                     .index(lastIndex.incrementAndGet())
@@ -179,6 +178,23 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     @Override
     public synchronized LogEntryInfo getLast() {
         return new LogEntryInfo().index(lastIndex.get()).term(lastTerm.get());
+    }
+
+    @Override
+    public void truncateFromIndex(long index) {
+        if (index > 0) {
+            try {
+                // TODO truncate from contentFileChannel
+                metadataFileChannel.truncate((index - 1) * INDEX_TERM_FILE_ENTRY_SIZE);
+                lastIndex.set(index - 1);
+                lastTerm.set(getTermByIndex(index - 1));
+            } catch (IOException | BufferUnderflowException e) {
+                throw new ZomkyStorageException(e);
+            }
+        } else {
+            lastIndex.set(0);
+            lastTerm.set(0);
+        }
     }
 
     @Override

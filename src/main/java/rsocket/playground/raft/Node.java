@@ -89,6 +89,7 @@ public class Node {
     }
 
     public void setCommitIndex(long commitIndex) {
+        LOGGER.info("Set new commit index to {}", commitIndex);
         this.commitIndex = commitIndex;
     }
 

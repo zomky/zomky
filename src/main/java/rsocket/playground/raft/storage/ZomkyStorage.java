@@ -22,6 +22,8 @@ public interface ZomkyStorage {
 
     LogEntryInfo getLast();
 
+    void truncateFromIndex(long index);
+
     void close();
 
 }

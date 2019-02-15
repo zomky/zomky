@@ -13,6 +13,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogTerm;
 
     private List<ByteBuffer> entries = new ArrayList<>();
+    private List<Integer> terms = new ArrayList<>();
     private long leaderCommit;
 
     /**
@@ -67,8 +68,8 @@ public class AppendEntriesRequest implements TermAware {
         return this;
     }
 
-    public AppendEntriesRequest addEntry(ByteBuffer entry) {
-        this.entries.add(entry);
+    public AppendEntriesRequest terms(List<Integer> terms) {
+        this.terms = terms;
         return this;
     }
 
@@ -105,6 +106,10 @@ public class AppendEntriesRequest implements TermAware {
 
     public long getLeaderCommit() {
         return leaderCommit;
+    }
+
+    public List<Integer> getTerms() {
+        return terms;
     }
 
     @Override

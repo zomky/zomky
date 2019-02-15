@@ -39,12 +39,44 @@ public class CandidateNodeOperations implements NodeOperations {
     @Override
     public Mono<AppendEntriesResponse> onAppendEntries(Node node, ZomkyStorage zomkyStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
-                   .map(appendEntries1 -> {
+                   .map(appendEntriesRequest -> {
                        int currentTerm = zomkyStorage.getTerm();
-                       if (appendEntries1.getTerm() >= currentTerm) {
-                           node.convertToFollower(appendEntries1.getTerm());
+
+                       // 1. Reply false if term < currentTerm (§5.1)
+                       if (appendEntriesRequest.getTerm() < currentTerm) {
+                           return new AppendEntriesResponse().term(currentTerm).success(false);
                        }
-                       return new AppendEntriesResponse().term(currentTerm).success(true);
+
+                       // 2. Reply false if log doesn’t contain an entry at index
+                       //    whose term matches prevLogTerm (§5.3)
+                       int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
+                       if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) { // prevLogTerm == 0 ||
+                           return new AppendEntriesResponse().term(currentTerm).success(false);
+                       }
+
+                       // 3. If an existing entry conflicts with a new one (same index
+                       //    but different terms), delete the existing entry and all that
+                       //    follow it (§5.3)
+                       if (zomkyStorage.getLast().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
+                           zomkyStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
+                       }
+                       // 4. Append any new entries not already in the log
+                       for (int i=0; i < appendEntriesRequest.getEntries().size(); i++) {
+                           zomkyStorage.appendLog(appendEntriesRequest.getTerms().get(i), appendEntriesRequest.getEntries().get(i));
+                       }
+
+                       //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+                       if (appendEntriesRequest.getLeaderCommit() > node.getCommitIndex()) {
+                           node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), zomkyStorage.getLast().getIndex()));
+                       }
+
+                       if (appendEntriesRequest.getTerm() > currentTerm) {
+                           node.convertToFollower(appendEntriesRequest.getTerm());
+                       }
+
+                       return new AppendEntriesResponse()
+                               .term(currentTerm)
+                               .success(true);
                    });
     }
 
@@ -52,13 +84,27 @@ public class CandidateNodeOperations implements NodeOperations {
     public Mono<VoteResponse> onRequestVote(Node node, ZomkyStorage zomkyStorage, VoteRequest requestVote) {
         return Mono.just(requestVote)
                    .map(requestVote1 -> {
+                       int currentTerm = zomkyStorage.getTerm();
+                       LogEntryInfo lastLogEntry = zomkyStorage.getLast();
+                       // more up-to-date log
+                       if (requestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
+                               (requestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
+                                       requestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
+                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                       }
+
+                       if (requestVote.getTerm() < currentTerm) {
+                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                       }
+
                        boolean voteGranted = node.notVoted(requestVote.getTerm());
+
                        if (voteGranted) {
                            node.convertToFollower(requestVote.getTerm());
                        }
                        return new VoteResponse()
                                .voteGranted(voteGranted)
-                               .term(zomkyStorage.getTerm());
+                               .term(currentTerm);
                    });
     }
 

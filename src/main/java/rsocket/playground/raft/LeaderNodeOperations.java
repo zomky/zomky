@@ -116,32 +116,57 @@ public class LeaderNodeOperations implements NodeOperations {
                 });
     }
 
-    /**
-     *
-     * If last log index ≥ nextIndex for a follower: send
-     * AppendEntries RPC with log entries starting at nextIndex
-     * • If successful: update nextIndex and matchIndex for
-     * follower (§5.3)
-     * • If AppendEntries fails because of log inconsistency:
-     * decrement nextIndex and retry (§5.3)
-     * • If there exists an N such that N > commitIndex, a majority
-     * of matchIndex[i] ≥ N, and log[N].term == currentTerm:
-     * set commitIndex = N (§5.3, §5.4).
-     */
     private Flux<Payload> heartbeats(Sender sender, ZomkyStorage zomkyStorage, Node node) {
         Flux<Payload> payload = Flux.interval(HEARTBEAT_TIMEOUT)
                 .map(i -> heartbeatRequest(sender, node, zomkyStorage))
                 .map(ObjectPayload::create);
-        return sender.getRSocket().requestChannel(payload);
+        return sender.getRSocket()
+                     .requestChannel(payload)
+                     .doOnNext(payload1 -> {
+                         AppendEntriesResponse appendEntriesResponse = ObjectPayload.dataFromPayload(payload1, AppendEntriesResponse.class);
+                         if (appendEntriesResponse.isSuccess()) {
+                             // If successful: update nextIndex and matchIndex for follower (§5.3)
+                             long lastLogIndex = zomkyStorage.getLast().getIndex();
+                             long nextIdx = lastLogIndex + 1;
+                             nextIndex.put(sender.getNodeId(), nextIdx);
+                             matchIndex.put(sender.getNodeId(), lastLogIndex);
+                             // If there exists an N such that N > commitIndex, a majority
+                             // of matchIndex[i] ≥ N, and log[N].term == currentTerm:
+                             // set commitIndex = N (§5.3, §5.4).
+                             long candidateCommitIndex = node.getCommitIndex();
+                             while (candidateCommitIndex < lastLogIndex) {
+                                 long i = candidateCommitIndex + 1;
+                                 long count = matchIndex.values().stream().filter(matchIndex1 -> matchIndex1 >= i).count();
+                                 if (count >= 1 && zomkyStorage.getTermByIndex( candidateCommitIndex + 1) == zomkyStorage.getTerm()) { // 1 means majority for 3 elements cluster
+                                     candidateCommitIndex++;
+                                 } else {
+                                     break;
+                                 }
+                             }
+                             if (candidateCommitIndex > node.getCommitIndex()) {
+                                 node.setCommitIndex(candidateCommitIndex);
+                             }
+
+                         } else {
+                             // If AppendEntries fails because of log inconsistency decrement nextIndex and retry (§5.3)
+                             // TODO now retry is done in next heartbeat
+                             nextIndex.put(sender.getNodeId(), nextIndex.get(sender.getNodeId()));
+                         }
+                     });
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, Node node, ZomkyStorage zomkyStorage) {
         List<ByteBuffer> entries = new ArrayList<>();
-        while (zomkyStorage.getLast().getIndex() >= nextIndex.get(sender.getNodeId())) {
-            long senderIdxId = nextIndex.get(sender.getNodeId());
+        List<Integer> terms = new ArrayList<>();
+        long senderIdxId = nextIndex.get(sender.getNodeId());
+        // If last log index ≥ nextIndex for a follower: send
+        // AppendEntries RPC with log entries starting at nextIndex
+        while (zomkyStorage.getLast().getIndex() >= senderIdxId) {
             ByteBuffer entryByIndex = zomkyStorage.getEntryByIndex(senderIdxId);
             entries.add(entryByIndex);
-            nextIndex.put(sender.getNodeId(), ++senderIdxId);
+            int termByIndex = zomkyStorage.getTermByIndex(senderIdxId);
+            terms.add(termByIndex);
+            senderIdxId = senderIdxId + 1;
         }
 
         long prevLogIndex = zomkyStorage.getLast().getIndex() - entries.size();
@@ -154,6 +179,7 @@ public class LeaderNodeOperations implements NodeOperations {
                 .prevLogIndex(prevLogIndex)
                 .prevLogTerm(prevLogTerm)
                 .entries(entries)
+                .terms(terms)
                 .leaderCommit(node.getCommitIndex());
     }
 }

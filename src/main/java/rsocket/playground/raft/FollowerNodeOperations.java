@@ -43,51 +43,48 @@ public class FollowerNodeOperations implements NodeOperations {
         subscription.dispose();
     }
 
-//    1. Reply false if term < currentTerm (§5.1)
-//            2. Reply false if log doesn’t contain an entry at prevLogIndex
-//    whose term matches prevLogTerm (§5.3)
-//3. If an existing entry conflicts with a new one (same index
-//but different terms), delete the existing entry and all that
-//    follow it (§5.3)
-//4. Append any new entries not already in the log
-//5. If leaderCommit > commitIndex, set commitIndex =
-//            min(leaderCommit, index of last new entry)
-
     @Override
     public Mono<AppendEntriesResponse> onAppendEntries(Node node, ZomkyStorage zomkyStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                    .map(appendEntriesRequest -> {
-                       boolean success = true;
                        int currentTerm = zomkyStorage.getTerm();
 
+                       // 1. Reply false if term < currentTerm (§5.1)
                        if (appendEntriesRequest.getTerm() < currentTerm) {
-                           success = false;
-                       }
-
-                       int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
-                       if (prevLogTerm == 0 || prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
-                           success = false;
-                       }
-
-
-                       if (appendEntriesRequest.getTerm() >= currentTerm) {
-                           restartElectionTimer(node);
+                           return new AppendEntriesResponse().term(currentTerm).success(false);
                        }
                        if (appendEntriesRequest.getTerm() > currentTerm) {
                            zomkyStorage.update(appendEntriesRequest.getTerm(), 0);
                        }
 
-                       if (success) {
-                           zomkyStorage.appendLog(currentTerm, appendEntriesRequest.getEntries().get(0)); //TODO
+                       restartElectionTimer(node);
+
+                       // 2. Reply false if log doesn’t contain an entry at index
+                       //    whose term matches prevLogTerm (§5.3)
+                       int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
+                       if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) { // prevLogTerm == 0 ||
+                           return new AppendEntriesResponse().term(currentTerm).success(false);
                        }
 
+                       // 3. If an existing entry conflicts with a new one (same index
+                       //    but different terms), delete the existing entry and all that
+                       //    follow it (§5.3)
+                       if (zomkyStorage.getLast().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
+                           zomkyStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
+                       }
+                       // 4. Append any new entries not already in the log
+                       for (int i=0; i < appendEntriesRequest.getEntries().size(); i++) {
+                           zomkyStorage.appendLog(appendEntriesRequest.getTerms().get(i), appendEntriesRequest.getEntries().get(i));
+                       }
+
+                       //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
                        if (appendEntriesRequest.getLeaderCommit() > node.getCommitIndex()) {
                            node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), zomkyStorage.getLast().getIndex()));
                        }
 
                        return new AppendEntriesResponse()
                                .term(currentTerm)
-                               .success(success);
+                               .success(true);
                    });
     }
 
