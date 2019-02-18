@@ -74,9 +74,10 @@ public class Receiver {
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return Flux.from(payloads)
                             .onBackpressureBuffer()
-                            .doOnNext(payload -> {
+                            .flatMap(payload -> node.onClientRequest(payload))
+                            /*.doOnNext(payload -> {
                                 zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
-                            });
+                            })*/;
                 }
             });
         }

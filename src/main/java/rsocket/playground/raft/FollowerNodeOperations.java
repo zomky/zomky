@@ -11,6 +11,8 @@ import reactor.core.publisher.Mono;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
+import java.nio.ByteBuffer;
+
 public class FollowerNodeOperations implements NodeOperations {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerNodeOperations.class);
@@ -62,7 +64,7 @@ public class FollowerNodeOperations implements NodeOperations {
                        // 2. Reply false if log doesn’t contain an entry at index
                        //    whose term matches prevLogTerm (§5.3)
                        int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
-                       if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) { // prevLogTerm == 0 ||
+                       if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
                            return new AppendEntriesResponse().term(currentTerm).success(false);
                        }
 
@@ -74,7 +76,7 @@ public class FollowerNodeOperations implements NodeOperations {
                        }
                        // 4. Append any new entries not already in the log
                        for (int i=0; i < appendEntriesRequest.getEntries().size(); i++) {
-                           zomkyStorage.appendLog(appendEntriesRequest.getTerms().get(i), appendEntriesRequest.getEntries().get(i));
+                           zomkyStorage.appendLog(appendEntriesRequest.getTerms().get(i), ByteBuffer.wrap(appendEntriesRequest.getEntries().get(i)));
                        }
 
                        //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)

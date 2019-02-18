@@ -118,6 +118,7 @@ public class LeaderNodeOperations implements NodeOperations {
 
     private Flux<Payload> heartbeats(Sender sender, ZomkyStorage zomkyStorage, Node node) {
         Flux<Payload> payload = Flux.interval(HEARTBEAT_TIMEOUT)
+                .onBackpressureDrop()
                 .map(i -> heartbeatRequest(sender, node, zomkyStorage))
                 .map(ObjectPayload::create);
         return sender.getRSocket()
@@ -150,20 +151,23 @@ public class LeaderNodeOperations implements NodeOperations {
                          } else {
                              // If AppendEntries fails because of log inconsistency decrement nextIndex and retry (§5.3)
                              // TODO now retry is done in next heartbeat
+                             LOGGER.info("[Node {}] Decrease nextIndex for sender {}", node.nodeId, sender.getNodeId());
                              nextIndex.put(sender.getNodeId(), nextIndex.get(sender.getNodeId()));
                          }
                      });
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, Node node, ZomkyStorage zomkyStorage) {
-        List<ByteBuffer> entries = new ArrayList<>();
+        List<byte[]> entries = new ArrayList<>();
         List<Integer> terms = new ArrayList<>();
         long senderIdxId = nextIndex.get(sender.getNodeId());
         // If last log index ≥ nextIndex for a follower: send
         // AppendEntries RPC with log entries starting at nextIndex
         while (zomkyStorage.getLast().getIndex() >= senderIdxId) {
+            LOGGER.info("zomkyStorage.getLast().getIndex() {}",zomkyStorage.getLast().getIndex());
+            LOGGER.info("senderIdxId {}", senderIdxId);
             ByteBuffer entryByIndex = zomkyStorage.getEntryByIndex(senderIdxId);
-            entries.add(entryByIndex);
+            entries.add(entryByIndex.array());
             int termByIndex = zomkyStorage.getTermByIndex(senderIdxId);
             terms.add(termByIndex);
             senderIdxId = senderIdxId + 1;

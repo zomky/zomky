@@ -129,7 +129,9 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             byteBuffer.putLong(position);
             byteBuffer.putInt(messageSize);
             byteBuffer.flip();
+            metadataFileChannel.position(metadataFileChannel.size());
             metadataFileChannel.write(byteBuffer);
+            //metadataFileChannel.force(true);
             lastTerm.set(term);
             return new LogEntryInfo()
                     .index(lastIndex.incrementAndGet())
@@ -141,10 +143,10 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
     @Override
     public synchronized int getTermByIndex(long index) {
-        if (index == 0) {
-            return 0;
-        }
         try {
+            if (index == 0 || (metadataFileChannel.size() / INDEX_TERM_FILE_ENTRY_SIZE < index)) {
+                return 0;
+            }
             metadataFileChannel.position((index-1) * INDEX_TERM_FILE_ENTRY_SIZE);
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
             metadataFileChannel.read(metadataBuffer);
@@ -158,6 +160,9 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     @Override
     public synchronized ByteBuffer getEntryByIndex(long index) {
         try {
+            if (index == 0 || (metadataFileChannel.size() / INDEX_TERM_FILE_ENTRY_SIZE < index)) {
+                return null;
+            }
             metadataFileChannel.position((index-1) * INDEX_TERM_FILE_ENTRY_SIZE + Integer.BYTES);
             ByteBuffer metadataBuffer = ByteBuffer.allocate(INDEX_TERM_FILE_ENTRY_SIZE - Integer.BYTES);
             metadataFileChannel.read(metadataBuffer);
@@ -171,7 +176,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
             return contentBuffer;
         } catch (IOException | BufferUnderflowException e) {
-            throw new ZomkyStorageException(e);
+            throw new ZomkyStorageException("index " + index, e);
         }
     }
 

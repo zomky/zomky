@@ -1,6 +1,5 @@
 package rsocket.playground.raft;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +11,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogIndex;
     private long prevLogTerm;
 
-    private List<ByteBuffer> entries = new ArrayList<>();
+    private List<byte[]> entries = new ArrayList<>();
     private List<Integer> terms = new ArrayList<>();
     private long leaderCommit;
 
@@ -63,7 +62,7 @@ public class AppendEntriesRequest implements TermAware {
      * @param entries
      * @return
      */
-    public AppendEntriesRequest entries(List<ByteBuffer> entries) {
+    public AppendEntriesRequest entries(List<byte[]> entries) {
         this.entries = entries;
         return this;
     }
@@ -100,7 +99,7 @@ public class AppendEntriesRequest implements TermAware {
         return prevLogTerm;
     }
 
-    public List<ByteBuffer> getEntries() {
+    public List<byte[]> getEntries() {
         return entries;
     }
 
@@ -112,11 +111,4 @@ public class AppendEntriesRequest implements TermAware {
         return terms;
     }
 
-    @Override
-    public String toString() {
-        return "AppendEntriesRequest{" +
-                "term=" + term +
-                ", leaderId=" + leaderId +
-                '}';
-    }
 }

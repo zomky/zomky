@@ -25,21 +25,19 @@ public class NodeTest {
         node2.start();
         node3.start();
 
-        Thread.sleep(3000);
+        Thread.sleep(5000);
 
-        Client client = new Client(Arrays.asList(7000,7001));
+        Client client = new Client(Arrays.asList(7000));
         client.start();
 
-        client.send(DefaultPayload.create("Abc"))
+       /* client.send(DefaultPayload.create("Abc"))
               .doOnSubscribe(subscription -> LOGGER.info("Client started"))
               .doOnSuccess(p -> LOGGER.info("Client finished"))
-              .subscribe();
-/*
-        client.send(Flux.range(1, 1000_000).map(i -> DefaultPayload.create("Abc"+i)))
+              .subscribe();*/
+        client.send(Flux.range(1, 1_000).map(i -> DefaultPayload.create("Abc"+i)))
               .doOnSubscribe(subscription -> LOGGER.info("Client started"))
               .doOnComplete(() -> LOGGER.info("Client finished"))
               .subscribe();
-*/
 //              .subscribe(s -> LOGGER.info("Client received {}", s.getDataUtf8()));
 
         Thread.sleep(1000000);

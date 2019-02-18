@@ -58,6 +58,17 @@ public class FileSystemZomkyStorageTest {
     }
 
     @Test
+    public void appendLogAfterInitialization() {
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc2".getBytes()));
+
+        ZomkyStorage zomkyStorage2 = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        zomkyStorage2.appendLog(2, ByteBuffer.wrap("Abc3".getBytes()));
+
+        assertThat(zomkyStorage2.getTermByIndex(3)).isEqualTo(2);
+    }
+
+    @Test
     public void getLast() {
         zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
         LogEntryInfo logEntryInfo2 = zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc2".getBytes()));
