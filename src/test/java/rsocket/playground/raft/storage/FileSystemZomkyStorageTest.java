@@ -5,11 +5,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class FileSystemZomkyStorageTest {
 
@@ -55,6 +53,10 @@ public class FileSystemZomkyStorageTest {
         assertThat(logEntryInfo1).isEqualTo(new LogEntryInfo().index(1).term(1));
         assertThat(logEntryInfo2).isEqualTo(new LogEntryInfo().index(2).term(1));
         assertThat(logEntryInfo3).isEqualTo(new LogEntryInfo().index(3).term(2));
+
+        assertThat(new String(zomkyStorage.getEntryByIndex(1).array())).isEqualTo("Abc1");
+        assertThat(new String(zomkyStorage.getEntryByIndex(2).array())).isEqualTo("Abc2");
+        assertThat(new String(zomkyStorage.getEntryByIndex(3).array())).isEqualTo("Abc3");
     }
 
     @Test
@@ -88,13 +90,6 @@ public class FileSystemZomkyStorageTest {
     }
 
     @Test
-    public void getTermByIndexOverflow() {
-        assertThatThrownBy(() -> zomkyStorage.getTermByIndex(1))
-                .isInstanceOf(ZomkyStorageException.class)
-                .hasCauseInstanceOf(BufferUnderflowException.class);
-    }
-
-    @Test
     public void getTermByIndex() {
         LogEntryInfo logEntryInfo = zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc1".getBytes()));
 
@@ -113,19 +108,47 @@ public class FileSystemZomkyStorageTest {
     }
 
     @Test
-    public void getEntryByIndexOverflow() {
-        assertThatThrownBy(() -> zomkyStorage.getEntryByIndex(1))
-                .isInstanceOf(ZomkyStorageException.class)
-                .hasCauseInstanceOf(BufferUnderflowException.class);
-    }
-
-    @Test
     public void getEntryByIndex() {
         LogEntryInfo logEntryInfo = zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc1".getBytes()));
         ByteBuffer entry = zomkyStorage.getEntryByIndex(logEntryInfo.getIndex());
 
         assertThat(new String(entry.array())).isEqualTo("Abc1");
     }
+
+    @Test
+    public void getEntries() {
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
+        zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc2 ".getBytes()));
+        zomkyStorage.appendLog(3, ByteBuffer.wrap("Abc3  ".getBytes()));
+        zomkyStorage.appendLog(4, ByteBuffer.wrap("Abc4   ".getBytes()));
+
+        ByteBuffer actual = zomkyStorage.getEntriesByIndex(2,4);
+        assertThat(actual.getInt()).isEqualTo(3); // number of entries
+        assertThat(actual.getInt()).isEqualTo(60); // metadata size
+        assertThat(actual.getInt()).isEqualTo(18); // content size
+
+        // Abc2
+        assertThat(actual.getInt()).isEqualTo(2); // term
+        assertThat(actual.getLong()).isEqualTo(4); // position
+        assertThat(actual.getInt()).isEqualTo(5); // size
+
+        // Abc3
+        assertThat(actual.getInt()).isEqualTo(3); // term
+        assertThat(actual.getLong()).isEqualTo(9); // position
+        assertThat(actual.getInt()).isEqualTo(6); // size
+
+        // Abc4
+        assertThat(actual.getInt()).isEqualTo(4); // term
+        assertThat(actual.getLong()).isEqualTo(15); // position
+        assertThat(actual.getInt()).isEqualTo(7); // size
+
+        actual.position(60);
+
+        byte[] content = new byte[18];
+        actual.get(content, 0,18);
+        assertThat(new String(content)).isEqualTo("Abc2 Abc3  Abc4   ");
+    }
+
 
     @Test
     public void getEntryByIndexAfterInitialization() {

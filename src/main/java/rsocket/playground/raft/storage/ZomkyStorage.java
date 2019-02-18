@@ -18,6 +18,8 @@ public interface ZomkyStorage {
 
     int getTermByIndex(long index);
 
+    ByteBuffer getEntriesByIndex(long indexFrom, long indexTo);
+
     ByteBuffer getEntryByIndex(long index);
 
     LogEntryInfo getLast();
