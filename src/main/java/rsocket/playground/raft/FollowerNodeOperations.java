@@ -75,8 +75,8 @@ public class FollowerNodeOperations implements NodeOperations {
                            zomkyStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                        }
                        // 4. Append any new entries not already in the log
-                       for (int i=0; i < appendEntriesRequest.getEntries().size(); i++) {
-                           zomkyStorage.appendLog(appendEntriesRequest.getTerms().get(i), ByteBuffer.wrap(appendEntriesRequest.getEntries().get(i)));
+                       if (appendEntriesRequest.getEntries() != null) {
+                           zomkyStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries()));
                        }
 
                        //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)

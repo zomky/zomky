@@ -16,6 +16,8 @@ public interface ZomkyStorage {
 
     LogEntryInfo appendLog(int term, ByteBuffer buffer);
 
+    LogEntryInfo appendLogs(ByteBuffer buffer);
+
     int getTermByIndex(long index);
 
     ByteBuffer getEntriesByIndex(long indexFrom, long indexTo);

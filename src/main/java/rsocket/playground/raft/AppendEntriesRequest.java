@@ -1,8 +1,5 @@
 package rsocket.playground.raft;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class AppendEntriesRequest implements TermAware {
 
     private int term;
@@ -11,8 +8,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogIndex;
     private long prevLogTerm;
 
-    private List<byte[]> entries = new ArrayList<>();
-    private List<Integer> terms = new ArrayList<>();
+    private byte[] entries;
     private long leaderCommit;
 
     /**
@@ -62,13 +58,8 @@ public class AppendEntriesRequest implements TermAware {
      * @param entries
      * @return
      */
-    public AppendEntriesRequest entries(List<byte[]> entries) {
+    public AppendEntriesRequest entries(byte[] entries) {
         this.entries = entries;
-        return this;
-    }
-
-    public AppendEntriesRequest terms(List<Integer> terms) {
-        this.terms = terms;
         return this;
     }
 
@@ -99,16 +90,12 @@ public class AppendEntriesRequest implements TermAware {
         return prevLogTerm;
     }
 
-    public List<byte[]> getEntries() {
+    public byte[] getEntries() {
         return entries;
     }
 
     public long getLeaderCommit() {
         return leaderCommit;
-    }
-
-    public List<Integer> getTerms() {
-        return terms;
     }
 
 }

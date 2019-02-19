@@ -70,6 +70,41 @@ public class FileSystemZomkyStorageTest {
         assertThat(zomkyStorage2.getTermByIndex(3)).isEqualTo(2);
     }
 
+    // entries_size(n) # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
+    @Test
+    public void appendLogs() {
+        ByteBuffer buffer = ByteBuffer.allocate(1000);
+        buffer.putInt(1);
+        buffer.putInt(12 + 3 * 16);
+        buffer.putInt(5 + 6 + 7);
+
+        buffer.putInt(1);
+        buffer.putLong(0);
+        buffer.putInt(5);
+
+        buffer.putInt(2);
+        buffer.putLong(5);
+        buffer.putInt(6);
+
+        buffer.putInt(3);
+        buffer.putLong(11);
+        buffer.putInt(7);
+
+        buffer.put("12345".getBytes());
+        buffer.put("123456".getBytes());
+        buffer.put("1234567".getBytes());
+
+        zomkyStorage.appendLogs(buffer);
+
+        assertThat(new String(zomkyStorage.getEntryByIndex(1).array())).isEqualTo("12345");
+        assertThat(new String(zomkyStorage.getEntryByIndex(2).array())).isEqualTo("123456");
+        assertThat(new String(zomkyStorage.getEntryByIndex(3).array())).isEqualTo("1234567");
+
+        assertThat(zomkyStorage.getTermByIndex(1)).isEqualTo(1);
+        assertThat(zomkyStorage.getTermByIndex(2)).isEqualTo(2);
+        assertThat(zomkyStorage.getTermByIndex(3)).isEqualTo(3);
+    }
+
     @Test
     public void getLast() {
         zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));

@@ -147,6 +147,26 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
         }
     }
 
+    // entries_size(n) # metadata_size # content_size # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
+    @Override
+    public LogEntryInfo appendLogs(ByteBuffer buffer) {
+        try {
+            buffer.flip();
+            int numberOfEntries = buffer.getInt();
+            int metadataSize = buffer.getInt();
+            int contentSize = buffer.getInt();
+
+            ByteBuffer metadataBuffer = ByteBuffer.wrap(buffer.array(), 12, metadataSize);
+            metadataFileAppendLogChannel.write(metadataBuffer);
+
+            ByteBuffer contentBuffer = ByteBuffer.wrap(buffer.array(), metadataSize, contentSize);
+            contentFileAppendLogChannel.write(contentBuffer);
+        } catch (IOException e) {
+            throw new ZomkyStorageException(e);
+        }
+        return null; // TODO
+    }
+
     @Override
     public synchronized int getTermByIndex(long index) {
         try {
