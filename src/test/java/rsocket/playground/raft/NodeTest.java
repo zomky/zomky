@@ -12,12 +12,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import rsocket.playground.raft.storage.FileSystemZomkyStorage;
+import rsocket.playground.raft.storage.FileSystemZomkyStorageTestUtils;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -84,15 +87,29 @@ public class NodeTest {
         Client client = new Client(Arrays.asList(7000));
         client.start();
 
-        client.send(Flux.range(1, 10).delayElements(Duration.ofMillis(50)).map(i -> DefaultPayload.create("Abc"+i)))
+        int nbEntries = 10;
+
+        client.send(Flux.range(1, nbEntries).map(i -> DefaultPayload.create("Abc"+i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client started"))
                 .doOnComplete(() -> LOGGER.info("Client finished"))
                 .blockLast();
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(10).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(10).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(10).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
 
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage1, nbEntries))
+                .isEqualTo(expectedContent(nbEntries));
+
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage2, nbEntries))
+                .isEqualTo(expectedContent(nbEntries));
+
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage3, nbEntries))
+                .isEqualTo(expectedContent(nbEntries));
+    }
+
+    private String expectedContent(int nbEntries) {
+        return IntStream.rangeClosed(1, nbEntries).mapToObj(i -> "Abc"+i).collect(Collectors.joining());
     }
 
 }
