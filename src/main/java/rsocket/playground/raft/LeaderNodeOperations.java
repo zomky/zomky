@@ -160,12 +160,11 @@ public class LeaderNodeOperations implements NodeOperations {
         // If last log index ≥ nextIndex for a follower: send
         // AppendEntries RPC with log entries starting at nextIndex
         ByteBuffer entries = null;
-        long entriesSize = zomkyStorage.getLast().getIndex() - senderIdxId + 1;
+
         if (zomkyStorage.getLast().getIndex() >= senderIdxId) {
             entries = zomkyStorage.getEntriesByIndex(senderIdxId, zomkyStorage.getLast().getIndex());
         }
-
-        long prevLogIndex = zomkyStorage.getLast().getIndex() - entriesSize;
+        long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);
 
         return new AppendEntriesRequest()

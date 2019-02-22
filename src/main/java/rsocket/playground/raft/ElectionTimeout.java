@@ -9,7 +9,7 @@ class ElectionTimeout {
     private static final Random RANDOM = new Random();
 
     // [ELECTION_TIMEOUT_MIN_IN_MILLIS, 2*ELECTION_TIMEOUT_MIN_IN_MILLIS)
-    static Duration nextRandom() {
+    Duration nextRandom() {
         return Duration
                 .ofMillis(ELECTION_TIMEOUT_MIN_IN_MILLIS)
                 .plusMillis(RANDOM.nextInt(ELECTION_TIMEOUT_MIN_IN_MILLIS));

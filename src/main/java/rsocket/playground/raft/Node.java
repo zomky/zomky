@@ -42,12 +42,19 @@ public class Node {
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
 
-    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts) {
+    ElectionTimeout electionTimeout;
+
+    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts, ElectionTimeout electionTimeout) {
         Node node = new Node(port, zomkyStorage);
         node.receiver = new Receiver(node);
         node.senders = new Senders(node, clientPorts);
+        node.electionTimeout = electionTimeout;
         LOGGER.info("[Node {}] has been initialized", node);
         return node;
+    }
+
+    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts) {
+        return create(port, zomkyStorage, clientPorts, new ElectionTimeout());
     }
 
     private Node(int port, ZomkyStorage zomkyStorage) {
@@ -168,6 +175,10 @@ public class Node {
         nodeState.onExit(this, zomkyStorage);
         nodeState = stateTo;
         nodeState.onInit(this, zomkyStorage);
+    }
+
+    public int getCurrentLeaderId() {
+        return currentLeaderId.get();
     }
 
     @Override

@@ -128,7 +128,7 @@ public class CandidateNodeOperations implements NodeOperations {
                 .filter(VoteResponse::isVoteGranted)
                 // wait until quorum achieved or election timeout elapsed
                 .buffer(QUORUM - 1)
-                .timeout(ElectionTimeout.nextRandom())
+                .timeout(node.electionTimeout.nextRandom())
                 .next()
                 .doOnSuccess(s -> {
                     node.convertToLeader();

@@ -33,7 +33,7 @@ public class FollowerNodeOperations implements NodeOperations {
 
     @Override
     public void onInit(Node node, ZomkyStorage zomkyStorage) {
-        subscription = processor.timeout(ElectionTimeout.nextRandom())
+        subscription = processor.timeout(node.electionTimeout.nextRandom())
                 .subscribe(payload -> {}, throwable -> {
                     LOGGER.info("[Node {}] Election timeout ({})", node.nodeId, throwable.getMessage());
                     node.convertToCandidate();

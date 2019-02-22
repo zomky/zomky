@@ -15,6 +15,7 @@ plugins {
 repositories {
     // Use jcenter for resolving your dependencies.
     // You can declare any Maven/Ivy/file repository here.
+    mavenCentral()
     jcenter()
 }
 
@@ -30,6 +31,7 @@ dependencies {
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
+    testCompile 'org.awaitility:awaitility:3.1.2'
     testCompile "io.projectreactor:reactor-test:3.2.5.RELEASE"
     testCompile "org.mockito:mockito-core:2.23.4"
     testCompile "org.assertj:assertj-core:3.11.1"
