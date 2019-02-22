@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.storage.ZomkyStorage;
 import rsocket.playground.raft.transport.ObjectPayload;
 
 public class Receiver {
@@ -16,12 +15,10 @@ public class Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
     private Node node;
-    private ZomkyStorage zomkyStorage;
     private Disposable disposable, disposable2;
 
-    public Receiver(Node node, ZomkyStorage zomkyStorage) {
+    public Receiver(Node node) {
         this.node = node;
-        this.zomkyStorage = zomkyStorage;
     }
 
     public void start() {
@@ -34,7 +31,7 @@ public class Receiver {
                 .subscribe();
 
         disposable2 = RSocketFactory.receive()
-                .acceptor(new ClientSocketAcceptor(node, zomkyStorage))
+                .acceptor(new ClientSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 10000))
                 .start()
                 .block()
@@ -50,11 +47,9 @@ public class Receiver {
     private static class ClientSocketAcceptor implements SocketAcceptor {
 
         private Node node;
-        private ZomkyStorage zomkyStorage;
 
-        public ClientSocketAcceptor(Node node, ZomkyStorage zomkyStorage) {
+        public ClientSocketAcceptor(Node node) {
             this.node = node;
-            this.zomkyStorage = zomkyStorage;
         }
 
         @Override
@@ -63,10 +58,6 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    /*if (node.nodeState != NodeState.LEADER) {
-                        // or maybe redirect to leader ?
-                        return Mono.error(new RaftException("I am not a leader!"));
-                    }*/
                     return node.onClientRequest(payload);
                 }
 
@@ -74,10 +65,7 @@ public class Receiver {
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return Flux.from(payloads)
                             .onBackpressureBuffer()
-                            .flatMap(payload -> node.onClientRequest(payload))
-                            /*.doOnNext(payload -> {
-                                zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
-                            })*/;
+                            .flatMap(payload -> node.onClientRequest(payload));
                 }
             });
         }

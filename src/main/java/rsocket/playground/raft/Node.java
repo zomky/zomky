@@ -44,7 +44,7 @@ public class Node {
 
     public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts) {
         Node node = new Node(port, zomkyStorage);
-        node.receiver = new Receiver(node, zomkyStorage);
+        node.receiver = new Receiver(node);
         node.senders = new Senders(node, clientPorts);
         LOGGER.info("[Node {}] has been initialized", node);
         return node;

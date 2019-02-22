@@ -11,9 +11,7 @@ import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class LeaderNodeOperations implements NodeOperations {
@@ -45,6 +43,7 @@ public class LeaderNodeOperations implements NodeOperations {
         return Mono.just(payload)
                 .doOnNext(content -> {
                     zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
+
                     long lastLogIndex = zomkyStorage.getLast().getIndex();
                     while (node.getCommitIndex() < lastLogIndex) {
                         // NO-OP
@@ -97,7 +96,7 @@ public class LeaderNodeOperations implements NodeOperations {
                        if (appendEntries1.getTerm() > currentTerm) {
                            node.convertToFollower(appendEntries1.getTerm());
                        }
-                       return new AppendEntriesResponse().term(currentTerm).success(true);
+                       return new AppendEntriesResponse().term(currentTerm).success(false);
                    });
     }
 
@@ -127,7 +126,7 @@ public class LeaderNodeOperations implements NodeOperations {
                          AppendEntriesResponse appendEntriesResponse = ObjectPayload.dataFromPayload(payload1, AppendEntriesResponse.class);
                          if (appendEntriesResponse.isSuccess()) {
                              // If successful: update nextIndex and matchIndex for follower (§5.3)
-                             long lastLogIndex = zomkyStorage.getLast().getIndex();
+                             long lastLogIndex = zomkyStorage.getLast().getIndex(); //TODO should be from AppendEntries
                              long nextIdx = lastLogIndex + 1;
                              nextIndex.put(sender.getNodeId(), nextIdx);
                              matchIndex.put(sender.getNodeId(), lastLogIndex);
@@ -164,12 +163,9 @@ public class LeaderNodeOperations implements NodeOperations {
         long entriesSize = zomkyStorage.getLast().getIndex() - senderIdxId + 1;
         if (zomkyStorage.getLast().getIndex() >= senderIdxId) {
             entries = zomkyStorage.getEntriesByIndex(senderIdxId, zomkyStorage.getLast().getIndex());
-            senderIdxId = zomkyStorage.getLast().getIndex() + 1;
-            nextIndex.put(sender.getNodeId(), senderIdxId);
         }
 
         long prevLogIndex = zomkyStorage.getLast().getIndex() - entriesSize;
-
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);
 
         return new AppendEntriesRequest()

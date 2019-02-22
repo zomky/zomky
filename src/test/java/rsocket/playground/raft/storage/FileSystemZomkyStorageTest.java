@@ -73,8 +73,8 @@ public class FileSystemZomkyStorageTest {
     // entries_size(n) # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
     @Test
     public void appendLogs() {
-        ByteBuffer buffer = ByteBuffer.allocate(1000);
-        buffer.putInt(1);
+        ByteBuffer buffer = ByteBuffer.allocate(78);
+        buffer.putInt(3);
         buffer.putInt(12 + 3 * 16);
         buffer.putInt(5 + 6 + 7);
 
@@ -93,6 +93,7 @@ public class FileSystemZomkyStorageTest {
         buffer.put("12345".getBytes());
         buffer.put("123456".getBytes());
         buffer.put("1234567".getBytes());
+
 
         zomkyStorage.appendLogs(buffer);
 
@@ -184,6 +185,17 @@ public class FileSystemZomkyStorageTest {
         assertThat(new String(content)).isEqualTo("Abc2 Abc3  Abc4   ");
     }
 
+    @Test
+    public void getEntriesAndAppend() {
+        zomkyStorage.appendLog(1, ByteBuffer.wrap("12345".getBytes()));
+        zomkyStorage.appendLog(2, ByteBuffer.wrap("123456".getBytes()));
+        zomkyStorage.appendLog(3, ByteBuffer.wrap("1234567".getBytes()));
+
+        ByteBuffer actual = zomkyStorage.getEntriesByIndex(2,3);
+
+        zomkyStorage.appendLogs(actual);
+
+    }
 
     @Test
     public void getEntryByIndexAfterInitialization() {

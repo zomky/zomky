@@ -61,8 +61,8 @@ public class FollowerNodeOperations implements NodeOperations {
 
                        restartElectionTimer(node);
 
-                       // 2. Reply false if log doesn’t contain an entry at index
-                       //    whose term matches prevLogTerm (§5.3)
+                       // 2.  Reply false if log doesn’t contain an entry at prevLogIndex
+                       //     whose term matches prevLogTerm (§5.3)
                        int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
                        if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
                            return new AppendEntriesResponse().term(currentTerm).success(false);

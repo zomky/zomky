@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,9 +18,9 @@ public class Client {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
-    private RSocket rSocket;
+    private List<RSocket> rSockets = new ArrayList<>();
     private List<Integer> clientPorts;
-    private int currentPort;
+    private RSocket leader;
 
     public Client(List<Integer> clientPorts) {
         this.clientPorts = clientPorts;
@@ -32,34 +33,40 @@ public class Client {
         while (iterator.hasNext() && !rSocketInitialized) {
             Integer next = iterator.next() + 10000;
             try {
-                rSocket = RSocketFactory.connect()
+                RSocket rSocket = RSocketFactory.connect()
                         .transport(TcpClientTransport.create(next))
                         .start()
                         .block();
                 rSocketInitialized = true;
-                currentPort = next;
+                rSockets.add(rSocket);
             } catch (Exception e) {
                 LOGGER.warn("Server {} not available. Trying next one...", next, e);
             }
         }
         if (!rSocketInitialized) {
             LOGGER.error("Cluster is down!");
+        } else {
+            leader = rSockets.get(0);
         }
     }
 
-    public Mono<Integer> getLeaderId() {
-        return Mono.just(1);
-    }
-
     public Mono<Void> fireAndForget(Payload payload) {
-        return rSocket.fireAndForget(payload);
+        return leader.fireAndForget(payload);
     }
 
     public Mono<Payload> send(Payload payload) {
-        return rSocket.requestResponse(payload);
+        return leader.requestResponse(payload);
     }
 
     public Flux<Payload> send(Publisher<Payload> payloads) {
-        return rSocket.requestChannel(payloads);
+        return Flux.defer(() -> leader.requestChannel(payloads))
+                   .onErrorResume(t -> {
+                       leader = rSockets.get(1);
+                       return leader.requestChannel(payloads);
+                   });
+    }
+
+    public Flux<Payload> receive(Payload payload) {
+        return leader.requestStream(payload);
     }
 }

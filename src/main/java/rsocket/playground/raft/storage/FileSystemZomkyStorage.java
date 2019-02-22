@@ -151,12 +151,12 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     @Override
     public LogEntryInfo appendLogs(ByteBuffer buffer) {
         try {
-            buffer.flip();
+            buffer.position(0);
             int numberOfEntries = buffer.getInt();
             int metadataSize = buffer.getInt();
             int contentSize = buffer.getInt();
 
-            ByteBuffer metadataBuffer = ByteBuffer.wrap(buffer.array(), 12, metadataSize);
+            ByteBuffer metadataBuffer = ByteBuffer.wrap(buffer.array(), 12    , metadataSize - 12);
             metadataFileAppendLogChannel.write(metadataBuffer);
 
             ByteBuffer contentBuffer = ByteBuffer.wrap(buffer.array(), metadataSize, contentSize);
