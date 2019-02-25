@@ -1,12 +1,15 @@
 package rsocket.playground.raft;
 
 import io.rsocket.Payload;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import rsocket.playground.raft.storage.ZomkyStorage;
+import rsocket.playground.raft.storage.ZomkyStorageConfirmListener;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +44,8 @@ public class Node {
 
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
+
+    private List<ZomkyStorageConfirmListener> zomkyStorageConfirmListeners = new ArrayList<>();
 
     ElectionTimeout electionTimeout;
 
@@ -82,6 +87,10 @@ public class Node {
         return nodeState.onClientRequest(this, zomkyStorage, payload);
     }
 
+    Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
+        return nodeState.onClientRequests(this, zomkyStorage, payloads);
+    }
+
     void voteForMyself() {
         int term = zomkyStorage.getTerm();
         zomkyStorage.update(term + 1, nodeId);
@@ -98,6 +107,11 @@ public class Node {
     public void setCommitIndex(long commitIndex) {
         LOGGER.debug("[Node {}] Set new commit index to {}", nodeId, commitIndex);
         this.commitIndex = commitIndex;
+        zomkyStorageConfirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
+    }
+
+    public void addConfirmListener(ZomkyStorageConfirmListener zomkyStorageConfirmListener) {
+        zomkyStorageConfirmListeners.add(zomkyStorageConfirmListener);
     }
 
     public void increaseCommitIndex() {

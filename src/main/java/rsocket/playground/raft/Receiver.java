@@ -63,9 +63,7 @@ public class Receiver {
 
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    return Flux.from(payloads)
-                            .onBackpressureBuffer()
-                            .flatMap(payload -> node.onClientRequest(payload));
+                    return node.onClientRequests(payloads);
                 }
             });
         }

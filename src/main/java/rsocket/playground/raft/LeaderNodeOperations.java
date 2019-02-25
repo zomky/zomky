@@ -1,6 +1,7 @@
 package rsocket.playground.raft;
 
 import io.rsocket.Payload;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -11,8 +12,8 @@ import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class LeaderNodeOperations implements NodeOperations {
 
@@ -20,7 +21,7 @@ public class LeaderNodeOperations implements NodeOperations {
 
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(50);
 
-    private Map<Integer, Disposable> senders = new HashMap<>();
+    private ConcurrentMap<Integer, Disposable> senders = new ConcurrentHashMap<>();
 
     /**
      * Reinitialized after election,
@@ -28,7 +29,7 @@ public class LeaderNodeOperations implements NodeOperations {
      * to send to that server (initialized to leader
      * last log index + 1)
      */
-    private Map<Integer, Long> nextIndex = new HashMap<>();
+    private ConcurrentMap<Integer, Long> nextIndex = new ConcurrentHashMap<>();
 
     /**
      * Reinitialized after election,
@@ -36,7 +37,9 @@ public class LeaderNodeOperations implements NodeOperations {
      * known to be replicated on server
      * (initialized to 0, increases monotonically)
      */
-    private Map<Integer, Long> matchIndex = new HashMap<>();
+    private ConcurrentMap<Integer, Long> matchIndex = new ConcurrentHashMap<>();
+
+    private ConcurrentMap<Integer, Long> candidateMatchIndex = new ConcurrentHashMap<>();
 
     @Override
     public Mono<Payload> onClientRequest(Node node, ZomkyStorage zomkyStorage, Payload payload) {
@@ -53,6 +56,11 @@ public class LeaderNodeOperations implements NodeOperations {
     }
 
     @Override
+    public Flux<Payload> onClientRequests(Node node, ZomkyStorage zomkyStorage, Publisher<Payload> payloads) {
+        return new SenderConfirmOperator(Flux.from(payloads), node, zomkyStorage);
+    }
+
+    @Override
     public void onInit(Node node, ZomkyStorage zomkyStorage) {
 
         node.availableSenders().subscribe(sender -> {
@@ -60,6 +68,7 @@ public class LeaderNodeOperations implements NodeOperations {
             long lastLogIndex = zomkyStorage.getLast().getIndex();
             long nextIdx = lastLogIndex + 1;
             nextIndex.put(sender.getNodeId(), nextIdx);
+            candidateMatchIndex.put(sender.getNodeId(), 0L);
             matchIndex.put(sender.getNodeId(), 0L);
             senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
         });
@@ -69,6 +78,7 @@ public class LeaderNodeOperations implements NodeOperations {
             long lastLogIndex = zomkyStorage.getLast().getIndex();
             long nextIdx = lastLogIndex + 1;
             nextIndex.put(sender.getNodeId(), nextIdx);
+            candidateMatchIndex.put(sender.getNodeId(), 0L);
             matchIndex.put(sender.getNodeId(), 0L);
 
             senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
@@ -126,7 +136,7 @@ public class LeaderNodeOperations implements NodeOperations {
                          AppendEntriesResponse appendEntriesResponse = ObjectPayload.dataFromPayload(payload1, AppendEntriesResponse.class);
                          if (appendEntriesResponse.isSuccess()) {
                              // If successful: update nextIndex and matchIndex for follower (§5.3)
-                             long lastLogIndex = zomkyStorage.getLast().getIndex(); //TODO should be from AppendEntries
+                             long lastLogIndex = candidateMatchIndex.get(sender.getNodeId());
                              long nextIdx = lastLogIndex + 1;
                              nextIndex.put(sender.getNodeId(), nextIdx);
                              matchIndex.put(sender.getNodeId(), lastLogIndex);
@@ -161,8 +171,10 @@ public class LeaderNodeOperations implements NodeOperations {
         // AppendEntries RPC with log entries starting at nextIndex
         ByteBuffer entries = null;
 
-        if (zomkyStorage.getLast().getIndex() >= senderIdxId) {
-            entries = zomkyStorage.getEntriesByIndex(senderIdxId, zomkyStorage.getLast().getIndex());
+        long candidateSenderNextIdx = zomkyStorage.getLast().getIndex();
+        if (candidateSenderNextIdx >= senderIdxId) {
+            candidateMatchIndex.put(sender.getNodeId(), candidateSenderNextIdx);
+            entries = zomkyStorage.getEntriesByIndex(senderIdxId, candidateSenderNextIdx);
         }
         long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);

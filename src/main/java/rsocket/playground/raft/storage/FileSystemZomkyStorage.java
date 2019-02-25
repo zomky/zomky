@@ -127,7 +127,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     }
 
     @Override
-    public LogEntryInfo appendLog(int term, ByteBuffer buffer) {
+    public synchronized LogEntryInfo appendLog(int term, ByteBuffer buffer) {
         try {
             int messageSize = buffer.remaining();
             contentFileAppendLogChannel.write(buffer);
@@ -139,8 +139,9 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             byteBuffer.flip();
             metadataFileAppendLogChannel.write(byteBuffer);
             lastTerm.set(term);
+            long lastIdx = lastIndex.incrementAndGet();
             return new LogEntryInfo()
-                    .index(lastIndex.incrementAndGet())
+                    .index(lastIdx)
                     .term(term);
         } catch (IOException e) {
             throw new ZomkyStorageException(e);
@@ -149,7 +150,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
     // entries_size(n) # metadata_size # content_size # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
     @Override
-    public LogEntryInfo appendLogs(ByteBuffer buffer) {
+    public synchronized LogEntryInfo appendLogs(ByteBuffer buffer) {
         try {
             buffer.position(0);
             int numberOfEntries = buffer.getInt();
@@ -172,7 +173,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     }
 
     @Override
-    public int getTermByIndex(long index) {
+    public synchronized int getTermByIndex(long index) {
         try {
             if (index == 0 || (metadataFileChannel.size() / INDEX_TERM_FILE_ENTRY_SIZE < index)) {
                 return 0;
@@ -212,7 +213,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
     // entries_size(n) # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
     @Override
-    public ByteBuffer getEntriesByIndex(long indexFrom, long indexTo) {
+    public synchronized ByteBuffer getEntriesByIndex(long indexFrom, long indexTo) {
         try {
             int numberOfEntries = (int) (indexTo - indexFrom + 1);
             int metadataSize = numberOfEntries * INDEX_TERM_FILE_ENTRY_SIZE;

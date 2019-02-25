@@ -1,9 +1,11 @@
 package rsocket.playground.raft;
 
 import io.rsocket.Payload;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
 import rsocket.playground.raft.storage.LogEntryInfo;
@@ -23,6 +25,11 @@ public class CandidateNodeOperations implements NodeOperations {
     @Override
     public Mono<Payload> onClientRequest(Node node, ZomkyStorage zomkyStorage, Payload payload) {
         return Mono.error(new RaftException("I am not a leader!"));
+    }
+
+    @Override
+    public Flux<Payload> onClientRequests(Node node, ZomkyStorage zomkyStorage, Publisher<Payload> payloads) {
+        return Flux.error(new RaftException("I am not a leader!"));
     }
 
     @Override
