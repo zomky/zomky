@@ -20,10 +20,10 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
 
     private static final int INDEX_TERM_FILE_ENTRY_SIZE = Long.BYTES + 2 * Integer.BYTES;
 
-    private static final String ZOMKY_DIRECTORY = ".zomky";
+    public static final String ZOMKY_DIRECTORY = ".zomky";
     private static final String ZOMKY_NODE_DATA = "node.%s.zomky";
     private static final String ZOMKY_LOG_ENTRIES_METADATA = "node.%s.entries.metadata.zomky";
-    private static final String ZOMKY_LOG_ENTRIES_CONTENT = "node.%s.entries.content.zomky";
+    public static final String ZOMKY_LOG_ENTRIES_CONTENT = "node.%s.entries.content.zomky";
 
     private Path directory;
 

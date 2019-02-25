@@ -96,7 +96,15 @@ public class Receiver {
                     return Mono.just(payload)
                             .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteRequest.class))
                             .flatMap(voteRequest -> node.onRequestVote(voteRequest))
-                            .map(ObjectPayload::create);
+                            .map(ObjectPayload::create)
+                            // TODO listen on other port, quick implementation to check concept
+                            .onErrorResume(t -> Mono
+                                    .just(payload)
+                                    .map(payload1 -> ObjectPayload.dataFromPayload(payload1, AppendEntriesRequest.class))
+                                    .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
+                                    .map(ObjectPayload::create)
+
+                            );
                 }
             });
         }

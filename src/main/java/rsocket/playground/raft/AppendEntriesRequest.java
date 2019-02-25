@@ -9,6 +9,7 @@ public class AppendEntriesRequest implements TermAware {
     private long prevLogTerm;
 
     private byte[] entries;
+    private int entriesSize;
     private long leaderCommit;
 
     /**
@@ -63,6 +64,11 @@ public class AppendEntriesRequest implements TermAware {
         return this;
     }
 
+    public AppendEntriesRequest entriesSize(int entriesSize) {
+        this.entriesSize = entriesSize;
+        return this;
+    }
+
     /**
      * leader’s commitIndex
      * @param leaderCommit
@@ -92,6 +98,10 @@ public class AppendEntriesRequest implements TermAware {
 
     public byte[] getEntries() {
         return entries;
+    }
+
+    public int getEntriesSize() {
+        return entriesSize;
     }
 
     public long getLeaderCommit() {

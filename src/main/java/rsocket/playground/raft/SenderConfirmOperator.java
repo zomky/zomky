@@ -66,6 +66,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onNext(Payload payload) {
+            LOGGER.info("Data {}", payload.getDataUtf8());
             LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
             unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
         }

@@ -16,6 +16,7 @@ import rsocket.playground.raft.storage.FileSystemZomkyStorageTestUtils;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -81,13 +82,13 @@ public class NodeTest {
     }
 
     @Test
-    public void testLogReplication() {
+    public void testLogReplication() throws IOException {
         testElection();
 
         Client client = new Client(Arrays.asList(7000));
         client.start();
 
-        int nbEntries = 10;
+        int nbEntries = 100;
 
         client.send(Flux.range(1, nbEntries).map(i -> DefaultPayload.create("Abc"+i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client started"))
@@ -98,14 +99,16 @@ public class NodeTest {
         await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
         await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
 
-        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage1, nbEntries))
+
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7000))
                 .isEqualTo(expectedContent(nbEntries));
 
-        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage2, nbEntries))
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7001))
                 .isEqualTo(expectedContent(nbEntries));
 
-        assertThat(FileSystemZomkyStorageTestUtils.getContent(zomkyStorage3, nbEntries))
+        assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7002))
                 .isEqualTo(expectedContent(nbEntries));
+
     }
 
     private String expectedContent(int nbEntries) {
