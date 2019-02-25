@@ -57,6 +57,9 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
                     subscriber.onNext(iterator.next().getValue());
                     iterator.remove();
                 }
+                if (unconfirmed.size() == 0) {
+                    subscriber.onComplete();
+                }
             });
             subscriber.onSubscribe(s);
         }
@@ -74,8 +77,6 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onComplete() {
-            LOGGER.debug("!!!Complete!!!!");
-            subscriber.onComplete();
         }
     }
 }
