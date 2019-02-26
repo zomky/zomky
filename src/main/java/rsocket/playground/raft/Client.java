@@ -31,7 +31,7 @@ public class Client {
         Iterator<Integer> iterator = clientPorts.iterator();
         // or maybe ask for leader in first step
         while (iterator.hasNext() && !rSocketInitialized) {
-            Integer next = iterator.next() + 10000;
+            Integer next = iterator.next() + 20000;
             try {
                 RSocket rSocket = RSocketFactory.connect()
                         .transport(TcpClientTransport.create(next))

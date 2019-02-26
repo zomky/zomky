@@ -1,31 +1,35 @@
 package rsocket.playground.raft;
 
 import io.rsocket.RSocket;
-import reactor.util.annotation.Nullable;
 
 public class Sender {
 
     private final int nodeId;
-    private final RSocket rSocket;
+    private final RSocket requestVoteSocket;
+    private final RSocket appendEntriesSocket;
     private final boolean available;
 
-    public static Sender availableSender(int nodeId, RSocket rSocket) {
-        return new Sender(nodeId, rSocket, true);
+    public static Sender availableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
+        return new Sender(nodeId, requestVoteSocket, appendEntriesSocket, true);
     }
 
     public static Sender unavailableSender(int nodeId) {
-        return new Sender(nodeId, null, false);
+        return new Sender(nodeId, null, null,false);
     }
 
-    public Sender(int nodeId, RSocket rSocket, boolean available) {
+    public Sender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket, boolean available) {
         this.nodeId = nodeId;
-        this.rSocket = rSocket;
+        this.requestVoteSocket = requestVoteSocket;
+        this.appendEntriesSocket = appendEntriesSocket;
         this.available = available;
     }
 
-    @Nullable
-    public RSocket getRSocket() {
-        return rSocket;
+    public RSocket getRequestVoteSocket() {
+        return requestVoteSocket;
+    }
+
+    public RSocket getAppendEntriesSocket() {
+        return appendEntriesSocket;
     }
 
     public int getNodeId() {

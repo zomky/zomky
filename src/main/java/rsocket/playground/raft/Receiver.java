@@ -15,24 +15,32 @@ public class Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
     private Node node;
-    private Disposable disposable, disposable2;
+    private Disposable requestVoteCancellation, appendEntriesCancellation, clientCancellation;
 
     public Receiver(Node node) {
         this.node = node;
     }
 
     public void start() {
-        disposable = RSocketFactory.receive()
-                .acceptor(new SocketAcceptorImpl(node))
+        requestVoteCancellation = RSocketFactory.receive()
+                .acceptor(new RequestVoteSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId))
                 .start()
                 .block()
                 .onClose()
                 .subscribe();
 
-        disposable2 = RSocketFactory.receive()
-                .acceptor(new ClientSocketAcceptor(node))
+        appendEntriesCancellation = RSocketFactory.receive()
+                .acceptor(new AppendEntriesSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 10000))
+                .start()
+                .block()
+                .onClose()
+                .subscribe();
+
+        clientCancellation = RSocketFactory.receive()
+                .acceptor(new ClientSocketAcceptor(node))
+                .transport(TcpServerTransport.create(node.nodeId + 20000))
                 .start()
                 .block()
                 .onClose()
@@ -40,8 +48,9 @@ public class Receiver {
     }
 
     public void stop() {
-        disposable.dispose();
-        disposable2.dispose();
+        requestVoteCancellation.dispose();
+        appendEntriesCancellation.dispose();
+        clientCancellation.dispose();
     }
 
     private static class ClientSocketAcceptor implements SocketAcceptor {
@@ -62,6 +71,11 @@ public class Receiver {
                 }
 
                 @Override
+                public Flux<Payload> requestStream(Payload payload) {
+                    return super.requestStream(payload);
+                }
+
+                @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return node.onClientRequests(payloads);
                 }
@@ -69,21 +83,42 @@ public class Receiver {
         }
     }
 
-    private static class SocketAcceptorImpl implements SocketAcceptor {
+    private static class RequestVoteSocketAcceptor implements SocketAcceptor {
 
         private Node node;
 
-        public SocketAcceptorImpl(Node node) {
+        public RequestVoteSocketAcceptor(Node node) {
             this.node = node;
         }
 
         @Override
-        public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket reactiveSocket) {
+        public Mono<RSocket> accept(ConnectionSetupPayload setup, RSocket sendingSocket) {
+            return Mono.just(new AbstractRSocket() {
+                @Override
+                public Mono<Payload> requestResponse(Payload payload) {
+                    return Mono.just(payload)
+                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteRequest.class))
+                            .flatMap(voteRequest -> node.onRequestVote(voteRequest))
+                            .map(ObjectPayload::create);
+                }
+            });
+        }
+    }
+
+    private static class AppendEntriesSocketAcceptor implements SocketAcceptor {
+
+        private Node node;
+
+        public AppendEntriesSocketAcceptor(Node node) {
+            this.node = node;
+        }
+
+        @Override
+        public Mono<RSocket> accept(ConnectionSetupPayload setup, RSocket sendingSocket) {
             return Mono.just(new AbstractRSocket() {
 
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    // append entries
                     return Flux.from(payloads)
                             .map(payload -> ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class))
                             .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
@@ -92,22 +127,13 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    // request vote
-                    return Mono.just(payload)
-                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteRequest.class))
-                            .flatMap(voteRequest -> node.onRequestVote(voteRequest))
-                            .map(ObjectPayload::create)
-                            // TODO listen on other port, quick implementation to check concept
-                            .onErrorResume(t -> Mono
-                                    .just(payload)
-                                    .map(payload1 -> ObjectPayload.dataFromPayload(payload1, AppendEntriesRequest.class))
-                                    .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                                    .map(ObjectPayload::create)
-
-                            );
+                    return Mono
+                            .just(payload)
+                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, AppendEntriesRequest.class))
+                            .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
+                            .map(ObjectPayload::create);
                 }
             });
         }
-
     }
 }

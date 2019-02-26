@@ -32,15 +32,23 @@ public class Senders {
             senders.values().stream().filter(Sender::isNotAvailable).forEach(sender -> {
                 int nodeId = sender.getNodeId();
                 try {
-                    RSocket rSocket = RSocketFactory.connect()
+                    RSocket requestVoteSocket = RSocketFactory.connect()
                             .transport(TcpClientTransport.create(nodeId))
                             .start()
                             .block();
 
-                    rSocket.onClose().subscribe(v -> {
+                    RSocket appendEntriesSocket = RSocketFactory.connect()
+                            .transport(TcpClientTransport.create(nodeId + 10000))
+                            .start()
+                            .block();
+
+                    requestVoteSocket.onClose().subscribe(v -> {
                         doUnavailableSender(nodeId);
                     });
-                    doAvailableSender(nodeId, rSocket);
+                    appendEntriesSocket.onClose().subscribe(v -> {
+                        doUnavailableSender(nodeId);
+                    });
+                    doAvailableSender(nodeId, requestVoteSocket, appendEntriesSocket);
                 } catch (Exception e) { // TODO more specific exceptions
                     LOGGER.debug("Node {} has no access to {}", node.nodeId, nodeId, e);
                 }
@@ -71,9 +79,9 @@ public class Senders {
         node.senderUnavailable(sender);
     }
 
-    private void doAvailableSender(int nodeId, RSocket rSocket) {
+    private void doAvailableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
         LOGGER.info("Node {} has access to {}", node.nodeId, nodeId);
-        Sender sender = Sender.availableSender(nodeId, rSocket);
+        Sender sender = Sender.availableSender(nodeId, requestVoteSocket, appendEntriesSocket);
         senders.put(nodeId, sender);
         node.senderAvailable(sender);
     }

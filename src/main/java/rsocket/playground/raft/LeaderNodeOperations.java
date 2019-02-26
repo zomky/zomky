@@ -124,7 +124,7 @@ public class LeaderNodeOperations implements NodeOperations {
 
     private Flux<Payload> heartbeats(Sender sender, ZomkyStorage zomkyStorage, Node node) {
         return Mono.defer(() -> Mono.just(heartbeatRequest(sender, node, zomkyStorage)))
-                   .flatMap(appendEntriesRequest -> sender.getRSocket()
+                   .flatMap(appendEntriesRequest -> sender.getAppendEntriesSocket()
                              .requestResponse(ObjectPayload.create(appendEntriesRequest))
                              .doOnNext(payload -> {
                                  AppendEntriesResponse appendEntriesResponse = ObjectPayload.dataFromPayload(payload, AppendEntriesResponse.class);

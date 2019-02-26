@@ -165,7 +165,7 @@ public class CandidateNodeOperations implements NodeOperations {
             LOGGER.info("[Node {} -> Node {}] Vote dropped", node.nodeId, sender.getNodeId());
             return Mono.just(VoteResponse.FALLBACK_RESPONSE);
         }
-        return sender.getRSocket().requestResponse(payload)
+        return sender.getRequestVoteSocket().requestResponse(payload)
                 .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteResponse.class))
                 .onErrorResume(throwable -> {
                     LOGGER.error("[Node {} -> Node {}] Vote failure", node.nodeId, requestVote.getCandidateId(), throwable);
