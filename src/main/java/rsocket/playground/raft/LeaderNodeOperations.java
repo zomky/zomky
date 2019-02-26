@@ -134,7 +134,6 @@ public class LeaderNodeOperations implements NodeOperations {
                                      long nextIdx = lastLogIndex + 1;
                                      nextIndex.put(sender.getNodeId(), nextIdx);
                                      matchIndex.put(sender.getNodeId(), lastLogIndex);
-                                     LOGGER.info("Node [{} -> {}] nextIndex {} - {}", node.nodeId, sender.getNodeId(), nextIdx);
 
                                      // If there exists an N such that N > commitIndex, a majority
                                      // of matchIndex[i] ≥ N, and log[N].term == currentTerm:
@@ -163,7 +162,6 @@ public class LeaderNodeOperations implements NodeOperations {
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, Node node, ZomkyStorage zomkyStorage) {
-        LOGGER.info("heartbeat to follower {}", sender.getNodeId());
         long senderIdxId = nextIndex.get(sender.getNodeId());
         // If last log index ≥ nextIndex for a follower: send
         // AppendEntries RPC with log entries starting at nextIndex
@@ -172,7 +170,6 @@ public class LeaderNodeOperations implements NodeOperations {
         long lastIndex = zomkyStorage.getLast().getIndex();
         if (lastIndex >= senderIdxId) {
             entries = zomkyStorage.getEntriesByIndex(senderIdxId, lastIndex);
-            LOGGER.info("Node [{} -> {}] entries {} - {}", node.nodeId, sender.getNodeId(), senderIdxId, lastIndex);
         }
         long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);

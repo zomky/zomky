@@ -34,6 +34,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
     private FileChannel metadataFileChannel;
     private FileChannel metadataFileAppendLogChannel;
     private RandomAccessFile contentFile;
+    private RandomAccessFile contentFileAppendLog;
     private FileChannel contentFileChannel;
     private FileChannel contentFileAppendLogChannel;
     private ByteBuffer byteBuffer = ByteBuffer.allocate(INDEX_TERM_FILE_ENTRY_SIZE);
@@ -62,9 +63,11 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             metadataFile = new RandomAccessFile(filePath(ZOMKY_LOG_ENTRIES_METADATA, nodeId), "rw");
             metadataFileChannel = new RandomAccessFile(filePath(ZOMKY_LOG_ENTRIES_METADATA, nodeId), "r").getChannel();
             metadataFileAppendLogChannel = metadataFile.getChannel();
-            contentFile = new RandomAccessFile(filePath(ZOMKY_LOG_ENTRIES_CONTENT, nodeId), "rw");
+            contentFileAppendLog = new RandomAccessFile(filePath(ZOMKY_LOG_ENTRIES_CONTENT, nodeId), "rw");
+            contentFile = new RandomAccessFile(filePath(ZOMKY_LOG_ENTRIES_CONTENT, nodeId), "r");
+
             contentFileChannel = contentFile.getChannel();
-            contentFileAppendLogChannel = contentFile.getChannel();
+            contentFileAppendLogChannel = contentFileAppendLog.getChannel();
 
             if (nodeDataFileChannel.size() == 0) {
                 update(0, 0);
@@ -249,6 +252,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
         } catch (IOException e) {
             throw new ZomkyStorageException(e);
         }
+
     }
 
     @Override
@@ -282,6 +286,7 @@ public class FileSystemZomkyStorage implements ZomkyStorage {
             contentFileChannel.close();
             contentFileAppendLogChannel.close();
             contentFile.close();
+            contentFileAppendLog.close();
         } catch (Exception e) {
             throw new ZomkyStorageException(e);
         }

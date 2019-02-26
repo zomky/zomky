@@ -88,17 +88,16 @@ public class NodeTest {
         Client client = new Client(Arrays.asList(7000));
         client.start();
 
-        int nbEntries = 100;
+        int nbEntries = 100_000;
 
         client.send(Flux.range(1, nbEntries).map(i -> DefaultPayload.create("Abc"+i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client started"))
                 .doOnComplete(() -> LOGGER.info("Client finished"))
                 .blockLast();
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-
+        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
 
         assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7000))
                 .isEqualTo(expectedContent(nbEntries));

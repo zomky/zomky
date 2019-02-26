@@ -34,8 +34,6 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
     private static class PublishConfirmSubscriber implements CoreSubscriber<Payload> {
 
-        static final Logger LOGGER = LoggerFactory.getLogger(PublishConfirmSubscriber.class);
-
         private Subscriber<? super Payload> subscriber;
         private Node node;
         private ZomkyStorage zomkyStorage;
@@ -50,7 +48,6 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         @Override
         public void onSubscribe(Subscription s) {
             node.addConfirmListener(index -> {
-                LOGGER.info("Confirm listener {}", index);
                 ConcurrentNavigableMap<Long, Payload> unconfirmedToSend = unconfirmed.headMap(index, true);
                 Iterator<Map.Entry<Long, Payload>> iterator = unconfirmedToSend.entrySet().iterator();
                 while (iterator.hasNext()) {
@@ -66,7 +63,6 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onNext(Payload payload) {
-            LOGGER.info("Data {}", payload.getDataUtf8());
             LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
             unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
         }

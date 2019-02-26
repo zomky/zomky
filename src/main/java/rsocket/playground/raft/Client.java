@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Client {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
     private List<RSocket> rSockets = new ArrayList<>();
     private List<Integer> clientPorts;
