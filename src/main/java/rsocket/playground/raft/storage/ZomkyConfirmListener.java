@@ -1,6 +1,6 @@
 package rsocket.playground.raft.storage;
 
-public interface ZomkyStorageConfirmListener {
+public interface ZomkyConfirmListener {
 
     void handle(long index);
 

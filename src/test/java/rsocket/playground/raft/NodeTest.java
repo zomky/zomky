@@ -17,6 +17,7 @@ import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -48,9 +49,11 @@ public class NodeTest {
         zomkyStorage2 = new FileSystemZomkyStorage(7001, folder.getRoot().getAbsolutePath());
         zomkyStorage3 = new FileSystemZomkyStorage(7002, folder.getRoot().getAbsolutePath());
 
-        node1 = Node.create(7000, zomkyStorage1, Arrays.asList(7001, 7002), electionTimeout1);
-        node2 = Node.create(7001, zomkyStorage2, Arrays.asList(7000, 7002), electionTimeout2);
-        node3 = Node.create(7002, zomkyStorage3, Arrays.asList(7000, 7001), electionTimeout3);
+        StateMachine stateMachine = new ExampleStateMachine();
+
+        node1 = Node.create(7000, zomkyStorage1, Arrays.asList(7001, 7002), stateMachine, electionTimeout1);
+        node2 = Node.create(7001, zomkyStorage2, Arrays.asList(7000, 7002), stateMachine, electionTimeout2);
+        node3 = Node.create(7002, zomkyStorage3, Arrays.asList(7000, 7001), stateMachine, electionTimeout3);
     }
 
     @Test
@@ -88,10 +91,11 @@ public class NodeTest {
         Client client = new Client(Arrays.asList(7000));
         client.start();
 
-        int nbEntries = 100_000;
+        int nbEntries = 10;
 
         client.send(Flux.range(1, nbEntries).map(i -> DefaultPayload.create("Abc"+i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client started"))
+                .doOnNext(s -> LOGGER.info("Client received {}", s.getDataUtf8()))
                 .doOnComplete(() -> LOGGER.info("Client finished"))
                 .blockLast();
 
@@ -112,6 +116,19 @@ public class NodeTest {
 
     private String expectedContent(int nbEntries) {
         return IntStream.rangeClosed(1, nbEntries).mapToObj(i -> "Abc"+i).collect(Collectors.joining());
+    }
+
+    private static class ExampleStateMachine implements StateMachine {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(ExampleStateMachine.class);
+
+        @Override
+        public ByteBuffer applyLogEntry(ByteBuffer entry) {
+            String req = new String(entry.array());
+            LOGGER.info("APPLY {}", req);
+            return ByteBuffer.wrap((req + "-resp").getBytes());
+        }
+
     }
 
 }

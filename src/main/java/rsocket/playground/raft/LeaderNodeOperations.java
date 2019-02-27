@@ -56,7 +56,11 @@ public class LeaderNodeOperations implements NodeOperations {
 
     @Override
     public Flux<Payload> onClientRequests(Node node, ZomkyStorage zomkyStorage, Publisher<Payload> payloads) {
-        return new SenderConfirmOperator(Flux.from(payloads), node, zomkyStorage);
+        if (node.stateMachine != null) {
+            return new SenderLastAppliedOperator(Flux.from(payloads), node, zomkyStorage);
+        } else {
+            return new SenderConfirmOperator(Flux.from(payloads), node, zomkyStorage);
+        }
     }
 
     @Override

@@ -7,17 +7,25 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import rsocket.playground.raft.storage.ZomkyStorage;
-import rsocket.playground.raft.storage.ZomkyStorageConfirmListener;
+import rsocket.playground.raft.storage.ZomkyConfirmListener;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Node {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
+
+    StateMachine stateMachine;
+    private ScheduledExecutorService stateMachineExecutor = Executors.newSingleThreadScheduledExecutor();
 
     volatile NodeState nodeState = NodeState.FOLLOWER;
     int nodeId;
@@ -29,14 +37,14 @@ public class Node {
      * committed (initialized to 0, increases
      * monotonically)
      */
-    private volatile long commitIndex = 0;
+    private AtomicLong commitIndex = new AtomicLong(0);
 
     /**
      * index of highest log entry applied to state
      * machine (initialized to 0, increases
      * monotonically)
      */
-    private volatile long lastApplied = 0;
+    private AtomicLong lastApplied = new AtomicLong(0);
 
     private Receiver receiver;
     private Senders senders;
@@ -45,21 +53,23 @@ public class Node {
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
 
-    private List<ZomkyStorageConfirmListener> zomkyStorageConfirmListeners = new ArrayList<>();
+    private List<ZomkyConfirmListener> zomkyConfirmListeners = new ArrayList<>();
+    private List<ZomkyLastAppliedListener> zomkyLastAppliedListeners = new ArrayList<>();
 
     ElectionTimeout electionTimeout;
 
-    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts, ElectionTimeout electionTimeout) {
+    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts, StateMachine stateMachine, ElectionTimeout electionTimeout) {
         Node node = new Node(port, zomkyStorage);
         node.receiver = new Receiver(node);
         node.senders = new Senders(node, clientPorts);
+        node.stateMachine = stateMachine;
         node.electionTimeout = electionTimeout;
         LOGGER.info("[Node {}] has been initialized", node);
         return node;
     }
 
-    public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts) {
-        return create(port, zomkyStorage, clientPorts, new ElectionTimeout());
+    public static Node create(int port, ZomkyStorage zomkyStorage, StateMachine stateMachine, List<Integer> clientPorts) {
+        return create(port, zomkyStorage, clientPorts, stateMachine, new ElectionTimeout());
     }
 
     private Node(int port, ZomkyStorage zomkyStorage) {
@@ -70,6 +80,14 @@ public class Node {
     public void start() {
         receiver.start();
         senders.start();
+        if (stateMachine != null) {
+            stateMachineExecutor.scheduleWithFixedDelay(() -> {
+                while (lastApplied.get() < commitIndex.get()) {
+                    ByteBuffer response = stateMachine.applyLogEntry(zomkyStorage.getEntryByIndex(lastApplied.incrementAndGet()));
+                    zomkyLastAppliedListeners.forEach(zomkyLastAppliedListener -> zomkyLastAppliedListener.handle(lastApplied.get(), response));
+                }
+            }, 0, 10, TimeUnit.MILLISECONDS);
+        }
         nodeState.onInit(this, zomkyStorage);
     }
 
@@ -101,25 +119,21 @@ public class Node {
     }
 
     public long getCommitIndex() {
-        return commitIndex;
+        return commitIndex.get();
     }
 
     public void setCommitIndex(long commitIndex) {
         LOGGER.debug("[Node {}] Set new commit index to {}", nodeId, commitIndex);
-        this.commitIndex = commitIndex;
-        zomkyStorageConfirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
+        this.commitIndex.set(commitIndex);
+        zomkyConfirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
     }
 
-    public void addConfirmListener(ZomkyStorageConfirmListener zomkyStorageConfirmListener) {
-        zomkyStorageConfirmListeners.add(zomkyStorageConfirmListener);
+    public void addConfirmListener(ZomkyConfirmListener zomkyStorageConfirmListener) {
+        zomkyConfirmListeners.add(zomkyStorageConfirmListener);
     }
 
-    public void increaseCommitIndex() {
-        commitIndex = commitIndex + 1;
-    }
-
-    public long getLastApplied() {
-        return lastApplied;
+    public void addLastAppliedListener(ZomkyLastAppliedListener zomkyLastAppliedListener) {
+        zomkyLastAppliedListeners.add(zomkyLastAppliedListener);
     }
 
     void onSenderAvailable(SenderAvailableCallback senderAvailableCallback) {
