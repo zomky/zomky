@@ -3,8 +3,6 @@ package rsocket.playground.raft;
 import io.rsocket.Payload;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
@@ -15,6 +13,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
@@ -38,6 +37,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private Node node;
         private ZomkyStorage zomkyStorage;
         private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
+        private AtomicBoolean onComplete = new AtomicBoolean(false);
 
         public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, Node node, ZomkyStorage zomkyStorage) {
             this.subscriber = subscriber;
@@ -54,7 +54,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
                     subscriber.onNext(iterator.next().getValue());
                     iterator.remove();
                 }
-                if (unconfirmed.size() == 0) {
+                if (onComplete.get() && unconfirmed.size() == 0) {
                     subscriber.onComplete();
                 }
             });
@@ -74,6 +74,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onComplete() {
+            onComplete.set(true);
         }
     }
 }
