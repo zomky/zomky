@@ -1,6 +1,9 @@
 package rsocket.playground.raft;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.Payload;
+import io.rsocket.util.DefaultPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,8 +11,11 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
+import rsocket.playground.raft.rpc.AppendEntriesRequest;
+import rsocket.playground.raft.rpc.AppendEntriesResponse;
+import rsocket.playground.raft.rpc.VoteRequest;
+import rsocket.playground.raft.rpc.VoteResponse;
 import rsocket.playground.raft.storage.ZomkyStorage;
-import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -107,7 +113,7 @@ public class LeaderNodeOperations implements NodeOperations {
                        if (appendEntries1.getTerm() > currentTerm) {
                            node.convertToFollower(appendEntries1.getTerm());
                        }
-                       return new AppendEntriesResponse().term(currentTerm).success(false);
+                       return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                    });
     }
 
@@ -120,19 +126,25 @@ public class LeaderNodeOperations implements NodeOperations {
                     if (voteGranted) {
                         node.convertToFollower(requestVote.getTerm());
                     }
-                    return new VoteResponse()
-                            .voteGranted(voteGranted)
-                            .term(currentTerm);
+                    return VoteResponse.newBuilder()
+                            .setVoteGranted(voteGranted)
+                            .setTerm(currentTerm)
+                            .build();
                 });
     }
 
     private Flux<Payload> heartbeats(Sender sender, ZomkyStorage zomkyStorage, Node node) {
         return Mono.defer(() -> Mono.just(heartbeatRequest(sender, node, zomkyStorage)))
                    .flatMap(appendEntriesRequest -> sender.getAppendEntriesSocket()
-                             .requestResponse(ObjectPayload.create(appendEntriesRequest))
+                             .requestResponse(DefaultPayload.create(appendEntriesRequest.toByteArray()))
                              .doOnNext(payload -> {
-                                 AppendEntriesResponse appendEntriesResponse = ObjectPayload.dataFromPayload(payload, AppendEntriesResponse.class);
-                                 if (appendEntriesResponse.isSuccess()) {
+                                 AppendEntriesResponse appendEntriesResponse = null;
+                                 try {
+                                     appendEntriesResponse = AppendEntriesResponse.parseFrom(payload.getData().array());
+                                 } catch (InvalidProtocolBufferException e) {
+                                     throw new RaftException("Invalid append entries response!", e);
+                                 }
+                                 if (appendEntriesResponse.getSuccess()) {
                                      // If successful: update nextIndex and matchIndex for follower (§5.3)
                                      long lastLogIndex = appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesSize();
                                      long nextIdx = lastLogIndex + 1;
@@ -178,13 +190,14 @@ public class LeaderNodeOperations implements NodeOperations {
         long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = zomkyStorage.getTermByIndex(prevLogIndex);
 
-        return new AppendEntriesRequest()
-                .term(zomkyStorage.getTerm())
-                .leaderId(node.nodeId)
-                .prevLogIndex(prevLogIndex)
-                .prevLogTerm(prevLogTerm)
-                .entries(entries != null ? entries.array() : null)
-                .entriesSize((int) (lastIndex - senderIdxId + 1))
-                .leaderCommit(node.getCommitIndex());
+        return AppendEntriesRequest.newBuilder()
+                .setTerm(zomkyStorage.getTerm())
+                .setLeaderId(node.nodeId)
+                .setPrevLogIndex(prevLogIndex)
+                .setPrevLogTerm(prevLogTerm)
+                .setEntries(entries != null ? ByteString.copyFrom(entries) : ByteString.EMPTY)
+                .setEntriesSize((int) (lastIndex - senderIdxId + 1))
+                .setLeaderCommit(node.getCommitIndex())
+                .build();
     }
 }

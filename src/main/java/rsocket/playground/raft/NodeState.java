@@ -4,6 +4,7 @@ import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import rsocket.playground.raft.rpc.*;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
 public enum NodeState implements NodeOperations {

@@ -80,7 +80,6 @@ public class NodeTest {
         assertThat(zomkyStorage2.getVotedFor()).isEqualTo(7000);
         assertThat(zomkyStorage3.getTerm()).isEqualTo(1);
         assertThat(zomkyStorage3.getVotedFor()).isEqualTo(7000);
-
         assertThat(zomkyStorage1.getLast()).isEqualTo(new LogEntryInfo().index(0).term(0));
     }
 
@@ -99,9 +98,9 @@ public class NodeTest {
                 .doOnComplete(() -> LOGGER.info("Client finished"))
                 .blockLast();
 
-        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(100, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> zomkyStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
 
         assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7000))
                 .isEqualTo(expectedContent(nbEntries));
@@ -111,7 +110,6 @@ public class NodeTest {
 
         assertThat(FileSystemZomkyStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7002))
                 .isEqualTo(expectedContent(nbEntries));
-
     }
 
     private String expectedContent(int nbEntries) {

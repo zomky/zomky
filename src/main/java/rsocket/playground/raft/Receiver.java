@@ -1,14 +1,17 @@
 package rsocket.playground.raft;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.*;
 import io.rsocket.transport.netty.server.TcpServerTransport;
+import io.rsocket.util.DefaultPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.transport.ObjectPayload;
+import rsocket.playground.raft.rpc.AppendEntriesRequest;
+import rsocket.playground.raft.rpc.VoteRequest;
 
 public class Receiver {
 
@@ -97,9 +100,15 @@ public class Receiver {
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
                     return Mono.just(payload)
-                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteRequest.class))
+                            .map(payload1 -> {
+                                try {
+                                    return VoteRequest.parseFrom(payload1.getData().array());
+                                } catch (InvalidProtocolBufferException e) {
+                                    throw new RaftException("Invalid vote request!", e);
+                                }
+                            })
                             .flatMap(voteRequest -> node.onRequestVote(voteRequest))
-                            .map(ObjectPayload::create);
+                            .map(voteResponse -> DefaultPayload.create(voteResponse.toByteArray()));
                 }
             });
         }
@@ -120,18 +129,30 @@ public class Receiver {
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return Flux.from(payloads)
-                            .map(payload -> ObjectPayload.dataFromPayload(payload, AppendEntriesRequest.class))
+                            .map(payload -> {
+                                try {
+                                    return AppendEntriesRequest.parseFrom(payload.getData().array());
+                                } catch (InvalidProtocolBufferException e) {
+                                    throw new RaftException("Invalid append entries request!", e);
+                                }
+                            })
                             .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                            .map(ObjectPayload::create);
+                            .map(appendEntriesResponse -> DefaultPayload.create(appendEntriesResponse.toByteArray()));
                 }
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
                     return Mono
                             .just(payload)
-                            .map(payload1 -> ObjectPayload.dataFromPayload(payload1, AppendEntriesRequest.class))
+                            .map(payload1 -> {
+                                try {
+                                    return AppendEntriesRequest.parseFrom(payload1.getData().array());
+                                } catch (InvalidProtocolBufferException e) {
+                                    throw new RaftException("Invalid append entries request!", e);
+                                }
+                            })
                             .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                            .map(ObjectPayload::create);
+                            .map(appendEntriesResponse -> DefaultPayload.create(appendEntriesResponse.toByteArray()));
                 }
             });
         }

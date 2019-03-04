@@ -1,5 +1,6 @@
 package rsocket.playground.raft;
 
+import com.google.protobuf.ByteString;
 import io.rsocket.Payload;
 import io.rsocket.util.DefaultPayload;
 import org.reactivestreams.Publisher;
@@ -10,6 +11,7 @@ import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import rsocket.playground.raft.rpc.*;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
@@ -60,7 +62,7 @@ public class FollowerNodeOperations implements NodeOperations {
 
                        // 1. Reply false if term < currentTerm (§5.1)
                        if (appendEntriesRequest.getTerm() < currentTerm) {
-                           return new AppendEntriesResponse().term(currentTerm).success(false);
+                           return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                        }
                        if (appendEntriesRequest.getTerm() > currentTerm) {
                            zomkyStorage.update(appendEntriesRequest.getTerm(), 0);
@@ -72,7 +74,7 @@ public class FollowerNodeOperations implements NodeOperations {
                        //     whose term matches prevLogTerm (§5.3)
                        int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
                        if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
-                           return new AppendEntriesResponse().term(currentTerm).success(false);
+                           return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                        }
 
                        // 3. If an existing entry conflicts with a new one (same index
@@ -82,8 +84,8 @@ public class FollowerNodeOperations implements NodeOperations {
                            zomkyStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                        }
                        // 4. Append any new entries not already in the log
-                       if (appendEntriesRequest.getEntries() != null) {
-                           zomkyStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries()));
+                       if (appendEntriesRequest.getEntries() != ByteString.EMPTY) {
+                           zomkyStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries().toByteArray()));
                        }
 
                        //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -91,9 +93,7 @@ public class FollowerNodeOperations implements NodeOperations {
                            node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), zomkyStorage.getLast().getIndex()));
                        }
 
-                       return new AppendEntriesResponse()
-                               .term(currentTerm)
-                               .success(true);
+                       return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(true).build();
                    });
     }
 
@@ -115,11 +115,11 @@ public class FollowerNodeOperations implements NodeOperations {
                        if (requestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
                                (requestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
                                        requestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
-                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                           return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                        }
 
                        if (requestVote.getTerm() < currentTerm) {
-                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                           return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                        }
 
                        boolean voteGranted = node.notVoted(requestVote.getTerm());
@@ -128,9 +128,10 @@ public class FollowerNodeOperations implements NodeOperations {
                            zomkyStorage.update(requestVote.getTerm(), requestVote.getCandidateId());
                            restartElectionTimer(node);
                        }
-                       return new VoteResponse()
-                               .voteGranted(voteGranted)
-                               .term(currentTerm);
+                       return VoteResponse.newBuilder()
+                               .setVoteGranted(voteGranted)
+                               .setTerm(currentTerm)
+                               .build();
                    });
     }
 

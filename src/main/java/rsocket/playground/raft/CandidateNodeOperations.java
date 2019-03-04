@@ -1,6 +1,9 @@
 package rsocket.playground.raft;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.Payload;
+import io.rsocket.util.DefaultPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,9 +11,12 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
+import rsocket.playground.raft.rpc.AppendEntriesRequest;
+import rsocket.playground.raft.rpc.AppendEntriesResponse;
+import rsocket.playground.raft.rpc.VoteRequest;
+import rsocket.playground.raft.rpc.VoteResponse;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
-import rsocket.playground.raft.transport.ObjectPayload;
 
 import java.nio.ByteBuffer;
 
@@ -53,14 +59,14 @@ public class CandidateNodeOperations implements NodeOperations {
 
                        // 1. Reply false if term < currentTerm (§5.1)
                        if (appendEntriesRequest.getTerm() < currentTerm) {
-                           return new AppendEntriesResponse().term(currentTerm).success(false);
+                           return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                        }
 
                        // 2. Reply false if log doesn’t contain an entry at index
                        //    whose term matches prevLogTerm (§5.3)
                        int prevLogTerm = zomkyStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
                        if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
-                           return new AppendEntriesResponse().term(currentTerm).success(false);
+                           return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                        }
 
                        // 3. If an existing entry conflicts with a new one (same index
@@ -70,8 +76,8 @@ public class CandidateNodeOperations implements NodeOperations {
                            zomkyStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                        }
                        // 4. Append any new entries not already in the log
-                       if (appendEntriesRequest.getEntries() != null) {
-                           zomkyStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries()));
+                       if (appendEntriesRequest.getEntries() != ByteString.EMPTY) {
+                           zomkyStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries().toByteArray()));
                        }
 
                        //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -83,9 +89,7 @@ public class CandidateNodeOperations implements NodeOperations {
                            node.convertToFollower(appendEntriesRequest.getTerm());
                        }
 
-                       return new AppendEntriesResponse()
-                               .term(currentTerm)
-                               .success(true);
+                       return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(true).build();
                    });
     }
 
@@ -99,11 +103,11 @@ public class CandidateNodeOperations implements NodeOperations {
                        if (requestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
                                (requestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
                                        requestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
-                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                           return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                        }
 
                        if (requestVote.getTerm() < currentTerm) {
-                           return new VoteResponse().term(currentTerm).voteGranted(false);
+                           return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                        }
 
                        boolean voteGranted = node.notVoted(requestVote.getTerm());
@@ -111,9 +115,10 @@ public class CandidateNodeOperations implements NodeOperations {
                        if (voteGranted) {
                            node.convertToFollower(requestVote.getTerm());
                        }
-                       return new VoteResponse()
-                               .voteGranted(voteGranted)
-                               .term(currentTerm);
+                       return VoteResponse.newBuilder()
+                               .setVoteGranted(voteGranted)
+                               .setTerm(currentTerm)
+                               .build();
                    });
     }
 
@@ -132,7 +137,7 @@ public class CandidateNodeOperations implements NodeOperations {
                         electionContext.setRepeatElection(false);
                     }
                 })
-                .filter(VoteResponse::isVoteGranted)
+                .filter(VoteResponse::getVoteGranted)
                 // wait until quorum achieved or election timeout elapsed
                 .buffer(QUORUM - 1)
                 .timeout(node.electionTimeout.nextRandom())
@@ -154,22 +159,29 @@ public class CandidateNodeOperations implements NodeOperations {
 
     private Mono<VoteResponse> sendVoteRequest(Node node, ZomkyStorage zomkyStorage, Sender sender) {
         LogEntryInfo last = zomkyStorage.getLast();
-        VoteRequest requestVote = new VoteRequest()
-                .term(zomkyStorage.getTerm())
-                .candidateId(node.nodeId)
-                .lastLogIndex(last.getIndex())
-                .lastLogTerm(last.getTerm());
+        VoteRequest requestVote = VoteRequest.newBuilder()
+                .setTerm(zomkyStorage.getTerm())
+                .setCandidateId(node.nodeId)
+                .setLastLogIndex(last.getIndex())
+                .setLastLogTerm(last.getTerm())
+                .build();
 
-        Payload payload = ObjectPayload.create(requestVote);
+        Payload payload = DefaultPayload.create(requestVote.toByteArray());
         if (node.nodeState != NodeState.CANDIDATE) {
             LOGGER.info("[Node {} -> Node {}] Vote dropped", node.nodeId, sender.getNodeId());
-            return Mono.just(VoteResponse.FALLBACK_RESPONSE);
+            return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
         }
         return sender.getRequestVoteSocket().requestResponse(payload)
-                .map(payload1 -> ObjectPayload.dataFromPayload(payload1, VoteResponse.class))
+                .map(payload1 -> {
+                    try {
+                        return VoteResponse.parseFrom(payload1.getData().array());
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid vote response!", e);
+                    }
+                })
                 .onErrorResume(throwable -> {
                     LOGGER.error("[Node {} -> Node {}] Vote failure", node.nodeId, requestVote.getCandidateId(), throwable);
-                    return Mono.just(VoteResponse.FALLBACK_RESPONSE);
+                    return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
                 });
     }
 

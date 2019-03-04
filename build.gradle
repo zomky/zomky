@@ -6,10 +6,20 @@
  * user guide available at https://docs.gradle.org/5.0/userguide/java_library_plugin.html
  */
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.8'
+    }
+}
+
 plugins {
     // Apply the java-library plugin to add support for Java Library
-    id 'java-library'
+    id 'java'
     id 'me.champeau.gradle.jmh' version '0.4.7'
+    id 'com.google.protobuf' version '0.8.8'
 }
 
 repositories {
@@ -23,6 +33,7 @@ dependencies {
 
     implementation 'io.rsocket:rsocket-core:0.11.14'
     implementation 'io.rsocket:rsocket-transport-netty:0.11.14'
+    compile 'com.google.protobuf:protobuf-java:3.0.0'
 
     implementation "org.slf4j:jcl-over-slf4j:1.7.25"
     implementation "org.slf4j:slf4j-api:1.7.25"
@@ -35,5 +46,15 @@ dependencies {
     testCompile "io.projectreactor:reactor-test:3.2.5.RELEASE"
     testCompile "org.mockito:mockito-core:2.23.4"
     testCompile "org.assertj:assertj-core:3.11.1"
+
+}
+
+protobuf {
+    protoc {
+        // The artifact spec for the Protobuf Compiler
+        artifact = 'com.google.protobuf:protoc:3.0.0'
+    }
+
+    generatedFilesBaseDir = 'src'
 
 }
