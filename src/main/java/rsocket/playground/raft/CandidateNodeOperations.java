@@ -3,7 +3,7 @@ package rsocket.playground.raft;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.Payload;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,7 +166,7 @@ public class CandidateNodeOperations implements NodeOperations {
                 .setLastLogTerm(last.getTerm())
                 .build();
 
-        Payload payload = DefaultPayload.create(requestVote.toByteArray());
+        Payload payload = ByteBufPayload.create(requestVote.toByteArray());
         if (node.nodeState != NodeState.CANDIDATE) {
             LOGGER.info("[Node {} -> Node {}] Vote dropped", node.nodeId, sender.getNodeId());
             return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
@@ -174,7 +174,7 @@ public class CandidateNodeOperations implements NodeOperations {
         return sender.getRequestVoteSocket().requestResponse(payload)
                 .map(payload1 -> {
                     try {
-                        return VoteResponse.parseFrom(payload1.getData().array());
+                        return VoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid vote response!", e);
                     }

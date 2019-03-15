@@ -1,12 +1,16 @@
 package rsocket.playground.raft;
 
+import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.rpc.*;
+import rsocket.playground.raft.rpc.AppendEntriesRequest;
+import rsocket.playground.raft.rpc.AppendEntriesResponse;
+import rsocket.playground.raft.rpc.VoteRequest;
+import rsocket.playground.raft.rpc.VoteResponse;
 import rsocket.playground.raft.storage.ZomkyConfirmListener;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
@@ -85,7 +89,7 @@ public class Node {
             stateMachineExecutor.scheduleWithFixedDelay(() -> {
                 while (lastApplied.get() < commitIndex.get()) {
                     ByteBuffer response = stateMachine.applyLogEntry(zomkyStorage.getEntryByIndex(lastApplied.incrementAndGet()));
-                    zomkyLastAppliedListeners.forEach(zomkyLastAppliedListener -> zomkyLastAppliedListener.handle(lastApplied.get(), response));
+                    zomkyLastAppliedListeners.forEach(zomkyLastAppliedListener -> zomkyLastAppliedListener.handle(lastApplied.get(), Unpooled.wrappedBuffer(response)));
                 }
             }, 0, 10, TimeUnit.MILLISECONDS);
         }

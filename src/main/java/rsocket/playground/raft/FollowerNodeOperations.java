@@ -2,7 +2,7 @@ package rsocket.playground.raft;
 
 import com.google.protobuf.ByteString;
 import io.rsocket.Payload;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,10 @@ import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
-import rsocket.playground.raft.rpc.*;
+import rsocket.playground.raft.rpc.AppendEntriesRequest;
+import rsocket.playground.raft.rpc.AppendEntriesResponse;
+import rsocket.playground.raft.rpc.VoteRequest;
+import rsocket.playground.raft.rpc.VoteResponse;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
 
@@ -137,7 +140,7 @@ public class FollowerNodeOperations implements NodeOperations {
 
     private void restartElectionTimer(Node node) {
         LOGGER.debug("[Node {}] restartElectionTimer ...", node.nodeId);
-        sink.next(DefaultPayload.create(""));
+        sink.next(ByteBufPayload.create(""));
     }
 
 }

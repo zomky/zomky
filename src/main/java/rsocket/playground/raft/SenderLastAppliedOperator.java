@@ -1,7 +1,7 @@
 package rsocket.playground.raft;
 
 import io.rsocket.Payload;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
@@ -47,7 +47,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             node.addLastAppliedListener((index, response) -> {
                 Payload payload = unconfirmed.remove(index);
                 if (payload != null) {
-                    subscriber.onNext(DefaultPayload.create(response, payload.getData()));
+                    subscriber.onNext(ByteBufPayload.create(response, payload.sliceData()));
                 }
                 if (unconfirmed.size() == 0) {
                     subscriber.onComplete();

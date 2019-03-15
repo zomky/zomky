@@ -1,9 +1,9 @@
 package rsocket.playground.raft;
 
-import java.nio.ByteBuffer;
+import io.netty.buffer.ByteBuf;
 
 public interface ZomkyLastAppliedListener {
 
-    void handle(long index, ByteBuffer response);
+    void handle(long index, ByteBuf response);
 
 }

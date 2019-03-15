@@ -31,8 +31,8 @@ repositories {
 
 dependencies {
 
-    implementation 'io.rsocket:rsocket-core:0.11.14'
-    implementation 'io.rsocket:rsocket-transport-netty:0.11.14'
+    implementation 'io.rsocket:rsocket-core:0.12.1'
+    implementation 'io.rsocket:rsocket-transport-netty:0.12.1'
     compile 'com.google.protobuf:protobuf-java:3.0.0'
 
     implementation "org.slf4j:jcl-over-slf4j:1.7.25"

@@ -3,7 +3,7 @@ package rsocket.playground.raft;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.*;
 import io.rsocket.transport.netty.server.TcpServerTransport;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,13 +102,13 @@ public class Receiver {
                     return Mono.just(payload)
                             .map(payload1 -> {
                                 try {
-                                    return VoteRequest.parseFrom(payload1.getData().array());
+                                    return VoteRequest.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                                 } catch (InvalidProtocolBufferException e) {
                                     throw new RaftException("Invalid vote request!", e);
                                 }
                             })
                             .flatMap(voteRequest -> node.onRequestVote(voteRequest))
-                            .map(voteResponse -> DefaultPayload.create(voteResponse.toByteArray()));
+                            .map(voteResponse -> ByteBufPayload.create(voteResponse.toByteArray()));
                 }
             });
         }
@@ -131,13 +131,13 @@ public class Receiver {
                     return Flux.from(payloads)
                             .map(payload -> {
                                 try {
-                                    return AppendEntriesRequest.parseFrom(payload.getData().array());
+                                    return AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                                 } catch (InvalidProtocolBufferException e) {
                                     throw new RaftException("Invalid append entries request!", e);
                                 }
                             })
                             .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                            .map(appendEntriesResponse -> DefaultPayload.create(appendEntriesResponse.toByteArray()));
+                            .map(appendEntriesResponse -> ByteBufPayload.create(appendEntriesResponse.toByteArray()));
                 }
 
                 @Override
@@ -146,13 +146,13 @@ public class Receiver {
                             .just(payload)
                             .map(payload1 -> {
                                 try {
-                                    return AppendEntriesRequest.parseFrom(payload1.getData().array());
+                                    return AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                                 } catch (InvalidProtocolBufferException e) {
                                     throw new RaftException("Invalid append entries request!", e);
                                 }
                             })
                             .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                            .map(appendEntriesResponse -> DefaultPayload.create(appendEntriesResponse.toByteArray()));
+                            .map(appendEntriesResponse -> ByteBufPayload.create(appendEntriesResponse.toByteArray()));
                 }
             });
         }

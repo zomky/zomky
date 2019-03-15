@@ -1,6 +1,6 @@
 package rsocket.playground.raft;
 
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -92,7 +92,7 @@ public class NodeTest {
 
         int nbEntries = 10;
 
-        client.send(Flux.range(1, nbEntries).map(i -> DefaultPayload.create("Abc"+i)))
+        client.send(Flux.range(1, nbEntries).map(i -> ByteBufPayload.create("Abc" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client started"))
                 .doOnNext(s -> LOGGER.info("Client received {}", s.getDataUtf8()))
                 .doOnComplete(() -> LOGGER.info("Client finished"))

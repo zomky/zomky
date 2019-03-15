@@ -3,7 +3,7 @@ package rsocket.playground.raft;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.Payload;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,11 +136,11 @@ public class LeaderNodeOperations implements NodeOperations {
     private Flux<Payload> heartbeats(Sender sender, ZomkyStorage zomkyStorage, Node node) {
         return Mono.defer(() -> Mono.just(heartbeatRequest(sender, node, zomkyStorage)))
                    .flatMap(appendEntriesRequest -> sender.getAppendEntriesSocket()
-                             .requestResponse(DefaultPayload.create(appendEntriesRequest.toByteArray()))
+                             .requestResponse(ByteBufPayload.create(appendEntriesRequest.toByteArray()))
                              .doOnNext(payload -> {
                                  AppendEntriesResponse appendEntriesResponse = null;
                                  try {
-                                     appendEntriesResponse = AppendEntriesResponse.parseFrom(payload.getData().array());
+                                     appendEntriesResponse = AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                                  } catch (InvalidProtocolBufferException e) {
                                      throw new RaftException("Invalid append entries response!", e);
                                  }
