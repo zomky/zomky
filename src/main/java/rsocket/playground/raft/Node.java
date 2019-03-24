@@ -63,6 +63,8 @@ public class Node {
 
     ElectionTimeout electionTimeout;
 
+    Node() {}
+
     public static Node create(int port, ZomkyStorage zomkyStorage, List<Integer> clientPorts, StateMachine stateMachine, ElectionTimeout electionTimeout) {
         Node node = new Node(port, zomkyStorage);
         node.receiver = new Receiver(node);
