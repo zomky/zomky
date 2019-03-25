@@ -74,11 +74,6 @@ public class Receiver {
                 }
 
                 @Override
-                public Flux<Payload> requestStream(Payload payload) {
-                    return super.requestStream(payload);
-                }
-
-                @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return node.onClientRequests(payloads);
                 }
@@ -125,20 +120,6 @@ public class Receiver {
         @Override
         public Mono<RSocket> accept(ConnectionSetupPayload setup, RSocket sendingSocket) {
             return Mono.just(new AbstractRSocket() {
-
-                @Override
-                public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    return Flux.from(payloads)
-                            .map(payload -> {
-                                try {
-                                    return AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
-                                } catch (InvalidProtocolBufferException e) {
-                                    throw new RaftException("Invalid append entries request!", e);
-                                }
-                            })
-                            .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                            .map(appendEntriesResponse -> ByteBufPayload.create(appendEntriesResponse.toByteArray()));
-                }
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {

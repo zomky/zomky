@@ -74,7 +74,7 @@ public class SenderConfirmOperatorTest {
 
         StepVerifier.create(new SenderConfirmOperator(payloads, node, zomkyStorage))
                 .expectSubscription()
-                .verifyError();
+                .verifyErrorMessage("append log failed");
 
         verify(node).addConfirmListener(any());
 

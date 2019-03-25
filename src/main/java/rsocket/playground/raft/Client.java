@@ -50,10 +50,6 @@ public class Client {
         }
     }
 
-    public Mono<Void> fireAndForget(Payload payload) {
-        return leader.fireAndForget(payload);
-    }
-
     public Mono<Payload> send(Payload payload) {
         return leader.requestResponse(payload);
     }

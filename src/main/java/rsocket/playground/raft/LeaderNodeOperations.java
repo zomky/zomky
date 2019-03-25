@@ -48,16 +48,7 @@ public class LeaderNodeOperations implements NodeOperations {
 
     @Override
     public Mono<Payload> onClientRequest(Node node, ZomkyStorage zomkyStorage, Payload payload) {
-        return Mono.just(payload)
-                .doOnNext(content -> {
-                    zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
-
-                    long lastLogIndex = zomkyStorage.getLast().getIndex();
-                    while (node.getCommitIndex() < lastLogIndex) {
-                        // NO-OP
-                    }
-                })
-                .doOnNext(s -> LOGGER.info("Server received payload"));
+        return onClientRequests(node, zomkyStorage, Mono.just(payload)).next();
     }
 
     @Override
@@ -71,25 +62,8 @@ public class LeaderNodeOperations implements NodeOperations {
 
     @Override
     public void onInit(Node node, ZomkyStorage zomkyStorage) {
-
-        node.availableSenders().subscribe(sender -> {
-            LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
-            long lastLogIndex = zomkyStorage.getLast().getIndex();
-            long nextIdx = lastLogIndex + 1;
-            nextIndex.put(sender.getNodeId(), nextIdx);
-            matchIndex.put(sender.getNodeId(), 0L);
-            senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
-        });
-
-        node.onSenderAvailable(sender -> {
-            LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
-            long lastLogIndex = zomkyStorage.getLast().getIndex();
-            long nextIdx = lastLogIndex + 1;
-            nextIndex.put(sender.getNodeId(), nextIdx);
-            matchIndex.put(sender.getNodeId(), 0L);
-
-            senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
-        });
+        node.availableSenders().subscribe(sender -> initHeartbeats(node, zomkyStorage, sender));
+        node.onSenderAvailable(sender -> initHeartbeats(node, zomkyStorage, sender));
 
         node.onSenderUnavailable(sender -> {
             LOGGER.info("[Node {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
@@ -98,6 +72,15 @@ public class LeaderNodeOperations implements NodeOperations {
                 disposable.dispose();
             }
         });
+    }
+
+    private void initHeartbeats(Node node, ZomkyStorage zomkyStorage, Sender sender) {
+        LOGGER.info("[Node {}] Sender available {}", node.nodeId, sender.getNodeId());
+        long lastLogIndex = zomkyStorage.getLast().getIndex();
+        long nextIdx = lastLogIndex + 1;
+        nextIndex.put(sender.getNodeId(), nextIdx);
+        matchIndex.put(sender.getNodeId(), 0L);
+        senders.put(sender.getNodeId(), heartbeats(sender, zomkyStorage, node).subscribe());
     }
 
     @Override

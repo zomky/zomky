@@ -45,7 +45,6 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private final AtomicReference<SubscriberState> state = new AtomicReference<>(SubscriberState.INIT);
         private final AtomicReference<Throwable> firstException = new AtomicReference<Throwable>();
 
-
         private Subscriber<? super Payload> subscriber;
         private Node node;
         private ZomkyStorage zomkyStorage;
@@ -65,6 +64,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
                     try {
                         ConcurrentNavigableMap<Long, Payload> unconfirmedToSend = unconfirmed.headMap(index, true);
                         Iterator<Map.Entry<Long, Payload>> iterator = unconfirmedToSend.entrySet().iterator();
+                        // unconfirmed size is not greater than number of requested elements
                         while (iterator.hasNext()) {
                             subscriber.onNext(iterator.next().getValue());
                             iterator.remove();
@@ -138,8 +138,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
             }
         }
 
-
-        public <T> boolean checkComplete(T t) {
+        private <T> boolean checkComplete(T t) {
             boolean complete = state.get() == SubscriberState.COMPLETE;
             if (complete && firstException.get() == null) {
                 Operators.onNextDropped(t, currentContext());
