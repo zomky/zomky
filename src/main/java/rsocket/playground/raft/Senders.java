@@ -42,12 +42,12 @@ public class Senders {
                             .start()
                             .block();
 
-                    requestVoteSocket.onClose().subscribe(v -> {
-                        doUnavailableSender(nodeId);
-                    });
-                    appendEntriesSocket.onClose().subscribe(v -> {
-                        doUnavailableSender(nodeId);
-                    });
+                    requestVoteSocket.onClose()
+                            .doFinally(signalType -> doUnavailableSender(nodeId))
+                            .subscribe();
+                    appendEntriesSocket.onClose()
+                            .doFinally(signalType -> doUnavailableSender(nodeId))
+                            .subscribe();
                     doAvailableSender(nodeId, requestVoteSocket, appendEntriesSocket);
                 } catch (Exception e) { // TODO more specific exceptions
                     LOGGER.debug("Node {} has no access to {}", node.nodeId, nodeId, e);

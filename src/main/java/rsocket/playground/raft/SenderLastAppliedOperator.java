@@ -14,6 +14,7 @@ import rsocket.playground.raft.storage.ZomkyStorage;
 
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
@@ -33,6 +34,16 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
     private static class PublishLastAppliedSubscriber implements CoreSubscriber<Payload>, Subscription {
 
+        enum SubscriberState {
+            INIT,
+            ACTIVE,
+            OUTBOUND_DONE,
+            COMPLETE
+        }
+
+        private final AtomicReference<SubscriberState> state = new AtomicReference<>(SubscriberState.INIT);
+        private final AtomicReference<Throwable> firstException = new AtomicReference<Throwable>();
+
         private Subscriber<? super Payload> subscriber;
         private Node node;
         private ZomkyStorage zomkyStorage;
@@ -49,32 +60,53 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         public void onSubscribe(Subscription subscription) {
             if (Operators.validate(this.subscription, subscription)) {
                 node.addLastAppliedListener((index, response) -> {
-                    Payload payload = unconfirmed.remove(index);
-                    if (payload != null) {
-                        subscriber.onNext(ByteBufPayload.create(response, payload.sliceData()));
-                    }
-                    if (unconfirmed.size() == 0) {
-                        subscriber.onComplete();
+                    try {
+                        Payload payload = unconfirmed.remove(index);
+                        if (payload != null) {
+                            subscriber.onNext(ByteBufPayload.create(response, payload.sliceData()));
+                        }
+                        if (unconfirmed.size() == 0) {
+                            maybeComplete();
+                        }
+                    } catch (Exception e) {
+                        handleError(e);
                     }
                 });
                 this.subscription = subscription;
-                subscriber.onSubscribe(subscription);
+                state.set(SubscriberState.ACTIVE);
+                subscriber.onSubscribe(this);
             }
         }
 
         @Override
         public void onNext(Payload payload) {
-            LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
-            unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
+            if (checkComplete(payload)) {
+                return;
+            }
+
+            try {
+                LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
+                unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
+            } catch (Exception e) {
+                handleError(e);
+            }
         }
 
         @Override
         public void onError(Throwable throwable) {
-            subscriber.onError(throwable);
+            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.COMPLETE) ||
+                    state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE)) {
+                subscriber.onError(throwable);
+            } else if (firstException.compareAndSet(null, throwable) && state.get() == SubscriberState.COMPLETE) {
+                Operators.onErrorDropped(throwable, currentContext());
+            }
         }
 
         @Override
         public void onComplete() {
+            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.size() == 0) {
+                maybeComplete();
+            }
         }
 
         @Override
@@ -85,6 +117,30 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         @Override
         public void cancel() {
             subscription.cancel();
+        }
+
+        private void maybeComplete() {
+            boolean done = state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE);
+            if (done) {
+                subscriber.onComplete();
+            }
+        }
+
+        private void handleError(Exception e) {
+            boolean complete = checkComplete(e);
+            firstException.compareAndSet(null, e);
+            if (!complete) {
+                onError(e);
+            }
+        }
+
+
+        public <T> boolean checkComplete(T t) {
+            boolean complete = state.get() == SubscriberState.COMPLETE;
+            if (complete && firstException.get() == null) {
+                Operators.onNextDropped(t, currentContext());
+            }
+            return complete;
         }
     }
 }

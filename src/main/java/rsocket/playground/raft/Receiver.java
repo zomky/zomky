@@ -2,6 +2,7 @@ package rsocket.playground.raft;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.rsocket.*;
+import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
@@ -18,7 +19,7 @@ public class Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
     private Node node;
-    private Disposable requestVoteCancellation, appendEntriesCancellation, clientCancellation;
+    private CloseableChannel requestVoteCancellation, appendEntriesCancellation, clientCancellation;
 
     public Receiver(Node node) {
         this.node = node;
@@ -29,24 +30,28 @@ public class Receiver {
                 .acceptor(new RequestVoteSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId))
                 .start()
-                .block()
-                .onClose()
+                .block();
+
+        requestVoteCancellation.onClose()
+                .doFinally(signalType -> LOGGER.warn("[Node {}] RequestVote onClose", node.nodeId))
                 .subscribe();
 
         appendEntriesCancellation = RSocketFactory.receive()
                 .acceptor(new AppendEntriesSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 10000))
                 .start()
-                .block()
-                .onClose()
+                .block();
+        appendEntriesCancellation.onClose()
+                .doFinally(signalType -> LOGGER.warn("[Node {}] Append entries onClose", node.nodeId))
                 .subscribe();
 
         clientCancellation = RSocketFactory.receive()
                 .acceptor(new ClientSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 20000))
                 .start()
-                .block()
-                .onClose()
+                .block();
+        clientCancellation.onClose()
+                .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", node.nodeId))
                 .subscribe();
     }
 

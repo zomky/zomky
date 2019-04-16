@@ -102,6 +102,7 @@ public class Node {
         nodeState.onExit(this, zomkyStorage);
         receiver.stop();
         senders.stop();
+        stateMachineExecutor.shutdownNow();
     }
 
     Flux<Sender> availableSenders() {

@@ -6,11 +6,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
-import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.test.StepVerifier;
 import rsocket.playground.raft.storage.LogEntryInfo;
 import rsocket.playground.raft.storage.ZomkyStorage;
@@ -34,24 +33,17 @@ public class SenderConfirmOperatorTest {
     @Mock
     private ZomkyStorage zomkyStorage;
 
-    DirectProcessor<Long> processor;
-    FluxSink<Long> sink;
     AtomicLong index;
-
 
     @Before
     public void setUp() {
-        processor = DirectProcessor.create();
-        sink = processor.sink();
         index = new AtomicLong();
 
         when(zomkyStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
-            sink.next(idx);
             int term = (int) invocation.getArguments()[0];
             return new LogEntryInfo().term(term).index(idx);
         });
-
     }
 
     @Test
@@ -84,41 +76,42 @@ public class SenderConfirmOperatorTest {
     public void requestAndCancel() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        processor
-                .filter(currentIndex -> currentIndex % 2 == 0)
-                .delayElements(Duration.ofMillis(100))
-                .doOnNext(currentIndex -> node.setCommitIndex(currentIndex))
-                .subscribe();
-
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
-                .expectSubscription()
-                .expectNoEvent(Duration.ofMillis(100))
-                .expectNextCount(2)
-                .thenCancel()
-                .verify();
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
+            .expectSubscription()
+            .expectNoEvent(Duration.ofSeconds(10))
+            .then(() -> {
+                verify(zomkyStorage, Mockito.times(2)).appendLog(anyInt(), any());
+                node.setCommitIndex(2);
+            })
+            .expectNextCount(2)
+            .thenCancel()
+            .verify();
 
         verify(node).addConfirmListener(any());
-
     }
 
     @Test
     public void requestInBatches() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        processor
-            .filter(currentIndex -> currentIndex % 2 == 0)
-            .delayElements(Duration.ofMillis(100))
-            .doOnNext(currentIndex -> node.setCommitIndex(currentIndex))
-            .subscribe();
-
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
-                    .expectSubscription()
-                    .expectNoEvent(Duration.ofMillis(100))
-                    .expectNextCount(2)
-                    .thenRequest(8)
-                    .expectNoEvent(Duration.ofMillis(100))
-                    .expectNextCount(8)
-                    .verifyComplete();
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
+            .expectSubscription()
+            .expectNoEvent(Duration.ofSeconds(10))
+            .then(() -> {
+                verify(zomkyStorage, Mockito.times(2))
+                        .appendLog(anyInt(), any());
+                node.setCommitIndex(2);
+            })
+            .expectNextCount(2)
+            .thenRequest(8)
+            .expectNoEvent(Duration.ofSeconds(10))
+            .then(() -> {
+                verify(zomkyStorage, Mockito.times(10))
+                        .appendLog(anyInt(), any());
+                node.setCommitIndex(10);
+            })
+            .expectNextCount(8)
+            .verifyComplete();
 
         verify(node).addConfirmListener(any());
 
