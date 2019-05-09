@@ -2,7 +2,7 @@ package rsocket.playground.raft.storage;
 
 import java.nio.ByteBuffer;
 
-public interface ZomkyStorage {
+public interface RaftStorage {
 
     int getTerm();
 

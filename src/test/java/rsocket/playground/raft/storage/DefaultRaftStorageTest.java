@@ -9,18 +9,21 @@ import java.nio.ByteBuffer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class FileSystemZomkyStorageTest {
+public class DefaultRaftStorageTest {
 
     private static final int NODE_ID = 1;
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private FileSystemZomkyStorage zomkyStorage;
+    @Rule
+    public TemporaryFolder folder2 = new TemporaryFolder();
+
+    private DefaultRaftStorage zomkyStorage;
 
     @Before
     public void setUp() {
-        zomkyStorage = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        zomkyStorage = new DefaultRaftStorage(NODE_ID, folder.getRoot().getAbsolutePath());
     }
 
     @Test
@@ -64,10 +67,10 @@ public class FileSystemZomkyStorageTest {
         zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc1".getBytes()));
         zomkyStorage.appendLog(1, ByteBuffer.wrap("Abc2".getBytes()));
 
-        ZomkyStorage zomkyStorage2 = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
-        zomkyStorage2.appendLog(2, ByteBuffer.wrap("Abc3".getBytes()));
+        RaftStorage raftStorage2 = new DefaultRaftStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        raftStorage2.appendLog(2, ByteBuffer.wrap("Abc3".getBytes()));
 
-        assertThat(zomkyStorage2.getTermByIndex(3)).isEqualTo(2);
+        assertThat(raftStorage2.getTermByIndex(3)).isEqualTo(2);
     }
 
     // entries_size(n) # term1 # position1 # size1 #  ... # term(n) # position(n) # size(n) # entry1 # ... # entry(n)
@@ -120,9 +123,9 @@ public class FileSystemZomkyStorageTest {
         zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc2".getBytes()));
         zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc3".getBytes()));
 
-        ZomkyStorage zomkyStorage2 = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        RaftStorage raftStorage2 = new DefaultRaftStorage(NODE_ID, folder.getRoot().getAbsolutePath());
 
-        assertThat(zomkyStorage2.getLast()).isEqualTo(new LogEntryInfo().term(2).index(3));
+        assertThat(raftStorage2.getLast()).isEqualTo(new LogEntryInfo().term(2).index(3));
     }
 
     @Test
@@ -137,9 +140,9 @@ public class FileSystemZomkyStorageTest {
     public void getTermByIndexAfterInitialization() {
         LogEntryInfo logEntryInfo = zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc1".getBytes()));
 
-        ZomkyStorage zomkyStorage2 = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        RaftStorage raftStorage2 = new DefaultRaftStorage(NODE_ID, folder.getRoot().getAbsolutePath());
 
-        int term = zomkyStorage2.getTermByIndex(logEntryInfo.getIndex());
+        int term = raftStorage2.getTermByIndex(logEntryInfo.getIndex());
         assertThat(term).isEqualTo(2);
     }
 
@@ -201,8 +204,8 @@ public class FileSystemZomkyStorageTest {
     public void getEntryByIndexAfterInitialization() {
         LogEntryInfo logEntryInfo = zomkyStorage.appendLog(2, ByteBuffer.wrap("Abc1".getBytes()));
 
-        ZomkyStorage zomkyStorage2 = new FileSystemZomkyStorage(NODE_ID, folder.getRoot().getAbsolutePath());
-        ByteBuffer entry = zomkyStorage2.getEntryByIndex(logEntryInfo.getIndex());
+        RaftStorage raftStorage2 = new DefaultRaftStorage(NODE_ID, folder.getRoot().getAbsolutePath());
+        ByteBuffer entry = raftStorage2.getEntryByIndex(logEntryInfo.getIndex());
 
         assertThat(new String(entry.array())).isEqualTo("Abc1");
     }

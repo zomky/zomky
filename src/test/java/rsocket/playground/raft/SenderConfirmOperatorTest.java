@@ -12,7 +12,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 import rsocket.playground.raft.storage.LogEntryInfo;
-import rsocket.playground.raft.storage.ZomkyStorage;
+import rsocket.playground.raft.storage.RaftStorage;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,10 +28,10 @@ public class SenderConfirmOperatorTest {
     private static final int TEN_MESSAGES = 10;
 
     @Spy
-    private Node node;
+    private DefaultRaftServer node;
 
     @Mock
-    private ZomkyStorage zomkyStorage;
+    private RaftStorage raftStorage;
 
     AtomicLong index;
 
@@ -39,7 +39,7 @@ public class SenderConfirmOperatorTest {
     public void setUp() {
         index = new AtomicLong();
 
-        when(zomkyStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
+        when(raftStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
             int term = (int) invocation.getArguments()[0];
             return new LogEntryInfo().term(term).index(idx);
@@ -50,7 +50,7 @@ public class SenderConfirmOperatorTest {
     public void emptyStream() {
         Flux<Payload> payloads = Flux.empty();
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, zomkyStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftStorage))
                 .expectSubscription()
                 .verifyComplete();
 
@@ -62,9 +62,9 @@ public class SenderConfirmOperatorTest {
     public void storageFailure() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        when(zomkyStorage.appendLog(anyInt(), any())).thenThrow(new RuntimeException("append log failed"));
+        when(raftStorage.appendLog(anyInt(), any())).thenThrow(new RuntimeException("append log failed"));
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, zomkyStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftStorage))
                 .expectSubscription()
                 .verifyErrorMessage("append log failed");
 
@@ -76,11 +76,11 @@ public class SenderConfirmOperatorTest {
     public void requestAndCancel() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
-                verify(zomkyStorage, Mockito.times(2)).appendLog(anyInt(), any());
+                verify(raftStorage, Mockito.times(2)).appendLog(anyInt(), any());
                 node.setCommitIndex(2);
             })
             .expectNextCount(2)
@@ -94,11 +94,11 @@ public class SenderConfirmOperatorTest {
     public void requestInBatches() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, zomkyStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
-                verify(zomkyStorage, Mockito.times(2))
+                verify(raftStorage, Mockito.times(2))
                         .appendLog(anyInt(), any());
                 node.setCommitIndex(2);
             })
@@ -106,7 +106,7 @@ public class SenderConfirmOperatorTest {
             .thenRequest(8)
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
-                verify(zomkyStorage, Mockito.times(10))
+                verify(raftStorage, Mockito.times(10))
                         .appendLog(anyInt(), any());
                 node.setCommitIndex(10);
             })

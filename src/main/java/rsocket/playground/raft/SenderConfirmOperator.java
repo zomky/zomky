@@ -9,7 +9,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
 import reactor.core.publisher.Operators;
 import rsocket.playground.raft.storage.LogEntryInfo;
-import rsocket.playground.raft.storage.ZomkyStorage;
+import rsocket.playground.raft.storage.RaftStorage;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -19,18 +19,18 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
-    private Node node;
-    private ZomkyStorage zomkyStorage;
+    private DefaultRaftServer raftServer;
+    private RaftStorage raftStorage;
 
-    SenderConfirmOperator(Publisher<? extends Payload> source, Node node, ZomkyStorage zomkyStorage) {
+    SenderConfirmOperator(Publisher<? extends Payload> source, DefaultRaftServer raftServer, RaftStorage raftStorage) {
         super(Flux.from(source));
-        this.node = node;
-        this.zomkyStorage = zomkyStorage;
+        this.raftServer = raftServer;
+        this.raftStorage = raftStorage;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super Payload> actual) {
-        source.subscribe(new PublishConfirmSubscriber(actual, node, zomkyStorage));
+        source.subscribe(new PublishConfirmSubscriber(actual, raftServer, raftStorage));
     }
 
     private static class PublishConfirmSubscriber implements CoreSubscriber<Payload> , Subscription {
@@ -46,15 +46,15 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private final AtomicReference<Throwable> firstException = new AtomicReference<Throwable>();
 
         private Subscriber<? super Payload> subscriber;
-        private Node node;
-        private ZomkyStorage zomkyStorage;
+        private DefaultRaftServer node;
+        private RaftStorage raftStorage;
         private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
         private Subscription subscription;
 
-        public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, Node node, ZomkyStorage zomkyStorage) {
+        public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, DefaultRaftServer node, RaftStorage raftStorage) {
             this.subscriber = subscriber;
             this.node = node;
-            this.zomkyStorage = zomkyStorage;
+            this.raftStorage = raftStorage;
         }
 
         @Override
@@ -89,7 +89,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
+                LogEntryInfo logEntryInfo = raftStorage.appendLog(raftStorage.getTerm(), payload.getData());
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);

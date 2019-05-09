@@ -10,7 +10,7 @@ public class RaftException extends RuntimeException {
         super(message, cause);
     }
 
-    public RaftException(Throwable cause) {
-        super(cause);
+    public RaftException(Throwable throwable) {
+        super(throwable);
     }
 }

@@ -8,20 +8,20 @@ import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import rsocket.playground.raft.rpc.AppendEntriesRequest;
 import rsocket.playground.raft.rpc.VoteRequest;
+import rsocket.playground.raft.utils.NettyUtils;
 
 public class Receiver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
-    private Node node;
+    private DefaultRaftServer node;
     private CloseableChannel requestVoteCancellation, appendEntriesCancellation, clientCancellation;
 
-    public Receiver(Node node) {
+    public Receiver(DefaultRaftServer node) {
         this.node = node;
     }
 
@@ -32,27 +32,27 @@ public class Receiver {
                 .start()
                 .block();
 
-        requestVoteCancellation.onClose()
-                .doFinally(signalType -> LOGGER.warn("[Node {}] RequestVote onClose", node.nodeId))
-                .subscribe();
+//        requestVoteCancellation.onClose()
+//                .doFinally(signalType -> LOGGER.warn("[KVStoreServerImpl {}] RequestVote onClose", node.nodeId))
+//                .subscribe();
 
         appendEntriesCancellation = RSocketFactory.receive()
                 .acceptor(new AppendEntriesSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 10000))
                 .start()
                 .block();
-        appendEntriesCancellation.onClose()
-                .doFinally(signalType -> LOGGER.warn("[Node {}] Append entries onClose", node.nodeId))
-                .subscribe();
+//        appendEntriesCancellation.onClose()
+//                .doFinally(signalType -> LOGGER.warn("[KVStoreServerImpl {}] Append entries onClose", node.nodeId))
+//                .subscribe();
 
         clientCancellation = RSocketFactory.receive()
                 .acceptor(new ClientSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.nodeId + 20000))
                 .start()
                 .block();
-        clientCancellation.onClose()
-                .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", node.nodeId))
-                .subscribe();
+//        clientCancellation.onClose()
+//                .doFinally(signalType -> LOGGER.warn("[KVStoreServerImpl {}] Client onClose", node.nodeId))
+//                .subscribe();
     }
 
     public void stop() {
@@ -63,9 +63,9 @@ public class Receiver {
 
     private static class ClientSocketAcceptor implements SocketAcceptor {
 
-        private Node node;
+        private DefaultRaftServer node;
 
-        public ClientSocketAcceptor(Node node) {
+        public ClientSocketAcceptor(DefaultRaftServer node) {
             this.node = node;
         }
 
@@ -88,9 +88,9 @@ public class Receiver {
 
     private static class RequestVoteSocketAcceptor implements SocketAcceptor {
 
-        private Node node;
+        private DefaultRaftServer node;
 
-        public RequestVoteSocketAcceptor(Node node) {
+        public RequestVoteSocketAcceptor(DefaultRaftServer node) {
             this.node = node;
         }
 
@@ -116,9 +116,9 @@ public class Receiver {
 
     private static class AppendEntriesSocketAcceptor implements SocketAcceptor {
 
-        private Node node;
+        private DefaultRaftServer node;
 
-        public AppendEntriesSocketAcceptor(Node node) {
+        public AppendEntriesSocketAcceptor(DefaultRaftServer node) {
             this.node = node;
         }
 

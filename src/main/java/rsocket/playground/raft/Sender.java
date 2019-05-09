@@ -51,4 +51,9 @@ public class Sender {
                 ", available=" + available +
                 '}';
     }
+
+    public void stop() {
+        if (requestVoteSocket != null) requestVoteSocket.dispose();
+        if (appendEntriesSocket != null) appendEntriesSocket.dispose();
+    }
 }

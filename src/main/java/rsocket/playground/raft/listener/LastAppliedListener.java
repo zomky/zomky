@@ -1,8 +1,8 @@
-package rsocket.playground.raft;
+package rsocket.playground.raft.listener;
 
 import io.netty.buffer.ByteBuf;
 
-public interface ZomkyLastAppliedListener {
+public interface LastAppliedListener {
 
     void handle(long index, ByteBuf response);
 

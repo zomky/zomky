@@ -10,26 +10,26 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
 import reactor.core.publisher.Operators;
 import rsocket.playground.raft.storage.LogEntryInfo;
-import rsocket.playground.raft.storage.ZomkyStorage;
+import rsocket.playground.raft.storage.RaftStorage;
 
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
-    private Node node;
-    private ZomkyStorage zomkyStorage;
+    private DefaultRaftServer raftServer;
+    private RaftStorage raftStorage;
 
-    SenderLastAppliedOperator(Publisher<? extends Payload> source, Node node, ZomkyStorage zomkyStorage) {
+    SenderLastAppliedOperator(Publisher<? extends Payload> source, DefaultRaftServer raftServer, RaftStorage raftStorage) {
         super(Flux.from(source));
-        this.node = node;
-        this.zomkyStorage = zomkyStorage;
+        this.raftServer = raftServer;
+        this.raftStorage = raftStorage;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super Payload> actual) {
-        source.subscribe(new PublishLastAppliedSubscriber(actual, node, zomkyStorage));
+        source.subscribe(new PublishLastAppliedSubscriber(actual, raftServer, raftStorage));
     }
 
     private static class PublishLastAppliedSubscriber implements CoreSubscriber<Payload>, Subscription {
@@ -45,15 +45,15 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         private final AtomicReference<Throwable> firstException = new AtomicReference<Throwable>();
 
         private Subscriber<? super Payload> subscriber;
-        private Node node;
-        private ZomkyStorage zomkyStorage;
-        private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
+        private DefaultRaftServer node;
+        private RaftStorage raftStorage;
+        private final ConcurrentMap<Long, Payload> unconfirmed = new ConcurrentHashMap<>();
         private Subscription subscription;
 
-        public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, Node node, ZomkyStorage zomkyStorage) {
+        public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, DefaultRaftServer node, RaftStorage raftStorage) {
             this.subscriber = subscriber;
             this.node = node;
-            this.zomkyStorage = zomkyStorage;
+            this.raftStorage = raftStorage;
         }
 
         @Override
@@ -85,7 +85,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                LogEntryInfo logEntryInfo = zomkyStorage.appendLog(zomkyStorage.getTerm(), payload.getData());
+                LogEntryInfo logEntryInfo = raftStorage.appendLog(raftStorage.getTerm(), payload.getData());
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);
@@ -134,8 +134,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
         }
 
-
-        public <T> boolean checkComplete(T t) {
+        private  <T> boolean checkComplete(T t) {
             boolean complete = state.get() == SubscriberState.COMPLETE;
             if (complete && firstException.get() == null) {
                 Operators.onNextDropped(t, currentContext());

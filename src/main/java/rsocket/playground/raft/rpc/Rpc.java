@@ -44,6 +44,11 @@ public final class Rpc {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_InstallSnapshotResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_CommandRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_CommandRequest_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -66,8 +71,10 @@ public final class Rpc {
       "uest\022\014\n\004term\030\001 \001(\005\022\020\n\010leaderId\030\002 \001(\005\022\031\n\021" +
       "lastIncludedIndex\030\003 \001(\003\022\030\n\020lastIncludedT" +
       "erm\030\004 \001(\003\022\014\n\004data\030\005 \001(\014\022\014\n\004done\030\006 \001(\010\"\'\n" +
-      "\027InstallSnapshotResponse\022\014\n\004term\030\001 \001(\005B\037" +
-      "\n\033rsocket.playground.raft.rpcP\001b\006proto3"
+      "\027InstallSnapshotResponse\022\014\n\004term\030\001 \001(\005\"B" +
+      "\n\016CommandRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002" +
+      " \001(\t\022\024\n\014setOperation\030\003 \001(\010B\037\n\033rsocket.pl" +
+      "ayground.raft.rpcP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -117,6 +124,12 @@ public final class Rpc {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotResponse_descriptor,
         new java.lang.String[] { "Term", });
+    internal_static_CommandRequest_descriptor =
+      getDescriptor().getMessageTypes().get(6);
+    internal_static_CommandRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_CommandRequest_descriptor,
+        new java.lang.String[] { "Key", "Value", "SetOperation", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

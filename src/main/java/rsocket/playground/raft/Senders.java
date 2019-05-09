@@ -14,20 +14,21 @@ public class Senders {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Senders.class);
 
-    private Node node;
+    private DefaultRaftServer raftServer;
 
-    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+    private ScheduledExecutorService executorService;
 
     private ConcurrentMap<Integer, Sender> senders = new ConcurrentHashMap<>();
 
-    public Senders(Node node, List<Integer> clientPorts) {
+    public Senders(DefaultRaftServer raftServer, List<Integer> clientPorts) {
         clientPorts.forEach(clientPort -> {
             senders.put(clientPort, Sender.unavailableSender(clientPort));
         });
-        this.node = node;
+        this.raftServer = raftServer;
     }
 
     public void start() {
+        executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleAtFixedRate(() -> {
             senders.values().stream().filter(Sender::isNotAvailable).forEach(sender -> {
                 int nodeId = sender.getNodeId();
@@ -50,14 +51,18 @@ public class Senders {
                             .subscribe();
                     doAvailableSender(nodeId, requestVoteSocket, appendEntriesSocket);
                 } catch (Exception e) { // TODO more specific exceptions
-                    LOGGER.debug("Node {} has no access to {}", node.nodeId, nodeId, e);
+                    LOGGER.debug("[RaftServer {}] no access to server {}", raftServer.nodeId, nodeId, e);
                 }
             });
         }, 0, 100, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
-        executorService.shutdown();
+        executorService.shutdownNow();
+        senders.values().forEach(sender -> {
+            sender.stop();
+            doUnavailableSender(sender.getNodeId());
+        });
     }
 
 
@@ -74,16 +79,16 @@ public class Senders {
 
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
-        LOGGER.warn("Node {} has no longer access to {}", node.nodeId, nodeId);
+        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection lost", raftServer.nodeId, nodeId);
         senders.put(nodeId, sender);
-        node.senderUnavailable(sender);
+        raftServer.senderUnavailable(sender);
     }
 
     private void doAvailableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
-        LOGGER.info("Node {} has access to {}", node.nodeId, nodeId);
+        LOGGER.info("[RaftServer {} -> RaftServer {}] connection unavailable", raftServer.nodeId, nodeId);
         Sender sender = Sender.availableSender(nodeId, requestVoteSocket, appendEntriesSocket);
         senders.put(nodeId, sender);
-        node.senderAvailable(sender);
+        raftServer.senderAvailable(sender);
     }
 
 }

@@ -1,4 +1,4 @@
-package rsocket.playground.raft;
+package rsocket.playground.raft.utils;
 
 import io.netty.buffer.ByteBuf;
 
