@@ -1,1 +1,3 @@
-# rsocket-playground
+# rsocket-raft
+
+Under development
