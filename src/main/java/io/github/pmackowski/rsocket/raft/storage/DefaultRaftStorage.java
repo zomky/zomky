@@ -154,7 +154,6 @@ public class DefaultRaftStorage implements RaftStorage {
     @Override
     public synchronized LogEntryInfo appendLogs(ByteBuffer buffer) {
         try {
-            System.out.println("APPEND LOGS STARTED");
             buffer.position(0);
             int numberOfEntries = buffer.getInt();
             int metadataSize = buffer.getInt();
@@ -163,16 +162,10 @@ public class DefaultRaftStorage implements RaftStorage {
             ByteBuffer metadataBuffer = ByteBuffer.wrap(buffer.array(), 12    , metadataSize - 12);
             metadataFileAppendLogChannel.write(metadataBuffer);
 
-            metadataBuffer.position(12);
-            for (int i=0; i < numberOfEntries; i++) {
-                System.out.println(String.format("%s, %s, %s", metadataBuffer.getInt(), metadataBuffer.getLong(), metadataBuffer.getInt()));
-            }
-
             ByteBuffer contentBuffer = ByteBuffer.wrap(buffer.array(), metadataSize, contentSize);
             contentFileAppendLogChannel.write(contentBuffer);
             lastIndex = new AtomicLong(metadataFileChannel.size() / INDEX_TERM_FILE_ENTRY_SIZE);
             lastTerm = new AtomicInteger(getTermByIndex(lastIndex.get()));
-            System.out.println("APPEND LOGS FINISHED");
         } catch (IOException e) {
             throw new StorageException(e);
         }
@@ -287,6 +280,7 @@ public class DefaultRaftStorage implements RaftStorage {
     public void close() {
         try {
             nodeDataFile.close();
+            nodeDataFileChannel.close();
             metadataFileChannel.close();
             metadataFileAppendLogChannel.close();
             metadataFile.close();

@@ -4,13 +4,13 @@ import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.rsocket.Payload;
 import io.rsocket.util.DefaultPayload;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SenderConfirmOperatorTest {
 
     private static final int TEN_MESSAGES = 10;
@@ -35,11 +35,11 @@ public class SenderConfirmOperatorTest {
 
     AtomicLong index;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         index = new AtomicLong();
 
-        when(raftStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
+        Mockito.lenient().when(raftStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
             int term = (int) invocation.getArguments()[0];
             return new LogEntryInfo().term(term).index(idx);

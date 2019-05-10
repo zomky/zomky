@@ -1,0 +1,13 @@
+= Rsocket-raft
+Paweł Maćkowski <pawel.piotr.mackowski@gmail.com>
+0.1.0.BUILD-SNAPSHOT
+:doctype: book
+:toc: left
+:source-highlighter: prettify
+:numbered:
+:icons: font
+:hide-uri-scheme:
+
+:test-examples: ../../test/java/io/github/pmackowski/rsocket/raft/docs
+
+include::overview.adoc[]

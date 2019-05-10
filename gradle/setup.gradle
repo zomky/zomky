@@ -1,0 +1,100 @@
+/*
+ * Copyright (c) 2017 Pivotal Software Inc, All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Modifications copyright (C) 2019 Paweł Maćkowski
+ */
+
+wrapper {
+	group = 'Project Setup'
+	gradleVersion = "$gradleVersion"
+}
+
+configure(allprojects) { project ->
+
+	apply plugin: 'propdeps-maven'
+	apply plugin: 'maven'
+	install {
+		repositories.mavenInstaller {
+			customizePom(pom, project)
+		}
+	}
+
+	jar {
+		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
+		manifest.attributes["Implementation-Title"] = project.name
+		manifest.attributes["Implementation-Version"] = project.version
+		from '../NOTICE'
+	}
+
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+		from '../NOTICE'
+	}
+
+	task javadocJar(type: Jar) {
+		classifier = 'javadoc'
+		from javadoc
+		from '../NOTICE'
+	}
+}
+
+def customizePom(def pom, def gradleProject) {
+	pom.whenConfigured { generatedPom ->
+		// eliminate test-scoped dependencies (no need in maven central poms)
+		generatedPom.dependencies.removeAll { dep ->
+			dep.scope == "test"
+		}
+
+		// sort to make pom dependencies order consistent to ease comparison of older poms
+		generatedPom.dependencies = generatedPom.dependencies.sort { dep ->
+			"$dep.scope:$dep.groupId:$dep.artifactId"
+		}
+
+		// add all items necessary for maven central publication
+		generatedPom.project {
+			name = gradleProject.description
+			description = gradleProject.description
+			url = 'https://github.com/pmackowski/rsocket-raft'
+			organization {
+				name = 'pmackowski'
+				url = 'http://github.com/pmackowski'
+			}
+			licenses {
+				license {
+					name 'The Apache Software License, Version 2.0'
+					url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+					distribution 'repo'
+				}
+			}
+			scm {
+				url = 'https://github.com/pmackowski/rsocket-raft'
+				connection = 'scm:git:git://github.com/pmackowski/rsocket-raft'
+				developerConnection = 'scm:git:git://github.com/pmackowski/rsocket-raft'
+			}
+			developers {
+				developer {
+					id = 'pmackowski'
+					name = 'Paweł Maćkowski'
+					email = 'pawel.piotr.mackowski@gmail.com'
+				}
+			}
+			issueManagement {
+				system = "GitHub Issues"
+				url = "https://github.com/pmackowski/rsocket-raft/issues"
+			}
+		}
+	}
+}

@@ -7,20 +7,19 @@ import io.github.pmackowski.rsocket.raft.storage.DefaultRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.DefaultRaftStorageTestUtils;
 import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -31,13 +30,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 
-@RunWith(MockitoJUnitRunner.class)
-public class RaftServerTest {
+@ExtendWith(MockitoExtension.class)
+class RaftServerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
 
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
+    @TempDir
+    Path folder;
 
     @Mock
     ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3;
@@ -46,12 +45,12 @@ public class RaftServerTest {
     RaftServer raftServer1, raftServer2, raftServer3;
     RaftStorage raftStorage1, raftStorage2, raftStorage3;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        LOGGER.info("Raft directory {}", folder.getRoot().getAbsolutePath());
-        raftStorage1 = new DefaultRaftStorage(7000, folder.getRoot().getAbsolutePath());
-        raftStorage2 = new DefaultRaftStorage(7001, folder.getRoot().getAbsolutePath());
-        raftStorage3 = new DefaultRaftStorage(7002, folder.getRoot().getAbsolutePath());
+        LOGGER.info("Raft directory {}", folder.toAbsolutePath().toString());
+        raftStorage1 = new DefaultRaftStorage(7000, folder.toAbsolutePath().toString());
+        raftStorage2 = new DefaultRaftStorage(7001, folder.toAbsolutePath().toString());
+        raftStorage3 = new DefaultRaftStorage(7002, folder.toAbsolutePath().toString());
 
         raftServerMono1 = new RaftServerBuilder()
                     .nodeId(7000)
@@ -77,7 +76,7 @@ public class RaftServerTest {
     }
 
     @Test
-    public void testElection() {
+    void testElection() {
         given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
         given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(10));
         given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(10));
@@ -104,7 +103,7 @@ public class RaftServerTest {
     }
 
     @Test
-    public void leaderFailure() {
+    void leaderFailure() {
         given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
         given(electionTimeout2.nextRandom()).willReturn(Duration.ofMillis(1000));
         given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(10));
@@ -144,7 +143,7 @@ public class RaftServerTest {
     }
 
     @Test
-    public void testLogReplication() throws IOException {
+    void testLogReplication() throws IOException {
         testElection();
 
         KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
@@ -162,18 +161,18 @@ public class RaftServerTest {
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7000))
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
                 .isEqualTo(expectedContent(nbEntries));
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7001))
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7001))
                 .isEqualTo(expectedContent(nbEntries));
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.getRoot().getAbsolutePath(), 7002))
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7002))
                 .isEqualTo(expectedContent(nbEntries));
     }
 
     @Test
-    public void testLogReplicationMultipleClients() {
+    void testLogReplicationMultipleClients() {
         testElection();
 
         KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
@@ -199,7 +198,7 @@ public class RaftServerTest {
     }
 
     @Test
-    public void testLogReplicationWithLeaderFailure() throws InterruptedException {
+    void testLogReplicationWithLeaderFailure() throws InterruptedException {
         testElection();
 
         KVStoreClient kvStore = new KVStoreClient(Arrays.asList(7000));
