@@ -79,13 +79,13 @@ public class Senders {
 
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
-        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection lost", raftServer.nodeId, nodeId);
+        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", raftServer.nodeId, nodeId);
         senders.put(nodeId, sender);
         raftServer.senderUnavailable(sender);
     }
 
     private void doAvailableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
-        LOGGER.info("[RaftServer {} -> RaftServer {}] connection unavailable", raftServer.nodeId, nodeId);
+        LOGGER.info("[RaftServer {} -> RaftServer {}] connection available", raftServer.nodeId, nodeId);
         Sender sender = Sender.availableSender(nodeId, requestVoteSocket, appendEntriesSocket);
         senders.put(nodeId, sender);
         raftServer.senderAvailable(sender);

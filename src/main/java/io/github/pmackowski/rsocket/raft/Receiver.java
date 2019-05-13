@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.*;
@@ -99,17 +100,35 @@ public class Receiver {
             return Mono.just(new AbstractRSocket() {
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
+                    String metadataUtf8 = payload.getMetadataUtf8();
+                    if ("pre-vote".equalsIgnoreCase(metadataUtf8)) {
+                        return Mono.just(payload)
+                                    .map(this::toPreVoteRequest)
+                                    .flatMap(preVoteRequest -> node.onPreRequestVote(preVoteRequest))
+                                    .map(preVoteResponse -> ByteBufPayload.create(preVoteResponse.toByteArray()));
+                    }
                     return Mono.just(payload)
-                            .map(payload1 -> {
-                                try {
-                                    return VoteRequest.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
-                                } catch (InvalidProtocolBufferException e) {
-                                    throw new RaftException("Invalid vote request!", e);
-                                }
-                            })
+                            .map(this::toVoteRequest)
                             .flatMap(voteRequest -> node.onRequestVote(voteRequest))
                             .map(voteResponse -> ByteBufPayload.create(voteResponse.toByteArray()));
                 }
+
+                private PreVoteRequest toPreVoteRequest(Payload payload) {
+                    try {
+                        return PreVoteRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid pre-vote request!", e);
+                    }
+                }
+
+                private VoteRequest toVoteRequest(Payload payload) {
+                    try {
+                        return VoteRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid vote request!", e);
+                    }
+                }
+
             });
         }
     }

@@ -1,10 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
-import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
+import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.rsocket.Payload;
@@ -59,6 +56,32 @@ public interface RaftServerRole {
                     }
 
                     return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(true).build();
+                });
+    }
+
+    default Mono<PreVoteResponse> onPreRequestVote(DefaultRaftServer node, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
+        return Mono.just(preRequestVote)
+                .map(requestVote1 -> {
+                    int currentTerm = raftStorage.getTerm();
+                    LogEntryInfo lastLogEntry = raftStorage.getLast();
+
+                    // 1. Reply false if last AppendEntries call was received
+                    //    less than election timeout ago (leader stickiness)
+                    // TODO
+
+                    // 2. Reply false if nextTerm < currentTerm
+                    if (preRequestVote.getNextTerm() < currentTerm) {
+                        return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
+                    }
+
+                    // 3. If caller's log is is at least as up-to-date as receiver's log, return true
+                    if (preRequestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
+                            (preRequestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
+                                    preRequestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
+                        return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
+                    }
+                    return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(true).build();
+
                 });
     }
 

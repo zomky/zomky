@@ -2,10 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
-import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
+import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
@@ -191,6 +188,11 @@ class DefaultRaftServer implements RaftServer {
                 });
     }
 
+    Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
+        return nodeState.onPreRequestVote(this, raftStorage, preRequestVote)
+                .doOnNext(preVoteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), nodeId, preRequestVote, preVoteResponse));
+    }
+
     Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
         return nodeState.onRequestVote(this, raftStorage, requestVote)
                 .doOnNext(voteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
@@ -206,6 +208,10 @@ class DefaultRaftServer implements RaftServer {
         if (this.nodeState.nodeState() == NodeState.FOLLOWER) {
             return;
         }
+        transitionBetweenStates(this.nodeState.nodeState(), new FollowerRole());
+    }
+
+    void refreshFollower() {
         transitionBetweenStates(this.nodeState.nodeState(), new FollowerRole());
     }
 

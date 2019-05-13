@@ -1,10 +1,10 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
-import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.rpc.*;
+import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import org.slf4j.Logger;
@@ -14,9 +14,14 @@ import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 public class FollowerRole implements RaftServerRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerRole.class);
+
+    private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
+    private static final boolean PRE_VOTE_ENABLED = true;
 
     private DirectProcessor<Payload> processor;
     private FluxSink<Payload> sink;
@@ -34,10 +39,24 @@ public class FollowerRole implements RaftServerRole {
         sink = processor.sink(FluxSink.OverflowStrategy.DROP);
         subscription = processor.timeout(node.electionTimeout.nextRandom())
                 //.doOnNext(ReferenceCounted::release)
-                .subscribe(payload -> {}, throwable -> {
+                .onErrorResume(throwable -> {
                     LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, throwable.getMessage());
-                    node.convertToCandidate();
-                });
+                    if (PRE_VOTE_ENABLED) {
+                        return sendPreVotes(node, raftStorage)
+                                .doOnNext(preVotes -> {
+                                    if (preVotes) {
+                                        node.convertToCandidate();
+                                    } else {
+                                        node.refreshFollower();
+                                    }
+                                })
+                                .then(Mono.empty());
+                    } else {
+                        node.convertToCandidate();
+                        return Mono.empty();
+                    }
+                })
+                .subscribe();
     }
 
     @Override
@@ -76,6 +95,43 @@ public class FollowerRole implements RaftServerRole {
         } catch (Exception e) {
             LOGGER.error("[RaftServer {}] restartElectionTimer ... {}", node.nodeId, e);
         }
+    }
+
+    private Mono<Boolean> sendPreVotes(DefaultRaftServer node, RaftStorage raftStorage) {
+        Duration timeout = node.electionTimeout.nextRandom();
+        return node.availableSenders()
+                    .flatMap(sender -> sendPreVoteRequest(node, raftStorage, sender, timeout))
+                    .filter(PreVoteResponse::getVoteGranted)
+                    .buffer(QUORUM - 1)
+                    .timeout(timeout)
+                    .next()
+                    .map(i -> true)
+                    .onErrorReturn(false);
+    }
+
+    private Mono<PreVoteResponse> sendPreVoteRequest(DefaultRaftServer node, RaftStorage raftStorage, Sender sender, Duration timeout) {
+        LogEntryInfo last = raftStorage.getLast();
+        PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
+                .setNextTerm(raftStorage.getTerm() + 1)
+                .setCandidateId(node.nodeId)
+                .setLastLogIndex(last.getIndex())
+                .setLastLogTerm(last.getTerm())
+                .build();
+
+        Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), "pre-vote".getBytes());
+        return sender.getRequestVoteSocket().requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return PreVoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid pre-vote response!", e);
+                    }
+                })
+                .timeout(timeout)
+                .onErrorResume(throwable -> {
+                    LOGGER.error("[RaftServer {} -> RaftServer {}] Pre-Vote failure", node.nodeId, preVoteRequest.getCandidateId(), throwable);
+                    return Mono.just(PreVoteResponse.newBuilder().setVoteGranted(false).build());
+                });
     }
 
 }
