@@ -52,7 +52,7 @@ public class LogStorage implements AutoCloseable {
     }
 
     public int getTermByIndex(long index) {
-        return getEntryByIndex(index).getLogEntry().getTerm();
+        return index <= 0 ? 0: getEntryByIndex(index).getLogEntry().getTerm();
     }
 
     public LogStorageReader openReader(long index) {
@@ -65,5 +65,6 @@ public class LogStorage implements AutoCloseable {
     public void close() {
         segments.release();
         segmentWriter.release();
+        logReaders.forEach(LogStorageReader::close);
     }
 }

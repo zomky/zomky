@@ -99,7 +99,7 @@ public class ChunkSegmentReaderIntegrationTest {
             }
         });
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> j.get() == numberOfEntries);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> j.get() == numberOfEntries);
 
     }
 

@@ -42,7 +42,7 @@ class LogStorageReaderTest {
     }
 
     @AfterEach
-    void tearDown() throws Exception {
+    void tearDown() {
         logStorage.close();
         logStorageReader.close();
     }

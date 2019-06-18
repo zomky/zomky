@@ -65,7 +65,9 @@ public class LeaderRole implements RaftServerRole {
                 disposable.dispose();
             }
             LogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
-            logStorageReader.close();
+            if (logStorageReader != null) {
+                logStorageReader.close();
+            }
         });
     }
 

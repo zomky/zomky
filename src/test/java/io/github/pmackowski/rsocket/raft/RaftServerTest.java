@@ -6,6 +6,7 @@ import io.github.pmackowski.rsocket.raft.statemachine.kv.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -84,6 +85,13 @@ class RaftServerTest {
                     .start();
     }
 
+    @AfterEach
+    void tearDown() {
+        raftStorage1.close();
+        raftStorage2.close();
+        raftStorage3.close();
+    }
+
     @Test
     void testElection() {
         given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
@@ -109,11 +117,7 @@ class RaftServerTest {
         assertThat(raftStorage3.getTerm()).isEqualTo(1);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7000);
 //        assertThat(raftStorage1.getLast()).isEqualTo(new LogEntryInfo().index(0).term(0));
-        try {
-            sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+
     }
 
     @Test
@@ -157,7 +161,7 @@ class RaftServerTest {
     }
 
     @Test
-    void testLogReplication() throws IOException {
+    void testLogReplication() throws IOException, InterruptedException {
         testElection();
 
         KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
@@ -171,18 +175,18 @@ class RaftServerTest {
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .blockLast();
 
-//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-//
-//        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
-//                .isEqualTo(expectedContent(nbEntries));
-//
-//        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7001))
-//                .isEqualTo(expectedContent(nbEntries));
-//
-//        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7002))
-//                .isEqualTo(expectedContent(nbEntries));
+        /*await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
+                .isEqualTo(expectedContent(nbEntries));
+
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7001))
+                .isEqualTo(expectedContent(nbEntries));
+
+        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7002))
+                .isEqualTo(expectedContent(nbEntries));*/
     }
 /*
     @Test

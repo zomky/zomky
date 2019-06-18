@@ -173,7 +173,6 @@ class DefaultRaftServer implements RaftServer {
     }
 
     void setCurrentLeader(int nodeId) {
-        LOGGER.info("[RaftServer {}] SET current leader to {}", this.nodeId, nodeId);
         currentLeaderId.set(nodeId);
     }
 

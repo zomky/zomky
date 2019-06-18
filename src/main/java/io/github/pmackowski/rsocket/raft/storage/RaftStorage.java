@@ -93,4 +93,9 @@ public class RaftStorage {
             throw new StorageException(e);
         }
     }
+
+    public void close() {
+        logStorage.close();
+        metaStorage.close();
+    }
 }
