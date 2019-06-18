@@ -3,8 +3,8 @@ package io.github.pmackowski.rsocket.raft;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
@@ -76,12 +76,12 @@ public class CandidateRole implements RaftServerRole {
     }
 
     private Mono<VoteResponse> sendVoteRequest(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
-        LogEntryInfo last = raftStorage.getLast();
+        IndexedLogEntry last = raftStorage.getLast();
         VoteRequest requestVote = VoteRequest.newBuilder()
                 .setTerm(raftStorage.getTerm())
                 .setCandidateId(node.nodeId)
                 .setLastLogIndex(last.getIndex())
-                .setLastLogTerm(last.getTerm())
+                .setLastLogTerm(last.getLogEntry().getTerm())
                 .build();
 
         Payload payload = ByteBufPayload.create(requestVote.toByteArray());

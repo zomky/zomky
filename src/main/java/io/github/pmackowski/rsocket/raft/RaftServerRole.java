@@ -1,9 +1,8 @@
 package io.github.pmackowski.rsocket.raft;
 
-import com.google.protobuf.ByteString;
 import io.github.pmackowski.rsocket.raft.rpc.*;
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -46,9 +45,10 @@ public interface RaftServerRole {
                         raftStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                     }
                     // 4. Append any new entries not already in the log
-                    if (appendEntriesRequest.getEntries() != ByteString.EMPTY) {
-                        raftStorage.appendLogs(ByteBuffer.wrap(appendEntriesRequest.getEntries().toByteArray()));
-                    }
+                    appendEntriesRequest.getEntriesList().forEach(entry -> {
+                        ByteBuffer byteBuffer = entry.asReadOnlyByteBuffer();
+                        raftStorage.append(byteBuffer);
+                    });
 
                     //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
                     if (appendEntriesRequest.getLeaderCommit() > node.getCommitIndex()) {
@@ -63,7 +63,7 @@ public interface RaftServerRole {
         return Mono.just(preRequestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
-                    LogEntryInfo lastLogEntry = raftStorage.getLast();
+                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
 
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
@@ -75,8 +75,8 @@ public interface RaftServerRole {
                     }
 
                     // 3. If caller's log is is at least as up-to-date as receiver's log, return true
-                    if (preRequestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
-                            (preRequestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
+                    if (preRequestVote.getLastLogTerm() < lastLogEntry.getLogEntry().getTerm() ||
+                            (preRequestVote.getLastLogTerm() == lastLogEntry.getLogEntry().getTerm() &&
                                     preRequestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
@@ -97,7 +97,7 @@ public interface RaftServerRole {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
-                    LogEntryInfo lastLogEntry = raftStorage.getLast();
+                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
 
                     // Raft determines which of two logs is more up-to-date
                     // by comparing the index and term of the last entries in the
@@ -105,8 +105,8 @@ public interface RaftServerRole {
                     // the log with the later term is more up-to-date. If the logs
                     // end with the same term, then whichever log is longer is
                     // more up-to-date.
-                    if (requestVote.getLastLogTerm() < lastLogEntry.getTerm() ||
-                            (requestVote.getLastLogTerm() == lastLogEntry.getTerm() &&
+                    if (requestVote.getLastLogTerm() < lastLogEntry.getLogEntry().getTerm() ||
+                            (requestVote.getLastLogTerm() == lastLogEntry.getLogEntry().getTerm() &&
                                     requestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }

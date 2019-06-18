@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -54,7 +55,7 @@ class DefaultRaftServer implements RaftServer {
         return nodeState.nodeState() == NodeState.FOLLOWER;
     }
 
-    StateMachine stateMachine;
+    StateMachine<ByteBuffer> stateMachine;
     private ScheduledExecutorService stateMachineExecutor;
 
     volatile RaftServerRole nodeState = new FollowerRole();
@@ -89,7 +90,7 @@ class DefaultRaftServer implements RaftServer {
 
     ElectionTimeout electionTimeout;
 
-    DefaultRaftServer(int port, RaftStorage raftStorage, List<Integer> clientPorts, StateMachine stateMachine, ElectionTimeout electionTimeout) {
+    DefaultRaftServer(int port, RaftStorage raftStorage, List<Integer> clientPorts, StateMachine<ByteBuffer> stateMachine, ElectionTimeout electionTimeout) {
         this.nodeId = port;
         this.raftStorage = raftStorage;
         this.stateMachine = stateMachine;
@@ -107,7 +108,8 @@ class DefaultRaftServer implements RaftServer {
             stateMachineExecutor.scheduleWithFixedDelay(() -> {
                 while (lastApplied.get() < commitIndex.get()) {
                     LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, lastApplied.get() + 1);
-                    ByteBuffer response = stateMachine.applyLogEntry(raftStorage.getEntryByIndex(lastApplied.incrementAndGet()));
+                    IndexedLogEntry logEntry = raftStorage.getEntryByIndex(lastApplied.incrementAndGet());
+                    ByteBuffer response = stateMachine.applyLogEntry(logEntry.getLogEntry());
                     lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(lastApplied.get(), Unpooled.wrappedBuffer(response)));
                 }
             }, 0, 10, TimeUnit.MILLISECONDS);
@@ -141,8 +143,8 @@ class DefaultRaftServer implements RaftServer {
     }
 
     public void setCommitIndex(long commitIndex) {
-        LOGGER.info("[RaftServer {}] Set new commit index to {}", nodeId, commitIndex);
-        this.commitIndex.set(commitIndex);
+        this.commitIndex.set(commitIndex); // TODO
+//        raftStorage.commit(commitIndex);
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
     }
 
@@ -171,6 +173,7 @@ class DefaultRaftServer implements RaftServer {
     }
 
     void setCurrentLeader(int nodeId) {
+        LOGGER.info("[RaftServer {}] SET current leader to {}", this.nodeId, nodeId);
         currentLeaderId.set(nodeId);
     }
 
@@ -182,7 +185,7 @@ class DefaultRaftServer implements RaftServer {
         return nodeState.onAppendEntries(this, raftStorage, appendEntries)
                 .doOnNext(response -> setCurrentLeader(appendEntries.getLeaderId()))
                 .doOnNext(response -> {
-                    if (appendEntries.getEntriesSize() > 0) {
+                    if (appendEntries.getEntriesCount() > 0) {
                         LOGGER.info("[RaftServer {} -> RaftServer {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), nodeId, appendEntries, response);
                     }
                 });

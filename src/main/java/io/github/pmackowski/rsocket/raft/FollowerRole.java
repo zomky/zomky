@@ -2,8 +2,8 @@ package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.*;
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
@@ -21,7 +21,7 @@ public class FollowerRole implements RaftServerRole {
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerRole.class);
 
     private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
-    private static final boolean PRE_VOTE_ENABLED = true;
+    private static final boolean PRE_VOTE_ENABLED = false;
 
     private DirectProcessor<Payload> processor;
     private FluxSink<Payload> sink;
@@ -38,7 +38,7 @@ public class FollowerRole implements RaftServerRole {
         processor = DirectProcessor.create();
         sink = processor.sink(FluxSink.OverflowStrategy.DROP);
         subscription = processor.timeout(node.electionTimeout.nextRandom())
-                //.doOnNext(ReferenceCounted::release)
+//                .doOnNext(ReferenceCounted::release)
                 .onErrorResume(throwable -> {
                     LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, throwable.getMessage());
                     if (PRE_VOTE_ENABLED) {
@@ -110,12 +110,12 @@ public class FollowerRole implements RaftServerRole {
     }
 
     private Mono<PreVoteResponse> sendPreVoteRequest(DefaultRaftServer node, RaftStorage raftStorage, Sender sender, Duration timeout) {
-        LogEntryInfo last = raftStorage.getLast();
+        IndexedLogEntry last = raftStorage.getLast();
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
                 .setNextTerm(raftStorage.getTerm() + 1)
                 .setCandidateId(node.nodeId)
                 .setLastLogIndex(last.getIndex())
-                .setLastLogTerm(last.getTerm())
+                .setLastLogTerm(last.getLogEntry().getTerm())
                 .build();
 
         Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), "pre-vote".getBytes());

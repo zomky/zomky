@@ -1,7 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -89,7 +89,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                LogEntryInfo logEntryInfo = raftStorage.appendLog(raftStorage.getTerm(), payload.getData());
+                IndexedLogEntry logEntryInfo = raftStorage.append(payload.getData());
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);

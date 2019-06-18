@@ -1,9 +1,9 @@
 package io.github.pmackowski.rsocket.raft;
 
-import java.nio.ByteBuffer;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 
-public interface StateMachine {
+public interface StateMachine<T> {
 
-    ByteBuffer applyLogEntry(ByteBuffer entry);
+    T applyLogEntry(LogEntry logEntry);
 
 }
