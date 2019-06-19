@@ -56,7 +56,7 @@ public class RaftStorage {
         return logStorage.append(deserialize(logEntry));
     }
 
-    public IndexedLogEntry append(LogEntry logEntry) {
+    public synchronized IndexedLogEntry append(LogEntry logEntry) {
         return logStorage.append(logEntry);
     }
 
