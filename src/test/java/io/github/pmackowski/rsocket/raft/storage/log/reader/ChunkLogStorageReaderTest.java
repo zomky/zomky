@@ -1,9 +1,10 @@
-package io.github.pmackowski.rsocket.raft.storage.log;
+package io.github.pmackowski.rsocket.raft.storage.log.reader;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.log.LogStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
-import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,15 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LogStorageReaderTest {
+class ChunkLogStorageReaderTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogStorageReaderTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChunkLogStorageReaderTest.class);
 
     private static final int SEGMENT_SIZE = 256;
 
@@ -38,7 +38,7 @@ class LogStorageReaderTest {
                 .segmentSize(SizeUnit.bytes, SEGMENT_SIZE)
                 .build()
         );
-        logStorageReader = logStorage.openReader(1);
+        logStorageReader = logStorage.openChunkReader(1);
     }
 
     @AfterEach
@@ -48,28 +48,46 @@ class LogStorageReaderTest {
     }
 
     @Test
-    void readOneSegment() {
+    void readSegment() {
         long timestamp = System.currentTimeMillis();
         appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
-        final List<IndexedLogEntry> entriesByIndex = logStorageReader.getEntriesByIndex(1, 10);
-        System.out.println();
+        int i = 0;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        }
+        assertThat(i).isEqualTo(100);
+        assertThat(logStorageReader.hasNext()).isFalse();
     }
 
     @Test
-    void readManySegments() {
+    void resetSegment() {
         long timestamp = System.currentTimeMillis();
         appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
-        final List<IndexedLogEntry> entriesByIndex = logStorageReader.getEntriesByIndex(11, 90);
-        System.out.println();
+        int i = 0;
+        while (logStorageReader.hasNext() && i < 10) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        }
+        assertThat(i).isEqualTo(10);
+
+        logStorageReader.reset(20);
+
+        i = 19;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        }
+        assertThat(i).isEqualTo(100);
+
+
+        assertThat(logStorageReader.hasNext()).isFalse();
     }
 
-    @Test
-    void readManySegments2() {
-        long timestamp = System.currentTimeMillis();
-        appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
-        final List<IndexedLogEntry> entriesByIndex = logStorageReader.getEntriesByIndex(11, 120);
-        System.out.println();
-    }
+
 
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
         assertThat(actual.getIndex()).isEqualTo(expectedIndex);
@@ -97,4 +115,5 @@ class LogStorageReaderTest {
     private IndexedLogEntry appendEntry(int i, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
         return logStorage.append(commandEntry(i, timestampFunction.apply(i), valueFunction.apply(i)));
     }
+
 }

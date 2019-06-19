@@ -5,7 +5,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
@@ -46,7 +46,7 @@ public class LeaderRole implements RaftServerRole {
 
     private ConcurrentMap<Integer, Disposable> heartbeats = new ConcurrentHashMap<>();
 
-    private ConcurrentMap<Integer, LogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
+    private ConcurrentMap<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
 
     @Override
     public NodeState nodeState() {
@@ -64,7 +64,7 @@ public class LeaderRole implements RaftServerRole {
             if (disposable != null) {
                 disposable.dispose();
             }
-            LogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
+            BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
             if (logStorageReader != null) {
                 logStorageReader.close();
             }
@@ -97,7 +97,7 @@ public class LeaderRole implements RaftServerRole {
         nextIndex.put(sender.getNodeId(), nextIdx);
         matchIndex.put(sender.getNodeId(), 0L);
         heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
-        logStorageReaders.put(sender.getNodeId(), raftStorage.openReader(lastLogIndex));
+        logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(lastLogIndex)));
     }
 
     private Flux<Payload> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {
@@ -151,7 +151,7 @@ public class LeaderRole implements RaftServerRole {
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftStorage raftStorage) {
-        LogStorageReader logStorageReader = logStorageReaders.get(sender.getNodeId());
+        BoundedLogStorageReader logStorageReader = logStorageReaders.get(sender.getNodeId());
         long senderIdxId = nextIndex.get(sender.getNodeId());
         long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = raftStorage.getTermByIndex(prevLogIndex);

@@ -47,7 +47,7 @@ public class ChunkSegmentReader implements SegmentReader {
         this.segmentChannel = openChannel(segment.getSegmentPath());
         this.segmentIndexChannel = openChannel(segment.getSegmentIndexPath());
         this.nextIndex = (int) (index - segment.getFirstIndex() + 1);
-        reset(nextIndex);
+        resetLocal(nextIndex);
     }
 
     @Override
@@ -123,7 +123,12 @@ public class ChunkSegmentReader implements SegmentReader {
         }
     }
 
-    private void reset(int nextEntry) {
+    @Override
+    public void reset(long index) {
+        resetLocal((int) (index - segment.getFirstIndex() + 1));
+    }
+
+    private void resetLocal(int nextEntry) {
         try {
             segmentBuffer = ByteBuffer.allocate(chunkSize);
             int position = getInt(segmentIndexChannel, (nextEntry-1) * Integer.BYTES);

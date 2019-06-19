@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft.storage.log;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.ChunkLogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +57,13 @@ public class LogStorage implements AutoCloseable {
     }
 
     public LogStorageReader openReader(long index) {
-        LogStorageReader reader = new LogStorageReader(segments, index);
+        LogStorageReader reader = new ChunkLogStorageReader(segments, index);
         logReaders.add(reader);
+        return reader;
+    }
+
+    public LogStorageReader openChunkReader(long index) {
+        LogStorageReader reader = new ChunkLogStorageReader(segments, index);
         return reader;
     }
 

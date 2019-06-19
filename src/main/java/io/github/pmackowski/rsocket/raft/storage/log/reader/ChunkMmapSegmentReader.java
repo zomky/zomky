@@ -88,6 +88,11 @@ public class ChunkMmapSegmentReader implements SegmentReader {
     }
 
     @Override
+    public void reset(long index) {
+
+    }
+
+    @Override
     public void close()  {
         try {
             BufferCleaner.closeDirectBuffer(segmentBuffer);

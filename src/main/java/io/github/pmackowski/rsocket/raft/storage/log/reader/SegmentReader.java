@@ -6,4 +6,9 @@ import java.util.Iterator;
 
 public interface SegmentReader extends Iterator<IndexedLogEntry>, AutoCloseable {
 
+    @Override
+    void close();
+
+    void reset(long index);
+
 }
