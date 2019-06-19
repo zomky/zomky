@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft.storage;
 
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
@@ -16,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 0, time = 1, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 2, time = 1000, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
-public class RaftStorageAppendBenchmark {
+public class RaftStorageChunkReaderBenchmark {
 
     RaftStorage raftStorage;
 
@@ -24,37 +26,48 @@ public class RaftStorageAppendBenchmark {
 
     LogEntry logEntry;
 
-    @Param({"32", "256", "1024", "1048576"})
-    public int messageSize;
+    LogStorageReader logStorageReader;
 
-    @Param({"2", "8", "32", "64"})
-    public int segmentSize;
+    int messageSize = 32;
+    int segmentSize = 32;
+    int numberOfMessages = 20_000_000;
 
-    @Setup(Level.Iteration)
-    public void setupIteration() throws IOException {
+    @Setup
+    public void setup() throws Exception {
         directory = RaftStorageBenchmarkUtils.createTempDirectory();
+        System.out.println(directory);
         raftStorage = new RaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, segmentSize)
                 .directory(Paths.get(directory.toAbsolutePath().toString()))
                 .build());
         logEntry = RaftStorageBenchmarkUtils.commandEntry(1, 1, messageSize);
+        IntStream.rangeClosed(1, numberOfMessages).forEach(i -> raftStorage.append(logEntry));
     }
 
-    @TearDown(Level.Iteration)
-    public void tearDownIteration() throws Exception {
+    @TearDown
+    public void tearDown() throws IOException {
         raftStorage.close();
         RaftStorageBenchmarkUtils.delete(directory);
     }
 
-    @Benchmark
-    public void appendLog(Blackhole blackhole) {
-        blackhole.consume(raftStorage.append(logEntry));
+    @Setup(Level.Iteration)
+    public void setupIteration() {
+        logStorageReader = raftStorage.openReader();
+    }
+
+    @TearDown(Level.Iteration)
+    public void tearDownIteration() {
+        logStorageReader.close();
     }
 
     @Benchmark
-    @Threads(2)
-    public void appendLogConcurrent(Blackhole blackhole) {
-        blackhole.consume(raftStorage.append(logEntry));
+    public void iterate(Blackhole blackhole) {
+        blackhole.consume(logStorageReader.next());
+    }
+
+    @Benchmark
+    public void reset() {
+        logStorageReader.reset(RaftStorageBenchmarkUtils.random(numberOfMessages));
     }
 
 }

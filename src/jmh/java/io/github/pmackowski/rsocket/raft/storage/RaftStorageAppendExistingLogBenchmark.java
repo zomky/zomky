@@ -32,7 +32,7 @@ public class RaftStorageAppendExistingLogBenchmark {
     private int segmentSize = 32; // 32MB
 
     @Setup
-    public void setupConnection() throws Exception {
+    public void setup() throws Exception {
         directory = RaftStorageBenchmarkUtils.createTempDirectory();
         raftStorage = new RaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, segmentSize)
@@ -42,7 +42,7 @@ public class RaftStorageAppendExistingLogBenchmark {
     }
 
     @TearDown
-    public void closeConnection() throws IOException {
+    public void tearDown() throws IOException {
         raftStorage.close();
         RaftStorageBenchmarkUtils.delete(directory);
     }

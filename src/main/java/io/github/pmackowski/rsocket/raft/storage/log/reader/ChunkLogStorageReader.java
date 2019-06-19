@@ -21,7 +21,7 @@ public class ChunkLogStorageReader implements LogStorageReader {
     public ChunkLogStorageReader(Segments segments, long index) {
         this.segments = segments;
         this.currentSegment = segments.getSegment(index);
-        this.currentSegmentReader = new ChunkSegmentReader(currentSegment, index, 32);
+        this.currentSegmentReader = new ChunkSegmentReader(currentSegment, index, 8 * 1024);
         this.initialIndex = index;
     }
 
@@ -34,7 +34,7 @@ public class ChunkLogStorageReader implements LogStorageReader {
             if (nextSegment != null) {
                 currentSegmentReader.close();
                 currentSegment = nextSegment;
-                currentSegmentReader = new ChunkSegmentReader(currentSegment, 32);
+                currentSegmentReader = new ChunkSegmentReader(currentSegment, 8 * 1024);
                 hasNext = currentSegmentReader.hasNext();
             }
         }

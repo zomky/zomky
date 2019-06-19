@@ -47,7 +47,7 @@ public class LogStorage implements AutoCloseable {
         logEntries.forEach(this::append);
     }
 
-    public IndexedLogEntry getEntryByIndex(long index) {
+    public synchronized IndexedLogEntry getEntryByIndex(long index) {
         Segment segment = segments.getSegment(index);
         return segment.getEntryByIndex(index);
     }
