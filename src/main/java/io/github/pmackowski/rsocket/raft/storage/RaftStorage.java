@@ -56,7 +56,7 @@ public class RaftStorage {
         return logStorage.append(deserialize(logEntry));
     }
 
-    public synchronized IndexedLogEntry append(LogEntry logEntry) {
+    public IndexedLogEntry append(LogEntry logEntry) {
         return logStorage.append(logEntry);
     }
 
@@ -69,7 +69,7 @@ public class RaftStorage {
     }
 
     public void truncateFromIndex(long index) {
-        throw new NotImplementedException();
+        logStorage.truncateFromIndex(index);
     }
 
     public IndexedLogEntry getLast() { // TODO

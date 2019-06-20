@@ -107,4 +107,40 @@ class SegmentWriterTest {
         assertThat(segmentWriter.getLastLogEntryIndex()).isEqualTo(2);
     }
 
+
+    @Test
+    void truncate() {
+        // given
+        segmentWriter = new SegmentWriter(segment);
+
+        IntStream.rangeClosed(1, 10).forEach(i -> {
+            CommandEntry commandEntry = new CommandEntry(1, i, ("abc"+i).getBytes());
+            segmentWriter.appendEntry(commandEntry);
+        });
+
+        // when
+        long actual = segmentWriter.truncateFromIndex(5);
+
+        // then
+        assertThat(actual).isEqualTo(4);
+
+    }
+
+    @Test
+    void truncateFromIndexGreaterThanLastIndex() {
+        // given
+        segmentWriter = new SegmentWriter(segment);
+
+        IntStream.rangeClosed(1, 10).forEach(i -> {
+            CommandEntry commandEntry = new CommandEntry(1, i, ("abc"+i).getBytes());
+            segmentWriter.appendEntry(commandEntry);
+        });
+
+        // when
+        long actual = segmentWriter.truncateFromIndex(50);
+
+        // then
+        assertThat(actual).isEqualTo(10);
+
+    }
 }

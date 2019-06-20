@@ -28,7 +28,9 @@ public class RaftStorageChunkReaderBenchmark {
 
     LogStorageReader logStorageReader;
 
-    int messageSize = 32;
+    @Param({"32", "256", "1024"})
+    public int messageSize;
+
     int segmentSize = 32;
     int numberOfMessages = 20_000_000;
 

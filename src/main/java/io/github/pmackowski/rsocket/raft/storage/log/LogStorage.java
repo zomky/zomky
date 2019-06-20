@@ -7,6 +7,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.reader.ChunkLogStorageReade
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.BufferOverflowException;
 import java.util.List;
@@ -31,7 +32,7 @@ public class LogStorage implements AutoCloseable {
         return lastLogEntry;
     }
 
-    public IndexedLogEntry append(LogEntry logEntry) {
+    public synchronized IndexedLogEntry append(LogEntry logEntry) {
         try {
             lastLogEntry = segmentWriter.appendEntry(logEntry);
         } catch (BufferOverflowException e) {
@@ -72,5 +73,21 @@ public class LogStorage implements AutoCloseable {
         segments.release();
         segmentWriter.release();
         logReaders.forEach(LogStorageReader::close);
+    }
+
+    public synchronized void truncateFromIndex(long index) {
+        long lastLogEntryIndex = segmentWriter.getLastLogEntryIndex();
+        if (index > lastLogEntryIndex) {
+            return;
+        }
+
+        Segment lastSegment = this.segments.getLastSegment();
+        if (index >= lastSegment.getFirstIndex()) {
+            // truncate only last segment
+            lastLogEntryIndex = segmentWriter.truncateFromIndex(index);
+            lastLogEntry = lastSegment.getEntryByIndex(lastLogEntryIndex);
+        } else {
+            throw new NotImplementedException();
+        }
     }
 }

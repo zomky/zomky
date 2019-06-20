@@ -29,7 +29,7 @@ public class SegmentWriter {
 
     private SegmentIndexWriter segmentIndexWriter;
 
-    private volatile long lastLogEntryIndex;
+    private long lastLogEntryIndex;
 
     public SegmentWriter(Segment segment) {
         this.segment = segment;
@@ -56,7 +56,6 @@ public class SegmentWriter {
         lastLogEntryIndex = segment.getFirstIndex() + entriesCount - 1;
     }
 
-    // not thread safe
     public IndexedLogEntry appendEntry(LogEntry logEntry) {
         int position = mappedSegmentBuffer.position();
         int messageLengthSize = Integer.BYTES;
@@ -93,4 +92,13 @@ public class SegmentWriter {
         }
     }
 
+    public long truncateFromIndex(long index) {
+        // TODO handle log readers
+        if (index <= lastLogEntryIndex) {
+            int localIndex = (int) (index - segment.getFirstIndex() + 1);
+            segmentIndexWriter.truncateFromIndex(localIndex - 1);
+            rewind(localIndex - 1);
+        }
+        return lastLogEntryIndex;
+    }
 }

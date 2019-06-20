@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.log;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import org.junit.jupiter.api.AfterEach;
@@ -10,11 +11,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.BufferUnderflowException;
 import java.nio.file.Path;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LogStorageTest {
 
@@ -97,6 +100,30 @@ class LogStorageTest {
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(numberOfEntries);
+    }
+
+    @Test
+    void truncate() {
+        logStorage = new LogStorage(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.bytes, 1024)
+                .build());
+
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        logStorage.truncateFromIndex(5);
+
+        IntStream.rangeClosed(1, 4).forEach(i -> {
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
+        });
+        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
+        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
+                .isInstanceOf(StorageException.class)
+                .hasCause(new BufferUnderflowException());
     }
 
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {

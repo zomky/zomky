@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -28,8 +29,8 @@ public class SegmentIndexWriter {
         return mappedSegmentIndexBuffer.getInt(idx * Integer.BYTES);
     }
 
-    public void rewind(int index) {
-        mappedSegmentIndexBuffer.position(index * Integer.BYTES);
+    public void rewind(int entriesCount) {
+        mappedSegmentIndexBuffer.position(entriesCount * Integer.BYTES);
     }
 
     public void append(int position) {
@@ -47,5 +48,17 @@ public class SegmentIndexWriter {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void truncateFromIndex(int index) {
+        rewind(index);
+        try {
+            mappedSegmentIndexBuffer.mark();
+            while (mappedSegmentIndexBuffer.getInt() > 0) {
+                mappedSegmentIndexBuffer.reset();
+                mappedSegmentIndexBuffer.putInt(0);
+                mappedSegmentIndexBuffer.mark();
+            }
+        } catch (BufferOverflowException e) {}
     }
 }
