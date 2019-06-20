@@ -14,6 +14,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 
 import static io.github.pmackowski.rsocket.raft.storage.RaftStorageUtils.getInt;
 import static io.github.pmackowski.rsocket.raft.storage.RaftStorageUtils.openChannel;
@@ -34,19 +35,28 @@ public class ChunkSegmentReader implements SegmentReader {
     private IndexedLogEntry current;
     private IndexedLogEntry next;
     private long nextPosition;
+    private Supplier<Long> currentMaxIndexSupplier;
 
     public ChunkSegmentReader(Segment segment, int chunkSize) {
         this(segment, segment.getFirstIndex(), chunkSize);
     }
 
+    public ChunkSegmentReader(Segment segment, int chunkSize, Supplier<Long> currentMaxIndexSupplier) {
+        this(segment, segment.getFirstIndex(), chunkSize, currentMaxIndexSupplier);
+    }
+
     public ChunkSegmentReader(Segment segment, long index, int chunkSize) {
-        LOGGER.info("reader start {} , index {}", segment, index);
+        this(segment, index, chunkSize, () -> Long.MAX_VALUE);
+    }
+
+    public ChunkSegmentReader(Segment segment, long index, int chunkSize, Supplier<Long> currentMaxIndexSupplier) {
         Preconditions.checkState(index >= segment.getFirstIndex());
         this.chunkSize = chunkSize;
         this.segment = segment;
         this.segmentChannel = openChannel(segment.getSegmentPath());
         this.segmentIndexChannel = openChannel(segment.getSegmentIndexPath());
         this.nextIndex = (int) (index - segment.getFirstIndex() + 1);
+        this.currentMaxIndexSupplier = currentMaxIndexSupplier;
         resetLocal(nextIndex);
     }
 
@@ -70,6 +80,9 @@ public class ChunkSegmentReader implements SegmentReader {
     }
 
     private void readNext() {
+        if (nextIndex > currentMaxIndexSupplier.get() - segment.getFirstIndex() + 1) {
+            return;
+        }
         try {
             if (segmentBuffer.position() == 0) {
                 segmentChannel.read(segmentBuffer, nextPosition);

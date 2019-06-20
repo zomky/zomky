@@ -1,19 +1,15 @@
 package io.github.pmackowski.rsocket.raft.storage;
 
-import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.storage.log.LogStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.MetaStorage;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.deserialize;
@@ -22,8 +18,13 @@ public class RaftStorage {
 
     private MetaStorage metaStorage;
     private LogStorage logStorage;
-    private List<ConfirmListener> confirmListeners = new ArrayList<>();
-    private long commitIndex;
+
+    /**
+     * index of highest log entry known to be
+     * committed (initialized to 0, increases
+     * monotonically)
+     */
+    private volatile long commitIndex;
 
     public RaftStorage(RaftStorageConfiguration configuration) {
         initialize(configuration);
@@ -33,11 +34,10 @@ public class RaftStorage {
 
     public void commit(long commitIndex) {
         this.commitIndex = commitIndex;
-        confirmListeners.forEach(listener -> listener.handle(commitIndex));
     }
 
-    public void addConfirmListener(ConfirmListener confirmListener) {
-        confirmListeners.add(confirmListener);
+    public long commitIndex() {
+        return commitIndex;
     }
 
     public int getTerm() {
@@ -60,12 +60,20 @@ public class RaftStorage {
         return logStorage.append(logEntry);
     }
 
+    public LogStorageReader openReader() {
+        return logStorage.openReader();
+    }
+
     public LogStorageReader openReader(long index) {
         return logStorage.openReader(index);
     }
 
-    public LogStorageReader openReader() {
-        return logStorage.openReader(1);
+    public LogStorageReader openCommitedEntriesReader() {
+        return logStorage.openReader(() -> this.commitIndex);
+    }
+
+    public LogStorageReader openCommitedEntriesReader(long index) {
+        return logStorage.openReader(index, () -> this.commitIndex);
     }
 
     public void truncateFromIndex(long index) {

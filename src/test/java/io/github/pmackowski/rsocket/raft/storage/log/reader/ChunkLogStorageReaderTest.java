@@ -38,7 +38,6 @@ class ChunkLogStorageReaderTest {
                 .segmentSize(SizeUnit.bytes, SEGMENT_SIZE)
                 .build()
         );
-        logStorageReader = logStorage.openChunkReader(1);
     }
 
     @AfterEach
@@ -48,7 +47,9 @@ class ChunkLogStorageReaderTest {
     }
 
     @Test
-    void readSegment() {
+    void iterateLogThatHasManySegments() {
+        logStorageReader = logStorage.openReader(1);
+
         long timestamp = System.currentTimeMillis();
         appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
         int i = 0;
@@ -62,7 +63,26 @@ class ChunkLogStorageReaderTest {
     }
 
     @Test
-    void resetSegment() {
+    void iterateLogThatHasManySegmentsAndCurrentMaxIndexSupplierIsProvided() {
+        int maxIndex = 35;
+        logStorageReader = logStorage.openReader(1, () -> (long) maxIndex);
+
+        long timestamp = System.currentTimeMillis();
+        appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
+        int i = 0;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        }
+        assertThat(i).isEqualTo(maxIndex);
+        assertThat(logStorageReader.hasNext()).isFalse();
+    }
+
+    @Test
+    void resetLogThatHasManySegments() {
+        logStorageReader = logStorage.openReader(1);
+
         long timestamp = System.currentTimeMillis();
         appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
         int i = 0;
@@ -87,8 +107,6 @@ class ChunkLogStorageReaderTest {
         assertThat(logStorageReader.hasNext()).isFalse();
     }
 
-
-
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
         assertThat(actual.getIndex()).isEqualTo(expectedIndex);
         assertThat(actual.getSize()).isEqualTo(expectedSize);
@@ -102,18 +120,10 @@ class ChunkLogStorageReaderTest {
         return new CommandEntry(term, timestamp, value.getBytes());
     }
 
-    private void appendEntries(int numberOfEntries, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
-        appendEntries(1, numberOfEntries, timestampFunction, valueFunction);
-    }
-
     private void appendEntries(int rangeStart, int rangeEnd, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
         IntStream.rangeClosed(rangeStart, rangeEnd).forEach(i -> {
             logStorage.append(commandEntry(i, timestampFunction.apply(i), valueFunction.apply(i)));
         });
-    }
-
-    private IndexedLogEntry appendEntry(int i, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
-        return logStorage.append(commandEntry(i, timestampFunction.apply(i), valueFunction.apply(i)));
     }
 
 }

@@ -84,6 +84,25 @@ class ChunkSegmentReaderTest {
     }
 
     @Test
+    void logEntriesPreInitializedAndCurrentMaxIndexSupplierIsProvided() {
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        int chunkSize = SEGMENT_SIZE / 4;
+        int maxIndex = 5;
+        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize, () -> (long) maxIndex);
+
+        IntStream.rangeClosed(1, maxIndex).forEach(i -> {
+            assertThat(segmentReader.hasNext()).isTrue();
+            String value = "abc" + i;
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        });
+
+        assertThat(segmentReader.hasNext()).isFalse();
+    }
+
+    @Test
     void logEntriesPreInitializedAndIndexGreaterThanFirstIndex() {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
@@ -94,6 +113,27 @@ class ChunkSegmentReaderTest {
         segmentReader = new ChunkSegmentReader(firstSegment, index, chunkSize);
 
         IntStream.rangeClosed(index, numberOfEntries).forEach(i -> {
+            assertThat(segmentReader.hasNext()).isTrue();
+            String value = "abc" + i;
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        });
+
+        assertThat(segmentReader.hasNext()).isFalse();
+    }
+
+
+    @Test
+    void logEntriesPreInitializedAndIndexGreaterThanFirstIndexAndCurrentMaxIndexSupplierIsProvided() {
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        int chunkSize = SEGMENT_SIZE / 4;
+        int index = 5;
+        int maxIndex = 7;
+        segmentReader = new ChunkSegmentReader(firstSegment, index, chunkSize, () -> (long) maxIndex);
+
+        IntStream.rangeClosed(index, maxIndex).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
             assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());

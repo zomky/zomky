@@ -12,6 +12,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import java.nio.BufferOverflowException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 
 public class LogStorage implements AutoCloseable {
 
@@ -57,14 +58,21 @@ public class LogStorage implements AutoCloseable {
         return index <= 0 ? 0: getEntryByIndex(index).getLogEntry().getTerm();
     }
 
-    public LogStorageReader openReader(long index) {
-        LogStorageReader reader = new ChunkLogStorageReader(segments, index);
-        logReaders.add(reader);
-        return reader;
+    public LogStorageReader openReader() {
+        return openReader(1, () -> Long.MAX_VALUE);
     }
 
-    public LogStorageReader openChunkReader(long index) {
-        LogStorageReader reader = new ChunkLogStorageReader(segments, index);
+    public LogStorageReader openReader(long index) {
+        return openReader(index, () -> Long.MAX_VALUE);
+    }
+
+    public LogStorageReader openReader(Supplier<Long> currentMaxIndexSupplier) {
+        return openReader(1, currentMaxIndexSupplier);
+    }
+
+    public LogStorageReader openReader(long index, Supplier<Long> currentMaxIndexSupplier) {
+        LogStorageReader reader = new ChunkLogStorageReader(segments, index, currentMaxIndexSupplier);
+        logReaders.add(reader);
         return reader;
     }
 

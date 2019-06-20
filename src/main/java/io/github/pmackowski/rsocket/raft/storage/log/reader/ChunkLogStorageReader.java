@@ -6,23 +6,24 @@ import io.github.pmackowski.rsocket.raft.storage.log.Segments;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 
 import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 
 public class ChunkLogStorageReader implements LogStorageReader {
+
+    public static final int CHUNK_SIZE = 8 * 1024;
 
     private Segments segments;
     private Segment currentSegment;
     private SegmentReader currentSegmentReader;
     private long initialIndex;
+    private Supplier<Long> currentMaxIndexSupplier;
 
-    public ChunkLogStorageReader(Segments segments) {
-        this(segments, 1L);
-    }
-
-    public ChunkLogStorageReader(Segments segments, long index) {
+    public ChunkLogStorageReader(Segments segments, long index, Supplier<Long> currentMaxIndexSupplier) {
         this.segments = segments;
         this.currentSegment = segments.getSegment(index);
-        this.currentSegmentReader = new ChunkSegmentReader(currentSegment, index, 8 * 1024);
+        this.currentSegmentReader = new ChunkSegmentReader(currentSegment, index, CHUNK_SIZE, currentMaxIndexSupplier);
         this.initialIndex = index;
+        this.currentMaxIndexSupplier = currentMaxIndexSupplier;
     }
 
     @Override
@@ -34,7 +35,7 @@ public class ChunkLogStorageReader implements LogStorageReader {
             if (nextSegment != null) {
                 currentSegmentReader.close();
                 currentSegment = nextSegment;
-                currentSegmentReader = new ChunkSegmentReader(currentSegment, 8 * 1024);
+                currentSegmentReader = new ChunkSegmentReader(currentSegment, CHUNK_SIZE, currentMaxIndexSupplier);
                 hasNext = currentSegmentReader.hasNext();
             }
         }
@@ -60,7 +61,7 @@ public class ChunkLogStorageReader implements LogStorageReader {
         if (currentSegment.getFirstIndex() != segment.getFirstIndex()) {
             currentSegmentReader.close();
             currentSegment = segment;
-            currentSegmentReader = new ChunkSegmentReader(currentSegment, index, 32);
+            currentSegmentReader = new ChunkSegmentReader(currentSegment, index, CHUNK_SIZE, currentMaxIndexSupplier);
         }
         currentSegmentReader.reset(index);
     }

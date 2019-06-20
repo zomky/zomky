@@ -65,13 +65,6 @@ class DefaultRaftServer implements RaftServer {
     private AtomicInteger currentLeaderId = new AtomicInteger(0);
 
     /**
-     * index of highest log entry known to be
-     * committed (initialized to 0, increases
-     * monotonically)
-     */
-    private AtomicLong commitIndex = new AtomicLong(0);
-
-    /**
      * index of highest log entry applied to state
      * machine (initialized to 0, increases
      * monotonically)
@@ -106,7 +99,7 @@ class DefaultRaftServer implements RaftServer {
         if (stateMachine != null) {
             stateMachineExecutor = Executors.newSingleThreadScheduledExecutor();
             stateMachineExecutor.scheduleWithFixedDelay(() -> {
-                while (lastApplied.get() < commitIndex.get()) {
+                while (lastApplied.get() < getCommitIndex()) {
                     LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, lastApplied.get() + 1);
                     IndexedLogEntry logEntry = raftStorage.getEntryByIndex(lastApplied.incrementAndGet());
                     ByteBuffer response = stateMachine.applyLogEntry(logEntry.getLogEntry());
@@ -139,12 +132,11 @@ class DefaultRaftServer implements RaftServer {
     }
 
     public long getCommitIndex() {
-        return commitIndex.get();
+        return raftStorage.commitIndex();
     }
 
     public void setCommitIndex(long commitIndex) {
-        this.commitIndex.set(commitIndex); // TODO
-//        raftStorage.commit(commitIndex);
+        raftStorage.commit(commitIndex);
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
     }
 
