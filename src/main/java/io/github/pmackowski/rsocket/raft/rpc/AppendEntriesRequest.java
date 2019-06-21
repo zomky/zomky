@@ -19,8 +19,7 @@ public  final class AppendEntriesRequest extends
     leaderId_ = 0;
     prevLogIndex_ = 0L;
     prevLogTerm_ = 0L;
-    entries_ = com.google.protobuf.ByteString.EMPTY;
-    entriesSize_ = 0;
+    entries_ = java.util.Collections.emptyList();
     leaderCommit_ = 0L;
   }
 
@@ -70,16 +69,14 @@ public  final class AppendEntriesRequest extends
             break;
           }
           case 42: {
-
-            entries_ = input.readBytes();
+            if (!((mutable_bitField0_ & 0x00000010) == 0x00000010)) {
+              entries_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
+              mutable_bitField0_ |= 0x00000010;
+            }
+            entries_.add(input.readBytes());
             break;
           }
           case 48: {
-
-            entriesSize_ = input.readInt32();
-            break;
-          }
-          case 56: {
 
             leaderCommit_ = input.readInt64();
             break;
@@ -92,6 +89,9 @@ public  final class AppendEntriesRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      if (((mutable_bitField0_ & 0x00000010) == 0x00000010)) {
+        entries_ = java.util.Collections.unmodifiableList(entries_);
+      }
       makeExtensionsImmutable();
     }
   }
@@ -107,6 +107,7 @@ public  final class AppendEntriesRequest extends
             io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest.class, io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest.Builder.class);
   }
 
+  private int bitField0_;
   public static final int TERM_FIELD_NUMBER = 1;
   private int term_;
   /**
@@ -160,35 +161,47 @@ public  final class AppendEntriesRequest extends
   }
 
   public static final int ENTRIES_FIELD_NUMBER = 5;
-  private com.google.protobuf.ByteString entries_;
+  private java.util.List<com.google.protobuf.ByteString> entries_;
   /**
    * <pre>
    * log entries to store (empty for heartbeat may send more than one for efficiency)
    * </pre>
    *
-   * <code>optional bytes entries = 5;</code>
+   * <code>repeated bytes entries = 5;</code>
    */
-  public com.google.protobuf.ByteString getEntries() {
+  public java.util.List<com.google.protobuf.ByteString>
+      getEntriesList() {
     return entries_;
   }
-
-  public static final int ENTRIESSIZE_FIELD_NUMBER = 6;
-  private int entriesSize_;
   /**
-   * <code>optional int32 entriesSize = 6;</code>
+   * <pre>
+   * log entries to store (empty for heartbeat may send more than one for efficiency)
+   * </pre>
+   *
+   * <code>repeated bytes entries = 5;</code>
    */
-  public int getEntriesSize() {
-    return entriesSize_;
+  public int getEntriesCount() {
+    return entries_.size();
+  }
+  /**
+   * <pre>
+   * log entries to store (empty for heartbeat may send more than one for efficiency)
+   * </pre>
+   *
+   * <code>repeated bytes entries = 5;</code>
+   */
+  public com.google.protobuf.ByteString getEntries(int index) {
+    return entries_.get(index);
   }
 
-  public static final int LEADERCOMMIT_FIELD_NUMBER = 7;
+  public static final int LEADERCOMMIT_FIELD_NUMBER = 6;
   private long leaderCommit_;
   /**
    * <pre>
    * leader’s commitIndex
    * </pre>
    *
-   * <code>optional int64 leaderCommit = 7;</code>
+   * <code>optional int64 leaderCommit = 6;</code>
    */
   public long getLeaderCommit() {
     return leaderCommit_;
@@ -218,14 +231,11 @@ public  final class AppendEntriesRequest extends
     if (prevLogTerm_ != 0L) {
       output.writeInt64(4, prevLogTerm_);
     }
-    if (!entries_.isEmpty()) {
-      output.writeBytes(5, entries_);
-    }
-    if (entriesSize_ != 0) {
-      output.writeInt32(6, entriesSize_);
+    for (int i = 0; i < entries_.size(); i++) {
+      output.writeBytes(5, entries_.get(i));
     }
     if (leaderCommit_ != 0L) {
-      output.writeInt64(7, leaderCommit_);
+      output.writeInt64(6, leaderCommit_);
     }
   }
 
@@ -250,17 +260,18 @@ public  final class AppendEntriesRequest extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(4, prevLogTerm_);
     }
-    if (!entries_.isEmpty()) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeBytesSize(5, entries_);
-    }
-    if (entriesSize_ != 0) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(6, entriesSize_);
+    {
+      int dataSize = 0;
+      for (int i = 0; i < entries_.size(); i++) {
+        dataSize += com.google.protobuf.CodedOutputStream
+          .computeBytesSizeNoTag(entries_.get(i));
+      }
+      size += dataSize;
+      size += 1 * getEntriesList().size();
     }
     if (leaderCommit_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-        .computeInt64Size(7, leaderCommit_);
+        .computeInt64Size(6, leaderCommit_);
     }
     memoizedSize = size;
     return size;
@@ -286,10 +297,8 @@ public  final class AppendEntriesRequest extends
         == other.getPrevLogIndex());
     result = result && (getPrevLogTerm()
         == other.getPrevLogTerm());
-    result = result && getEntries()
-        .equals(other.getEntries());
-    result = result && (getEntriesSize()
-        == other.getEntriesSize());
+    result = result && getEntriesList()
+        .equals(other.getEntriesList());
     result = result && (getLeaderCommit()
         == other.getLeaderCommit());
     return result;
@@ -312,10 +321,10 @@ public  final class AppendEntriesRequest extends
     hash = (37 * hash) + PREVLOGTERM_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getPrevLogTerm());
-    hash = (37 * hash) + ENTRIES_FIELD_NUMBER;
-    hash = (53 * hash) + getEntries().hashCode();
-    hash = (37 * hash) + ENTRIESSIZE_FIELD_NUMBER;
-    hash = (53 * hash) + getEntriesSize();
+    if (getEntriesCount() > 0) {
+      hash = (37 * hash) + ENTRIES_FIELD_NUMBER;
+      hash = (53 * hash) + getEntriesList().hashCode();
+    }
     hash = (37 * hash) + LEADERCOMMIT_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getLeaderCommit());
@@ -445,10 +454,8 @@ public  final class AppendEntriesRequest extends
 
       prevLogTerm_ = 0L;
 
-      entries_ = com.google.protobuf.ByteString.EMPTY;
-
-      entriesSize_ = 0;
-
+      entries_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000010);
       leaderCommit_ = 0L;
 
       return this;
@@ -473,13 +480,19 @@ public  final class AppendEntriesRequest extends
 
     public io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest result = new io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest(this);
+      int from_bitField0_ = bitField0_;
+      int to_bitField0_ = 0;
       result.term_ = term_;
       result.leaderId_ = leaderId_;
       result.prevLogIndex_ = prevLogIndex_;
       result.prevLogTerm_ = prevLogTerm_;
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        entries_ = java.util.Collections.unmodifiableList(entries_);
+        bitField0_ = (bitField0_ & ~0x00000010);
+      }
       result.entries_ = entries_;
-      result.entriesSize_ = entriesSize_;
       result.leaderCommit_ = leaderCommit_;
+      result.bitField0_ = to_bitField0_;
       onBuilt();
       return result;
     }
@@ -533,11 +546,15 @@ public  final class AppendEntriesRequest extends
       if (other.getPrevLogTerm() != 0L) {
         setPrevLogTerm(other.getPrevLogTerm());
       }
-      if (other.getEntries() != com.google.protobuf.ByteString.EMPTY) {
-        setEntries(other.getEntries());
-      }
-      if (other.getEntriesSize() != 0) {
-        setEntriesSize(other.getEntriesSize());
+      if (!other.entries_.isEmpty()) {
+        if (entries_.isEmpty()) {
+          entries_ = other.entries_;
+          bitField0_ = (bitField0_ & ~0x00000010);
+        } else {
+          ensureEntriesIsMutable();
+          entries_.addAll(other.entries_);
+        }
+        onChanged();
       }
       if (other.getLeaderCommit() != 0L) {
         setLeaderCommit(other.getLeaderCommit());
@@ -567,6 +584,7 @@ public  final class AppendEntriesRequest extends
       }
       return this;
     }
+    private int bitField0_;
 
     private int term_ ;
     /**
@@ -720,30 +738,58 @@ public  final class AppendEntriesRequest extends
       return this;
     }
 
-    private com.google.protobuf.ByteString entries_ = com.google.protobuf.ByteString.EMPTY;
-    /**
-     * <pre>
-     * log entries to store (empty for heartbeat may send more than one for efficiency)
-     * </pre>
-     *
-     * <code>optional bytes entries = 5;</code>
-     */
-    public com.google.protobuf.ByteString getEntries() {
-      return entries_;
+    private java.util.List<com.google.protobuf.ByteString> entries_ = java.util.Collections.emptyList();
+    private void ensureEntriesIsMutable() {
+      if (!((bitField0_ & 0x00000010) == 0x00000010)) {
+        entries_ = new java.util.ArrayList<com.google.protobuf.ByteString>(entries_);
+        bitField0_ |= 0x00000010;
+       }
     }
     /**
      * <pre>
      * log entries to store (empty for heartbeat may send more than one for efficiency)
      * </pre>
      *
-     * <code>optional bytes entries = 5;</code>
+     * <code>repeated bytes entries = 5;</code>
      */
-    public Builder setEntries(com.google.protobuf.ByteString value) {
+    public java.util.List<com.google.protobuf.ByteString>
+        getEntriesList() {
+      return java.util.Collections.unmodifiableList(entries_);
+    }
+    /**
+     * <pre>
+     * log entries to store (empty for heartbeat may send more than one for efficiency)
+     * </pre>
+     *
+     * <code>repeated bytes entries = 5;</code>
+     */
+    public int getEntriesCount() {
+      return entries_.size();
+    }
+    /**
+     * <pre>
+     * log entries to store (empty for heartbeat may send more than one for efficiency)
+     * </pre>
+     *
+     * <code>repeated bytes entries = 5;</code>
+     */
+    public com.google.protobuf.ByteString getEntries(int index) {
+      return entries_.get(index);
+    }
+    /**
+     * <pre>
+     * log entries to store (empty for heartbeat may send more than one for efficiency)
+     * </pre>
+     *
+     * <code>repeated bytes entries = 5;</code>
+     */
+    public Builder setEntries(
+        int index, com.google.protobuf.ByteString value) {
       if (value == null) {
     throw new NullPointerException();
   }
-  
-      entries_ = value;
+  ensureEntriesIsMutable();
+      entries_.set(index, value);
       onChanged();
       return this;
     }
@@ -752,37 +798,42 @@ public  final class AppendEntriesRequest extends
      * log entries to store (empty for heartbeat may send more than one for efficiency)
      * </pre>
      *
-     * <code>optional bytes entries = 5;</code>
+     * <code>repeated bytes entries = 5;</code>
+     */
+    public Builder addEntries(com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureEntriesIsMutable();
+      entries_.add(value);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * log entries to store (empty for heartbeat may send more than one for efficiency)
+     * </pre>
+     *
+     * <code>repeated bytes entries = 5;</code>
+     */
+    public Builder addAllEntries(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+      ensureEntriesIsMutable();
+      com.google.protobuf.AbstractMessageLite.Builder.addAll(
+          values, entries_);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * log entries to store (empty for heartbeat may send more than one for efficiency)
+     * </pre>
+     *
+     * <code>repeated bytes entries = 5;</code>
      */
     public Builder clearEntries() {
-      
-      entries_ = getDefaultInstance().getEntries();
-      onChanged();
-      return this;
-    }
-
-    private int entriesSize_ ;
-    /**
-     * <code>optional int32 entriesSize = 6;</code>
-     */
-    public int getEntriesSize() {
-      return entriesSize_;
-    }
-    /**
-     * <code>optional int32 entriesSize = 6;</code>
-     */
-    public Builder setEntriesSize(int value) {
-      
-      entriesSize_ = value;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>optional int32 entriesSize = 6;</code>
-     */
-    public Builder clearEntriesSize() {
-      
-      entriesSize_ = 0;
+      entries_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000010);
       onChanged();
       return this;
     }
@@ -793,7 +844,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 7;</code>
+     * <code>optional int64 leaderCommit = 6;</code>
      */
     public long getLeaderCommit() {
       return leaderCommit_;
@@ -803,7 +854,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 7;</code>
+     * <code>optional int64 leaderCommit = 6;</code>
      */
     public Builder setLeaderCommit(long value) {
       
@@ -816,7 +867,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 7;</code>
+     * <code>optional int64 leaderCommit = 6;</code>
      */
     public Builder clearLeaderCommit() {
       

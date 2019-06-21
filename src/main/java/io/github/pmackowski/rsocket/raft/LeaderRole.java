@@ -5,6 +5,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.StorageException;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
@@ -45,6 +47,8 @@ public class LeaderRole implements RaftServerRole {
 
     private ConcurrentMap<Integer, Disposable> heartbeats = new ConcurrentHashMap<>();
 
+    private ConcurrentMap<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
+
     @Override
     public NodeState nodeState() {
         return NodeState.LEADER;
@@ -60,6 +64,10 @@ public class LeaderRole implements RaftServerRole {
             Disposable disposable = heartbeats.remove(sender.getNodeId());
             if (disposable != null) {
                 disposable.dispose();
+            }
+            BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
+            if (logStorageReader != null) {
+                logStorageReader.close();
             }
         });
     }
@@ -85,11 +93,17 @@ public class LeaderRole implements RaftServerRole {
 
     private void initHeartbeats(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
         LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
-        long lastLogIndex = raftStorage.getLast().getIndex();
-        long nextIdx = lastLogIndex + 1;
-        nextIndex.put(sender.getNodeId(), nextIdx);
-        matchIndex.put(sender.getNodeId(), 0L);
-        heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
+        try {
+            long lastLogIndex = raftStorage.getLast().getIndex();
+            long nextIdx = lastLogIndex + 1;
+            nextIndex.put(sender.getNodeId(), nextIdx);
+            matchIndex.put(sender.getNodeId(), 0L);
+            heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
+            logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(nextIdx)));
+        } catch (Exception e) {
+            LOGGER.error("initHeartbeats", e);
+            throw new StorageException(e);
+        }
     }
 
     private Flux<Payload> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {
@@ -108,7 +122,7 @@ public class LeaderRole implements RaftServerRole {
                                  }
                                  if (appendEntriesResponse.getSuccess()) {
                                      // If successful: update nextIndex and matchIndex for follower
-                                     long lastLogIndex = appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesSize();
+                                     long lastLogIndex = appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesCount();
                                      long nextIdx = lastLogIndex + 1;
                                      nextIndex.put(sender.getNodeId(), nextIdx);
                                      matchIndex.put(sender.getNodeId(), lastLogIndex);
@@ -143,25 +157,25 @@ public class LeaderRole implements RaftServerRole {
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftStorage raftStorage) {
+        BoundedLogStorageReader logStorageReader = logStorageReaders.get(sender.getNodeId());
         long senderIdxId = nextIndex.get(sender.getNodeId());
-        // If last log index ≥ nextIndex for a follower: send
-        // AppendEntries RPC with log entries starting at nextIndex
-        ByteBuffer entries = null;
-
-        long lastIndex = raftStorage.getLast().getIndex();
-        if (lastIndex >= senderIdxId) {
-            entries = raftStorage.getEntriesByIndex(senderIdxId, lastIndex);
-        }
         long prevLogIndex = senderIdxId - 1;
         int prevLogTerm = raftStorage.getTermByIndex(prevLogIndex);
 
-        return AppendEntriesRequest.newBuilder()
+        // If last log index ≥ nextIndex for a follower: send
+        // AppendEntries RPC with log entries starting at nextIndex
+        AppendEntriesRequest.Builder builder = AppendEntriesRequest.newBuilder();
+        long lastIndex = raftStorage.getLast().getIndex();
+        if (lastIndex >= senderIdxId) {
+            Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderIdxId, lastIndex);
+            entries.forEach(rawLogEntry -> builder.addEntries(ByteString.copyFrom(rawLogEntry))); // always copy as ByteString is immutable
+        }
+
+        return builder
                 .setTerm(raftStorage.getTerm())
                 .setLeaderId(node.nodeId)
                 .setPrevLogIndex(prevLogIndex)
                 .setPrevLogTerm(prevLogTerm)
-                .setEntries(entries != null ? ByteString.copyFrom(entries) : ByteString.EMPTY)
-                .setEntriesSize((int) (lastIndex - senderIdxId + 1))
                 .setLeaderCommit(node.getCommitIndex())
                 .build();
     }

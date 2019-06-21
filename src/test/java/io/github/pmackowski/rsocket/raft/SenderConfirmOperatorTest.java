@@ -1,7 +1,9 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.rsocket.Payload;
 import io.rsocket.util.DefaultPayload;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,11 +16,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.deserialize;
+import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.serialize;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,10 +43,10 @@ public class SenderConfirmOperatorTest {
     public void setUp() {
         index = new AtomicLong();
 
-        Mockito.lenient().when(raftStorage.appendLog(anyInt(), any())).thenAnswer(invocation -> {
+        Mockito.lenient().when(raftStorage.append(any(ByteBuffer.class))).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
-            int term = (int) invocation.getArguments()[0];
-            return new LogEntryInfo().term(term).index(idx);
+            ByteBuffer logEntry = (ByteBuffer) invocation.getArguments()[0];
+            return new IndexedLogEntry(deserialize(logEntry), idx, 0);
         });
     }
 
@@ -62,7 +66,7 @@ public class SenderConfirmOperatorTest {
     public void storageFailure() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        when(raftStorage.appendLog(anyInt(), any())).thenThrow(new RuntimeException("append log failed"));
+        when(raftStorage.append(any(ByteBuffer.class))).thenThrow(new RuntimeException("append log failed"));
 
         StepVerifier.create(new SenderConfirmOperator(payloads, node, raftStorage))
                 .expectSubscription()
@@ -80,7 +84,7 @@ public class SenderConfirmOperatorTest {
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
-                verify(raftStorage, Mockito.times(2)).appendLog(anyInt(), any());
+                verify(raftStorage, Mockito.times(2)).append(any(ByteBuffer.class));
                 node.setCommitIndex(2);
             })
             .expectNextCount(2)
@@ -99,7 +103,7 @@ public class SenderConfirmOperatorTest {
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
                 verify(raftStorage, Mockito.times(2))
-                        .appendLog(anyInt(), any());
+                        .append( any(ByteBuffer.class));
                 node.setCommitIndex(2);
             })
             .expectNextCount(2)
@@ -107,7 +111,7 @@ public class SenderConfirmOperatorTest {
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
                 verify(raftStorage, Mockito.times(10))
-                        .appendLog(anyInt(), any());
+                        .append(any(ByteBuffer.class));
                 node.setCommitIndex(10);
             })
             .expectNextCount(8)
@@ -118,6 +122,12 @@ public class SenderConfirmOperatorTest {
     }
 
     private Flux<Payload> payloads(int nbMessages) {
-        return Flux.range(1,nbMessages).map(i -> DefaultPayload.create("m"+i));
+        return Flux.range(1,nbMessages).map(i -> {
+            LogEntry logEntry = new CommandEntry(i, i, ("abc"+i).getBytes());
+            ByteBuffer buffer = ByteBuffer.allocate(12 + ("abc"+i).length());
+            serialize(logEntry, buffer);
+            buffer.flip();
+            return DefaultPayload.create(buffer);
+        });
     }
 }

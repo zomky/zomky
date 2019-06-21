@@ -30,7 +30,7 @@ buildscript {
 }
 plugins {
     id 'org.asciidoctor.convert' version '1.5.6'
-    id 'me.champeau.gradle.jmh' version '0.4.7'
+    id 'me.champeau.gradle.jmh' version '0.4.8'
     id 'com.google.protobuf' version '0.8.8'
 }
 
@@ -106,6 +106,9 @@ configure(allprojects) { project ->
     ]
 
     dependencies {
+
+        compile 'org.openjdk.jmh:jmh-generator-annprocess:1.21'
+
         implementation "io.rsocket:rsocket-core:$rsocketVersion"
         implementation "io.rsocket:rsocket-transport-netty:$rsocketVersion"
         implementation "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"

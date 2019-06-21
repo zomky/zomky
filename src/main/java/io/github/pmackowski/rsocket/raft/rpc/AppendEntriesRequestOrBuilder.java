@@ -48,21 +48,32 @@ public interface AppendEntriesRequestOrBuilder extends
    * log entries to store (empty for heartbeat may send more than one for efficiency)
    * </pre>
    *
-   * <code>optional bytes entries = 5;</code>
+   * <code>repeated bytes entries = 5;</code>
    */
-  com.google.protobuf.ByteString getEntries();
-
+  java.util.List<com.google.protobuf.ByteString> getEntriesList();
   /**
-   * <code>optional int32 entriesSize = 6;</code>
+   * <pre>
+   * log entries to store (empty for heartbeat may send more than one for efficiency)
+   * </pre>
+   *
+   * <code>repeated bytes entries = 5;</code>
    */
-  int getEntriesSize();
+  int getEntriesCount();
+  /**
+   * <pre>
+   * log entries to store (empty for heartbeat may send more than one for efficiency)
+   * </pre>
+   *
+   * <code>repeated bytes entries = 5;</code>
+   */
+  com.google.protobuf.ByteString getEntries(int index);
 
   /**
    * <pre>
    * leader’s commitIndex
    * </pre>
    *
-   * <code>optional int64 leaderCommit = 7;</code>
+   * <code>optional int64 leaderCommit = 6;</code>
    */
   long getLeaderCommit();
 }

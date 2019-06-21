@@ -3,6 +3,8 @@ package io.github.pmackowski.rsocket.raft.statemachine.kv;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.StateMachine;
 import io.github.pmackowski.rsocket.raft.rpc.CommandRequest;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +12,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-public class KVStateMachine implements StateMachine {
+public class KVStateMachine implements StateMachine<ByteBuffer> {
 
     Map<String,String> map = new HashMap<>();
 
@@ -23,9 +25,9 @@ public class KVStateMachine implements StateMachine {
     }
 
     @Override
-    public ByteBuffer applyLogEntry(ByteBuffer entry) {
+    public ByteBuffer applyLogEntry(LogEntry entry) {
         try {
-            CommandRequest commandRequest = CommandRequest.parseFrom(entry.array());
+            CommandRequest commandRequest = CommandRequest.parseFrom(((CommandEntry) entry).getValue());
             LOGGER.debug("[KVStoreServerImpl {}] [PUT] {} = {}", nodeId, commandRequest.getKey(), commandRequest.getValue());
             map.put(commandRequest.getKey(), commandRequest.getValue());
         } catch (InvalidProtocolBufferException e) {
@@ -34,7 +36,7 @@ public class KVStateMachine implements StateMachine {
 //      String req = new String(entry.array());
 //      LOGGER.info("[KVStoreServerImpl {}] APPLY {}", nodeId, req);
 //      return ByteBuffer.wrap((req + "-resp").getBytes());
-        return ByteBuffer.wrap(entry.array());
+        return ByteBuffer.wrap(((CommandEntry) entry).getValue());
 
     }
 

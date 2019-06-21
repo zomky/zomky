@@ -1,7 +1,10 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.storage.LogEntryInfo;
+import io.github.pmackowski.rsocket.raft.rpc.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
@@ -85,7 +88,9 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                LogEntryInfo logEntryInfo = raftStorage.appendLog(raftStorage.getTerm(), payload.getData());
+                final CommandRequest commandRequest = CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), commandRequest.toByteArray());
+                IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);
