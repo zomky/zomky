@@ -126,6 +126,30 @@ class LogStorageTest {
                 .hasCause(new BufferUnderflowException());
     }
 
+    @Test
+    void truncateManySegments() {
+        logStorage = new LogStorage(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.bytes, 100)
+                .build());
+
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        logStorage.truncateFromIndex(5);
+
+        IntStream.rangeClosed(1, 4).forEach(i -> {
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
+        });
+        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
+        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
+                .isInstanceOf(StorageException.class)
+                .hasCause(new BufferUnderflowException());
+    }
+
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
         assertThat(actual.getIndex()).isEqualTo(expectedIndex);
         assertThat(actual.getSize()).isEqualTo(expectedSize);

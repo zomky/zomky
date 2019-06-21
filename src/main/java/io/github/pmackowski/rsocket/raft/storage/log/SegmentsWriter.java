@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class SegmentsWriter {
@@ -43,6 +44,15 @@ public class SegmentsWriter {
             } catch (IOException e) {
                 LOGGER.warn("Segment after creation has not been released!", e);
             }
+        }
+    }
+
+    public void delete(Segment segment) {
+        try {
+            Files.deleteIfExists(segment.getSegmentPath());
+            Files.deleteIfExists(segment.getSegmentIndexPath());
+        } catch (IOException e) {
+            throw new StorageException(e);
         }
     }
 }

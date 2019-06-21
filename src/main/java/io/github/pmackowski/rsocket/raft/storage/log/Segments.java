@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -60,6 +61,15 @@ public class Segments {
         return createSegment(segmentHeader);
     }
 
+    public Segment deleteSegments(long index) {
+        getTailSegments(index).forEach(segment -> {
+            segment.release();
+            segmentsWriter.delete(segment);
+            segments.remove(segment.getFirstIndex());
+        });
+        return getLastSegment();
+    }
+
     public Segment getLastSegment() {
         return segments.lastEntry().getValue();
     }
@@ -80,7 +90,12 @@ public class Segments {
         return nextSegment != null ? nextSegment.getValue() : null;
     }
 
+    Collection<Segment> getTailSegments(long index) {
+        return segments.tailMap(index).values();
+    }
+
     public void release() {
         segments.values().forEach(Segment::release);
     }
+
 }
