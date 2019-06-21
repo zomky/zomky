@@ -97,7 +97,8 @@ public class LogStorage implements AutoCloseable {
         }
         logReaders.forEach(logStorageReader -> {
             if (logStorageReader.getCurrentIndex() >= index) {
-                logStorageReader.reset(index - 1);
+                // TODO thread safe (reset, hasNext, next)
+                 logStorageReader.reset(index - 1);
             }
         });
         lastLogEntryIndex = segmentWriter.truncateFromIndex(index);

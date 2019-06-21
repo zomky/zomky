@@ -5,6 +5,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
@@ -92,12 +93,17 @@ public class LeaderRole implements RaftServerRole {
 
     private void initHeartbeats(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
         LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
-        long lastLogIndex = raftStorage.getLast().getIndex();
-        long nextIdx = lastLogIndex + 1;
-        nextIndex.put(sender.getNodeId(), nextIdx);
-        matchIndex.put(sender.getNodeId(), 0L);
-        heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
-        logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(lastLogIndex)));
+        try {
+            long lastLogIndex = raftStorage.getLast().getIndex();
+            long nextIdx = lastLogIndex + 1;
+            nextIndex.put(sender.getNodeId(), nextIdx);
+            matchIndex.put(sender.getNodeId(), 0L);
+            heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
+            logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(nextIdx)));
+        } catch (Exception e) {
+            LOGGER.error("initHeartbeats", e);
+            throw new StorageException(e);
+        }
     }
 
     private Flux<Payload> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {

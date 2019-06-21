@@ -116,7 +116,7 @@ class RaftServerTest {
         assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
         assertThat(raftStorage3.getTerm()).isEqualTo(1);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7000);
-//        assertThat(raftStorage1.getLast()).isEqualTo(new LogEntryInfo().index(0).term(0));
+        assertThat(raftStorage1.getLast().getIndex()).isEqualTo(0);
 
     }
 
@@ -144,11 +144,10 @@ class RaftServerTest {
         assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
         assertThat(raftStorage3.getTerm()).isEqualTo(1);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7000);
-//        assertThat(raftStorage1.getLast()).isEqualTo(new LogEntryInfo().index(0).term(0));
 
         raftServer1.dispose();
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2.getCurrentLeaderId() == 7001);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer2.getCurrentLeaderId() == 7001);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer3.getCurrentLeaderId() == 7001);
         assertThat(raftServer2.isLeader()).isTrue();
         assertThat(raftServer3.isFollower()).isTrue();
@@ -175,11 +174,11 @@ class RaftServerTest {
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .blockLast();
 
-        /*await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries).term(1)));
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().getIndex() == nbEntries);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().getIndex() == nbEntries);
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
+        /*assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
                 .isEqualTo(expectedContent(nbEntries));
 
         assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7001))
