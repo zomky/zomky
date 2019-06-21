@@ -95,6 +95,11 @@ public class LogStorage implements AutoCloseable {
             lastSegment = segments.deleteSegments(index);
             segmentWriter = new SegmentWriter(lastSegment);
         }
+        logReaders.forEach(logStorageReader -> {
+            if (logStorageReader.getCurrentIndex() >= index) {
+                logStorageReader.reset(index - 1);
+            }
+        });
         lastLogEntryIndex = segmentWriter.truncateFromIndex(index);
         lastLogEntry = lastSegment.getEntryByIndex(lastLogEntryIndex);
     }

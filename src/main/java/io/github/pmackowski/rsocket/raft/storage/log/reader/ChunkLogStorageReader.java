@@ -51,6 +51,11 @@ public class ChunkLogStorageReader implements LogStorageReader {
     }
 
     @Override
+    public long getCurrentIndex() {
+        return currentSegmentReader.getCurrentIndex();
+    }
+
+    @Override
     public void reset() {
         reset(initialIndex);
     }

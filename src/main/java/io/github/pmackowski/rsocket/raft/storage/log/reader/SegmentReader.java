@@ -11,4 +11,5 @@ public interface SegmentReader extends Iterator<IndexedLogEntry>, AutoCloseable 
 
     void reset(long index);
 
+    long getCurrentIndex();
 }

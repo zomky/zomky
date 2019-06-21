@@ -12,4 +12,6 @@ public interface LogStorageReader extends Iterator<IndexedLogEntry>, AutoCloseab
     @Override
     void close();
 
+    long getCurrentIndex();
+
 }

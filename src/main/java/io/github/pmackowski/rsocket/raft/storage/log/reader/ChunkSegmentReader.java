@@ -137,6 +137,14 @@ public class ChunkSegmentReader implements SegmentReader {
     }
 
     @Override
+    public long getCurrentIndex() {
+        if (current != null) {
+            return current.getIndex();
+        }
+        return nextIndex + segment.getFirstIndex() - 1;
+    }
+
+    @Override
     public void reset(long index) {
         resetLocal((int) (index - segment.getFirstIndex() + 1));
     }

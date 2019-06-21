@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -138,6 +139,62 @@ class LogStorageTest {
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
         logStorage.truncateFromIndex(5);
+
+        IntStream.rangeClosed(1, 4).forEach(i -> {
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
+        });
+        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
+        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
+                .isInstanceOf(StorageException.class)
+                .hasCause(new BufferUnderflowException());
+    }
+
+    @Test
+    void truncateWhenReaderIsOpened() {
+        logStorage = new LogStorage(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.bytes, 1024)
+                .build());
+
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        LogStorageReader logStorageReader = logStorage.openReader();
+
+        logStorage.truncateFromIndex(5);
+
+        IntStream.rangeClosed(1, 4).forEach(i -> {
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
+        });
+        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
+        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
+                .isInstanceOf(StorageException.class)
+                .hasCause(new BufferUnderflowException());
+
+    }
+
+    @Test
+    void truncateManySegmentsWhenReaderIsOpened() {
+        logStorage = new LogStorage(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.bytes, 100)
+                .build());
+
+        long timestamp = System.currentTimeMillis();
+        int numberOfEntries = 10;
+        appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        LogStorageReader logStorageReader = logStorage.openReader();
+        logStorageReader.reset(9);
+
+        logStorage.truncateFromIndex(5);
+
+        assertThat(logStorageReader.getCurrentIndex()).isEqualTo(4);
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String value = "abc" + i;
