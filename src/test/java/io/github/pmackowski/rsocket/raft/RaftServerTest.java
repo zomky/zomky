@@ -36,6 +36,8 @@ import static org.mockito.BDDMockito.given;
 class RaftServerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
+    private static final boolean PRE_VOTE = true; // TODO add new tests for pre vote
+    private static final boolean LEADER_STICKINESS = true; // TODO add new tests for leader stickiness
 
     @TempDir
     Path folder;
@@ -68,6 +70,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7001, 7002))
                     .stateMachine(new KVStateMachine(7000))
                     .electionTimeout(electionTimeout1)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
         raftServerMono2 = new RaftServerBuilder()
                     .nodeId(7001)
@@ -75,6 +79,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7000, 7002))
                     .stateMachine(new KVStateMachine(7001))
                     .electionTimeout(electionTimeout2)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
         raftServerMono3 = new RaftServerBuilder()
                     .nodeId(7002)
@@ -82,6 +88,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7000, 7001))
                     .stateMachine(new KVStateMachine(7002))
                     .electionTimeout(electionTimeout3)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
     }
 

@@ -21,7 +21,6 @@ public class FollowerRole implements RaftServerRole {
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerRole.class);
 
     private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
-    private static final boolean PRE_VOTE_ENABLED = false;
 
     private DirectProcessor<Payload> processor;
     private FluxSink<Payload> sink;
@@ -34,14 +33,13 @@ public class FollowerRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer node, RaftStorage raftStorage) {
-        LOGGER.info("[Follower {}] onInit !!!!!", node.nodeId);
         processor = DirectProcessor.create();
         sink = processor.sink(FluxSink.OverflowStrategy.DROP);
-        subscription = processor.timeout(node.electionTimeout.nextRandom())
+        subscription = processor.timeout(node.nextElectionTimeout())
 //                .doOnNext(ReferenceCounted::release)
                 .onErrorResume(throwable -> {
                     LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, throwable.getMessage());
-                    if (PRE_VOTE_ENABLED) {
+                    if (node.preVote()) {
                         return sendPreVotes(node, raftStorage)
                                 .doOnNext(preVotes -> {
                                     if (preVotes) {
@@ -61,7 +59,6 @@ public class FollowerRole implements RaftServerRole {
 
     @Override
     public void onExit(DefaultRaftServer node, RaftStorage raftStorage) {
-        LOGGER.info("[Follower {}] onExit !!!!!", node.nodeId);
         subscription.dispose();
     }
 
@@ -98,7 +95,7 @@ public class FollowerRole implements RaftServerRole {
     }
 
     private Mono<Boolean> sendPreVotes(DefaultRaftServer node, RaftStorage raftStorage) {
-        Duration timeout = node.electionTimeout.nextRandom();
+        Duration timeout = node.nextElectionTimeout();
         return node.availableSenders()
                     .flatMap(sender -> sendPreVoteRequest(node, raftStorage, sender, timeout))
                     .filter(PreVoteResponse::getVoteGranted)
@@ -106,6 +103,7 @@ public class FollowerRole implements RaftServerRole {
                     .timeout(timeout)
                     .next()
                     .map(i -> true)
+                    .doOnError(throwable -> LOGGER.warn(String.format("[RaftServer %s] sendPreVote failed!", node.nodeId), throwable))
                     .onErrorReturn(false);
     }
 

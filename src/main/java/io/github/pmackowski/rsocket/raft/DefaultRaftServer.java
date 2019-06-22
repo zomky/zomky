@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +75,10 @@ class DefaultRaftServer implements RaftServer {
     private Receiver receiver;
     private Senders senders;
     private RaftStorage raftStorage;
+    private boolean preVote;
+    private boolean leaderStickiness;
+    private AtomicLong lastAppendEntriesCall = new AtomicLong(0);
+    private volatile Duration currentElectionTimeout = Duration.ofMillis(0);
 
     private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
     private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
@@ -83,11 +88,19 @@ class DefaultRaftServer implements RaftServer {
 
     ElectionTimeout electionTimeout;
 
-    DefaultRaftServer(int port, RaftStorage raftStorage, List<Integer> clientPorts, StateMachine<ByteBuffer> stateMachine, ElectionTimeout electionTimeout) {
+    DefaultRaftServer(int port,
+                      RaftStorage raftStorage,
+                      List<Integer> clientPorts,
+                      StateMachine<ByteBuffer> stateMachine,
+                      ElectionTimeout electionTimeout,
+                      boolean preVote,
+                      boolean leaderStickiness) {
         this.nodeId = port;
         this.raftStorage = raftStorage;
         this.stateMachine = stateMachine;
         this.electionTimeout = electionTimeout;
+        this.preVote = preVote;
+        this.leaderStickiness = leaderStickiness;
         this.receiver = new Receiver(this);
         this.senders = new Senders(this, clientPorts);
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
@@ -138,6 +151,10 @@ class DefaultRaftServer implements RaftServer {
     public void setCommitIndex(long commitIndex) {
         raftStorage.commit(commitIndex);
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
+    }
+
+    public void appendEntriesCall() {
+        this.lastAppendEntriesCall.set(System.currentTimeMillis());
     }
 
     public void addConfirmListener(ConfirmListener zomkyStorageConfirmListener) {
@@ -233,4 +250,21 @@ class DefaultRaftServer implements RaftServer {
         return currentLeaderId.get();
     }
 
+    public boolean preVote() {
+        return preVote;
+    }
+
+    public boolean leaderStickiness() {
+        return leaderStickiness;
+    }
+
+    public Duration nextElectionTimeout() {
+        this.currentElectionTimeout = electionTimeout.nextRandom();
+        LOGGER.info("[RaftServer {}] Current election timeout {}", nodeId, currentElectionTimeout);
+        return currentElectionTimeout;
+    }
+
+    public boolean lastAppendEntriesWithinElectionTimeout() {
+        return System.currentTimeMillis() - lastAppendEntriesCall.get() < currentElectionTimeout.toMillis();
+    }
 }
