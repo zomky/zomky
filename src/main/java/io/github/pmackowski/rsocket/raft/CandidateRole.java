@@ -58,7 +58,7 @@ public class CandidateRole implements RaftServerRole {
                 .filter(VoteResponse::getVoteGranted)
                 // wait until quorum achieved or election timeout elapsed
                 .buffer(QUORUM - 1)
-                .timeout(node.electionTimeout.nextRandom())
+                .timeout(node.nextElectionTimeout())
                 .next()
                 .doOnSuccess(s -> {
                     node.convertToLeader();

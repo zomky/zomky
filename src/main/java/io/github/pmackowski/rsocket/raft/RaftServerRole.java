@@ -38,6 +38,8 @@ public interface RaftServerRole {
                         return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                     }
 
+                    node.appendEntriesCall();
+
                     // 3. If an existing entry conflicts with a new one (same index
                     //    but different terms), delete the existing entry and all that
                     //    follow it
@@ -63,17 +65,18 @@ public interface RaftServerRole {
         return Mono.just(preRequestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
-                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
-
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
-                    // TODO
+                    if (node.leaderStickiness() && node.lastAppendEntriesWithinElectionTimeout()) {
+                        return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
+                    }
 
                     // 2. Reply false if nextTerm < currentTerm
                     if (preRequestVote.getNextTerm() < currentTerm) {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
+                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
                     // 3. If caller's log is is at least as up-to-date as receiver's log, return true
                     if (preRequestVote.getLastLogTerm() < lastLogEntry.getLogEntry().getTerm() ||
                             (preRequestVote.getLastLogTerm() == lastLogEntry.getLogEntry().getTerm() &&
@@ -89,6 +92,13 @@ public interface RaftServerRole {
         return Mono.just(requestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
+
+                    // 1. Reply false if last AppendEntries call was received
+                    //    less than election timeout ago (leader stickiness)
+                    if (node.leaderStickiness() && node.lastAppendEntriesWithinElectionTimeout()) {
+                        return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
+                    }
+
                     if (requestVote.getTerm() > currentTerm) {
                         node.convertToFollower(requestVote.getTerm());
                     }

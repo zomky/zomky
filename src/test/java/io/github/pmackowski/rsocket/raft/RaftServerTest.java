@@ -36,6 +36,8 @@ import static org.mockito.BDDMockito.given;
 class RaftServerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
+    private static final boolean PRE_VOTE = true; // TODO add new tests for pre vote
+    private static final boolean LEADER_STICKINESS = true; // TODO add new tests for leader stickiness
 
     @TempDir
     Path folder;
@@ -68,6 +70,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7001, 7002))
                     .stateMachine(new KVStateMachine(7000))
                     .electionTimeout(electionTimeout1)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
         raftServerMono2 = new RaftServerBuilder()
                     .nodeId(7001)
@@ -75,6 +79,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7000, 7002))
                     .stateMachine(new KVStateMachine(7001))
                     .electionTimeout(electionTimeout2)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
         raftServerMono3 = new RaftServerBuilder()
                     .nodeId(7002)
@@ -82,6 +88,8 @@ class RaftServerTest {
                     .clientPorts(Arrays.asList(7000, 7001))
                     .stateMachine(new KVStateMachine(7002))
                     .electionTimeout(electionTimeout3)
+                    .preVote(PRE_VOTE)
+                    .leaderStickiness(LEADER_STICKINESS)
                     .start();
     }
 
@@ -187,7 +195,7 @@ class RaftServerTest {
         assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7002))
                 .isEqualTo(expectedContent(nbEntries));*/
     }
-/*
+
     @Test
     void testLogReplicationMultipleClients() {
         testElection();
@@ -209,57 +217,58 @@ class RaftServerTest {
                 .doOnComplete(() -> LOGGER.info("Client2 finished"))
                 .subscribe();
 
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(1)));
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(1)));
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(1)));
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries * 2);
     }
 
-    @Test
-    void testLogReplicationWithLeaderFailure() throws InterruptedException {
-        testElection();
+    /*
+        @Test
+        void testLogReplicationWithLeaderFailure() throws InterruptedException {
+            testElection();
 
-        KVStoreClient kvStore = new KVStoreClient(Arrays.asList(7000));
-        kvStore.start();
+            KVStoreClient kvStore = new KVStoreClient(Arrays.asList(7000));
+            kvStore.start();
 
-        int nbEntries = 10;
+            int nbEntries = 10;
 
-        kvStore.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(100)).map(i -> new KeyValue("key"+i, "val"+i)))
-                .doOnSubscribe(subscription -> LOGGER.info("Client1 started"))
-                .doOnNext(s -> LOGGER.info("Client1 received {}", s))
-                .doOnComplete(() -> LOGGER.info("Client1 finished"))
-                .blockLast();
+            kvStore.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(100)).map(i -> new KeyValue("key"+i, "val"+i)))
+                    .doOnSubscribe(subscription -> LOGGER.info("Client1 started"))
+                    .doOnNext(s -> LOGGER.info("Client1 received {}", s))
+                    .doOnComplete(() -> LOGGER.info("Client1 finished"))
+                    .blockLast();
 
-        Thread.sleep(3000);
+            Thread.sleep(3000);
 
-        raftServer1.dispose();
-        raftServer2.dispose();
-        raftServer3.dispose();
+            raftServer1.dispose();
+            raftServer2.dispose();
+            raftServer3.dispose();
 
-        Thread.sleep(2000);
+            Thread.sleep(2000);
 
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofSeconds(10));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofMillis(300));
-        given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(1));
+            given(electionTimeout1.nextRandom()).willReturn(Duration.ofSeconds(10));
+            given(electionTimeout2.nextRandom()).willReturn(Duration.ofMillis(300));
+            given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(1));
 
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
-        raftServer3 = raftServerMono3.block();
+            raftServer1 = raftServerMono1.block();
+            raftServer2 = raftServerMono2.block();
+            raftServer3 = raftServerMono3.block();
 
-        KVStoreClient kvStore2 = new KVStoreClient(Arrays.asList(7001));
-        kvStore2.start();
+            KVStoreClient kvStore2 = new KVStoreClient(Arrays.asList(7001));
+            kvStore2.start();
 
-        Thread.sleep(2000);
-        kvStore2.put(Flux.range(11, nbEntries).map(i -> new KeyValue("key"+i, "val"+i)))
-                .doOnSubscribe(subscription -> LOGGER.info("Client2 started"))
-                .doOnNext(s -> LOGGER.info("Client2 received {}", s))
-                .doOnComplete(() -> LOGGER.info("Client2 finished"))
-                .blockLast();
+            Thread.sleep(2000);
+            kvStore2.put(Flux.range(11, nbEntries).map(i -> new KeyValue("key"+i, "val"+i)))
+                    .doOnSubscribe(subscription -> LOGGER.info("Client2 started"))
+                    .doOnNext(s -> LOGGER.info("Client2 received {}", s))
+                    .doOnComplete(() -> LOGGER.info("Client2 finished"))
+                    .blockLast();
 
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-    }
-*/
+            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
+            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
+            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
+        }
+    */
     private String expectedContent(int nbEntries) {
         return IntStream.rangeClosed(1, nbEntries).mapToObj(i -> "Abc"+i).collect(Collectors.joining());
     }
