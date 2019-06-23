@@ -121,7 +121,8 @@ public interface RaftServerRole {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
-                    boolean voteGranted = node.notVoted(requestVote.getTerm());
+                    boolean voteGranted = requestVote.getTerm() > raftStorage.getTerm() ||
+                            (requestVote.getTerm() == raftStorage.getTerm() && raftStorage.getVotedFor() == 0);
 
                     if (voteGranted) {
                         raftStorage.update(requestVote.getTerm(), requestVote.getCandidateId());

@@ -1,6 +1,13 @@
 package io.github.pmackowski.rsocket.raft;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
+import io.github.pmackowski.rsocket.raft.rpc.PreVoteResponse;
+import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
+import io.rsocket.Payload;
 import io.rsocket.RSocket;
+import io.rsocket.util.ByteBufPayload;
+import reactor.core.publisher.Mono;
 
 public class Sender {
 
@@ -22,6 +29,18 @@ public class Sender {
         this.requestVoteSocket = requestVoteSocket;
         this.appendEntriesSocket = appendEntriesSocket;
         this.available = available;
+    }
+
+    public Mono<PreVoteResponse> requestPreVote(PreVoteRequest preVoteRequest) {
+        Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), "pre-vote".getBytes());
+        return requestVoteSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return PreVoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid pre-vote response!", e);
+                    }
+                });
     }
 
     public RSocket getRequestVoteSocket() {

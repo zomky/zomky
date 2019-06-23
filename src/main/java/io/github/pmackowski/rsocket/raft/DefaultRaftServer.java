@@ -140,10 +140,6 @@ class DefaultRaftServer implements RaftServer {
         raftStorage.update(term + 1, nodeId);
     }
 
-    boolean notVoted(long term) {
-        return term > raftStorage.getTerm() || (term == raftStorage.getTerm() && raftStorage.getVotedFor() == 0);
-    }
-
     public long getCommitIndex() {
         return raftStorage.commitIndex();
     }
