@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
 @Fork(1)
 public class RaftStorageGetEntryByIndex {
 
-    RaftStorage raftStorage;
+    FileSystemRaftStorage raftStorage;
 
     Path directory;
 
@@ -36,7 +36,7 @@ public class RaftStorageGetEntryByIndex {
     @Setup
     public void setup() throws Exception {
         directory = RaftStorageBenchmarkUtils.createTempDirectory();
-        raftStorage = new RaftStorage(RaftStorageConfiguration.builder()
+        raftStorage = new FileSystemRaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, segmentSize)
                 .directory(Paths.get(directory.toAbsolutePath().toString()))
                 .build());

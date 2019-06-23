@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KeyValue;
+import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
@@ -27,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static java.lang.Thread.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
@@ -50,7 +50,7 @@ class RaftServerTest {
     RaftStorage raftStorage1, raftStorage2, raftStorage3;
 
     private RaftStorage raftStorage(String node) {
-        return new RaftStorage(RaftStorageConfiguration.builder()
+        return new FileSystemRaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, 1)
                 .directory(Paths.get(folder.toAbsolutePath().toString(), "node" + node ))
                 .build()

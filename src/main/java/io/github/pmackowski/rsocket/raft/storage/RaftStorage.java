@@ -1,109 +1,43 @@
 package io.github.pmackowski.rsocket.raft.storage;
 
-import io.github.pmackowski.rsocket.raft.storage.log.LogStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
-import io.github.pmackowski.rsocket.raft.storage.meta.MetaStorage;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.util.Optional;
 
-import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.deserialize;
+public interface RaftStorage {
 
-public class RaftStorage {
+    void commit(long commitIndex);
 
-    private MetaStorage metaStorage;
-    private LogStorage logStorage;
+    long commitIndex();
 
-    /**
-     * index of highest log entry known to be
-     * committed (initialized to 0, increases
-     * monotonically)
-     */
-    private volatile long commitIndex;
+    int getTerm();
 
-    public RaftStorage(RaftStorageConfiguration configuration) {
-        initialize(configuration);
-        this.metaStorage = new MetaStorage(configuration);
-        this.logStorage = new LogStorage(configuration);
-    }
+    int getVotedFor();
 
-    public void commit(long commitIndex) {
-        this.commitIndex = commitIndex;
-    }
+    void update(int term, int votedFor);
 
-    public long commitIndex() {
-        return commitIndex;
-    }
+    IndexedLogEntry append(ByteBuffer logEntry);
 
-    public int getTerm() {
-        return metaStorage.getTerm();
-    }
+    IndexedLogEntry append(LogEntry logEntry);
 
-    public int getVotedFor() {
-        return metaStorage.getVotedFor();
-    }
+    LogStorageReader openReader();
 
-    public void update(int term, int votedFor) {
-        metaStorage.update(term, votedFor);
-    }
+    LogStorageReader openReader(long index);
 
-    public IndexedLogEntry append(ByteBuffer logEntry) {
-        return logStorage.append(deserialize(logEntry));
-    }
+    LogStorageReader openCommitedEntriesReader();
 
-    public IndexedLogEntry append(LogEntry logEntry) {
-        return logStorage.append(logEntry);
-    }
+    LogStorageReader openCommitedEntriesReader(long index);
 
-    public LogStorageReader openReader() {
-        return logStorage.openReader();
-    }
+    void truncateFromIndex(long index);
 
-    public LogStorageReader openReader(long index) {
-        return logStorage.openReader(index);
-    }
+    IndexedLogEntry getLast();
 
-    public LogStorageReader openCommitedEntriesReader() {
-        return logStorage.openReader(() -> this.commitIndex);
-    }
+    IndexedLogEntry getEntryByIndex(long index);
 
-    public LogStorageReader openCommitedEntriesReader(long index) {
-        return logStorage.openReader(index, () -> this.commitIndex);
-    }
+    int getTermByIndex(long index);
 
-    public void truncateFromIndex(long index) {
-        logStorage.truncateFromIndex(index);
-    }
+    void close();
 
-    public IndexedLogEntry getLast() { // TODO
-        return Optional.ofNullable(logStorage.getLastEntry()).orElse(new IndexedLogEntry(new CommandEntry(0,0, "".getBytes()), 0, 0));
-    }
-
-    public IndexedLogEntry getEntryByIndex(long index) {
-        return logStorage.getEntryByIndex(index);
-    }
-
-    public int getTermByIndex(long index) {
-        return logStorage.getTermByIndex(index);
-    }
-
-    private void initialize(RaftStorageConfiguration configuration) {
-        try {
-            if (Files.notExists(configuration.getDirectory())) {
-                Files.createDirectory(configuration.getDirectory());
-            }
-        } catch (IOException e) {
-            throw new StorageException(e);
-        }
-    }
-
-    public void close() {
-        logStorage.close();
-        metaStorage.close();
-    }
 }

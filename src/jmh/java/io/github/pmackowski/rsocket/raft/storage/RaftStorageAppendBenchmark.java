@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 public class RaftStorageAppendBenchmark {
 
-    RaftStorage raftStorage;
+    FileSystemRaftStorage raftStorage;
 
     Path directory;
 
@@ -33,7 +33,7 @@ public class RaftStorageAppendBenchmark {
     @Setup(Level.Iteration)
     public void setupIteration() throws IOException {
         directory = RaftStorageBenchmarkUtils.createTempDirectory();
-        raftStorage = new RaftStorage(RaftStorageConfiguration.builder()
+        raftStorage = new FileSystemRaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, segmentSize)
                 .directory(Paths.get(directory.toAbsolutePath().toString()))
                 .build());

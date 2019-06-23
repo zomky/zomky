@@ -12,14 +12,14 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class RaftStorageIntegrationTest {
+class FileSystemRaftStorageIntegrationTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RaftStorageIntegrationTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemRaftStorageIntegrationTest.class);
 
     @TempDir
     Path directory;
 
-    private RaftStorage raftStorage;
+    private FileSystemRaftStorage raftStorage;
 
     @BeforeEach
     void setUp() {
@@ -38,7 +38,7 @@ class RaftStorageIntegrationTest {
                 .segmentSize(SizeUnit.kilobytes, 32)
                 .build();
 
-        raftStorage = new RaftStorage(configuration);
+        raftStorage = new FileSystemRaftStorage(configuration);
 
         assertThat(raftStorage.getVotedFor()).isEqualTo(0);
         assertThat(raftStorage.getTerm()).isEqualTo(0);
@@ -53,7 +53,7 @@ class RaftStorageIntegrationTest {
                 .segmentSize(SizeUnit.kilobytes, 32)
                 .build();
 
-        raftStorage = new RaftStorage(configuration);
+        raftStorage = new FileSystemRaftStorage(configuration);
 
         raftStorage.update(1, 7001);
 
