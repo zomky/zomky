@@ -54,7 +54,12 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public IndexedLogEntry append(LogEntry logEntry) {
-        last = new IndexedLogEntry(logEntry, entries.size() + 1, 0);
+        int size = 0;
+        if (logEntry instanceof CommandEntry) {
+            CommandEntry commandEntry = (CommandEntry) logEntry;
+            size = commandEntry.getValue().length + 12;
+        }
+        last = new IndexedLogEntry(logEntry, entries.size() + 1, size);
         entries.add(last);
         return last;
     }
@@ -71,8 +76,11 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public IndexedLogEntry getEntryByIndex(long index) {
-        if (entries.size() == 0) {
+        if (entries.size() == 0 || index == 0) {
             return last;
+        }
+        if (index > entries.size()) {
+            throw new RuntimeException(String.format("Entry with index %s does not exist!", index));
         }
         return entries.get((int) index - 1);
     }

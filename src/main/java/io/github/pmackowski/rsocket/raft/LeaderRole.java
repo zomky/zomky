@@ -1,15 +1,12 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
-import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
-import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,12 +19,15 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 public class LeaderRole implements RaftServerRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRole.class);
 
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(100);
+
+    private Function<Flux<Long>, ? extends Publisher<?>> repeatFactory;
 
     /**
      * Reinitialized after election,
@@ -48,6 +48,18 @@ public class LeaderRole implements RaftServerRole {
     private ConcurrentMap<Integer, Disposable> heartbeats = new ConcurrentHashMap<>();
 
     private ConcurrentMap<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
+
+    public LeaderRole() {
+        this(HEARTBEAT_TIMEOUT);
+    }
+
+    public LeaderRole(Duration heartbeatTimeout) {
+        this(Repeat.onlyIf(objectRepeatContext -> true).fixedBackoff(heartbeatTimeout));
+    }
+
+    LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory) {
+        this.repeatFactory = repeatFactory;
+    }
 
     @Override
     public NodeState nodeState() {
@@ -106,17 +118,10 @@ public class LeaderRole implements RaftServerRole {
         }
     }
 
-    private Flux<Payload> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {
+    private Flux<AppendEntriesResponse> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {
         return Mono.defer(() -> Mono.just(heartbeatRequest(sender, node, raftStorage)))
-                   .flatMap(appendEntriesRequest -> sender.getAppendEntriesSocket()
-                             .requestResponse(ByteBufPayload.create(appendEntriesRequest.toByteArray()))
-                             .doOnNext(payload -> {
-                                 AppendEntriesResponse appendEntriesResponse;
-                                 try {
-                                     appendEntriesResponse = AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
-                                 } catch (InvalidProtocolBufferException e) {
-                                     throw new RaftException("Invalid append entries response!", e);
-                                 }
+                   .flatMap(appendEntriesRequest -> sender.appendEntries(appendEntriesRequest)
+                             .doOnNext(appendEntriesResponse -> {
                                  if (appendEntriesResponse.getTerm() > raftStorage.getTerm()) {
                                      node.convertToFollower(appendEntriesResponse.getTerm());
                                  }
@@ -153,7 +158,7 @@ public class LeaderRole implements RaftServerRole {
                                      nextIndex.put(sender.getNodeId(), Math.min(next, 1));
                                  }
                              })
-            ).repeatWhen(Repeat.onlyIf(objectRepeatContext -> true).fixedBackoff(HEARTBEAT_TIMEOUT));
+            ).repeatWhen(repeatFactory);
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftStorage raftStorage) {
