@@ -1,8 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.PreVoteResponse;
+import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -43,8 +42,29 @@ public class Sender {
                 });
     }
 
-    public RSocket getRequestVoteSocket() {
-        return requestVoteSocket;
+    public Mono<VoteResponse> requestVote(VoteRequest voteRequest) {
+        Payload payload = ByteBufPayload.create(voteRequest.toByteArray());
+        return requestVoteSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return VoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid vote response!", e);
+                    }
+                });
+    }
+
+    public Mono<AppendEntriesResponse> appendEntries(AppendEntriesRequest appendEntriesRequest) {
+        Payload payload = ByteBufPayload.create(appendEntriesRequest.toByteArray());
+        return appendEntriesSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid append entries response!", e);
+                    }
+                });
+
     }
 
     public RSocket getAppendEntriesSocket() {

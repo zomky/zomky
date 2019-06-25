@@ -56,6 +56,11 @@ class DefaultRaftServer implements RaftServer {
         return nodeState.nodeState() == NodeState.FOLLOWER;
     }
 
+    @Override
+    public boolean isCandidate() {
+        return nodeState.nodeState() == NodeState.CANDIDATE;
+    }
+
     StateMachine<ByteBuffer> stateMachine;
     private ScheduledExecutorService stateMachineExecutor;
 

@@ -8,6 +8,8 @@ public interface RaftServer extends Closeable {
 
     boolean isLeader();
 
+    boolean isCandidate();
+
     boolean isFollower();
 
 }

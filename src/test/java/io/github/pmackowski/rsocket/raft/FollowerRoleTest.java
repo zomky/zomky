@@ -110,6 +110,16 @@ class FollowerRoleTest {
     }
 
     @Test
+    void onExitCallResetElectionTimeout() throws InterruptedException {
+        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
+        followerRole.onInit(node, raftStorage);
+        followerRole.onExit(node, raftStorage);
+
+        Thread.sleep(100);
+        verify(node, never()).convertToCandidate();
+    }
+
+    @Test
     void voteGrantedResetElectionTimeout() throws InterruptedException {
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
 
@@ -139,7 +149,6 @@ class FollowerRoleTest {
                 .setPrevLogTerm(0)
                 .setTerm(1)
                 .setLeaderCommit(1)
-                .setLeaderId(1)
                 .build();
 
         followerRole.onInit(node, raftStorage);
@@ -432,34 +441,138 @@ class FollowerRoleTest {
     }
 
     //// APPEND ENTRIES ////
+
     @Test
-    void appendEntries() throws InterruptedException {
+    void appendEntriesEmptyLog() {
+        initFollower();
+        raftStorage.update(0, 0);
+
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(0)
+                .setPrevLogTerm(0)
+                .setTerm(1)
+                .setLeaderCommit(1)
+                .addEntries(entry(1, "val1"))
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(0);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(1);
+                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val1".getBytes());
+                    verify(node).appendEntriesCall();
+                    verify(node).setCommitIndex(1);
+                    verify(node).convertToFollower(1);
+                }).verifyComplete();
+    }
+
+    @Test
+    void appendEntriesLogContainsEntries() {
+        initFollower();
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
+
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(2)
+                .setPrevLogTerm(1)
+                .setTerm(2)
+                .setLeaderCommit(3)
+                .addEntries(entry(2, "val3"))
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(3);
+                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
+                    verify(node).appendEntriesCall();
+                    verify(node).setCommitIndex(3);
+                    verify(node).convertToFollower(2);
+                }).verifyComplete();
+    }
+
+    @Test
+    void appendEntriesCommitIndexNoGreaterThanLogSize() {
+        initFollower();
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
 
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(1)
+                .setPrevLogTerm(1)
+                .setTerm(1)
+                .setLeaderCommit(20)
+                .addEntries(entry(1, "val2")) // leader sends only one entry despite it could send more entries
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    verify(node).appendEntriesCall();
+                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    verify(node).setCommitIndex(2); // not 20
+                    verify(node, never()).convertToFollower(anyInt());
+                }).verifyComplete();
+    }
+
+    @Test
+    void appendEntriesLogContainsEntriesThaShouldBeTruncated() {
+        initFollower();
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
+        raftStorage.append(commandEntry(1,  "val3"));
 
         AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
                 .setPrevLogIndex(1)
                 .setPrevLogTerm(1)
                 .setTerm(1)
                 .setLeaderCommit(2)
-                .setLeaderId(1)
-                .addEntries(entry(2, "val2"))
+                .addEntries(entry(1, "val2"))
                 .build();
 
-        followerRole.onInit(node, raftStorage);
+        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    verify(node).appendEntriesCall();
+                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    verify(node).setCommitIndex(2);
+                    verify(node, never()).convertToFollower(anyInt());
+                }).verifyComplete();
+    }
 
-        followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest)
-                .delaySubscription(Duration.ofMillis(50))
-                .subscribe();
+    @Test
+    void appendEntriesLogContainsEntryTermsNotMatchingAtPreviousIndex() {
+        initFollower();
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
 
-        Thread.sleep(150);
-        verify(node, never()).convertToCandidate();
-        verify(node).appendEntriesCall();
-        verify(node).setCommitIndex(2);
-        assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
-        assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(2)
+                .setPrevLogTerm(2) // greater term
+                .setTerm(2)
+                .setLeaderCommit(3)
+                .addEntries(entry(2, "val3"))
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(false);
+                    verify(node).appendEntriesCall();
+                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    verify(node, never()).setCommitIndex(3);
+                    verify(node).convertToFollower(2);
+                }).verifyComplete();
     }
 
     private void initFollower() {

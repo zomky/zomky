@@ -87,12 +87,12 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public LogStorageReader openReader() {
-        throw new NotImplementedException();
+        return new InMemoryLogStorageReader(entries);
     }
 
     @Override
     public LogStorageReader openReader(long index) {
-        throw new NotImplementedException();
+        return new InMemoryLogStorageReader(entries, index);
     }
 
     @Override

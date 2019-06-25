@@ -1,13 +1,9 @@
 package io.github.pmackowski.rsocket.raft;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
-import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
-import io.rsocket.Payload;
-import io.rsocket.util.ByteBufPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -65,6 +61,7 @@ public class CandidateRole implements RaftServerRole {
                     electionContext.setRepeatElection(false);
                 })
                 .onErrorResume(throwable -> {
+                    // TODO what if subscription is null ??
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
                         LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, subscription.isDisposed());
@@ -76,6 +73,11 @@ public class CandidateRole implements RaftServerRole {
     }
 
     private Mono<VoteResponse> sendVoteRequest(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
+        if (!node.isCandidate()) {
+            LOGGER.info("[RaftServer {} -> RaftServer {}] Vote dropped", node.nodeId, sender.getNodeId());
+            return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
+        }
+
         IndexedLogEntry last = raftStorage.getLast();
         VoteRequest requestVote = VoteRequest.newBuilder()
                 .setTerm(raftStorage.getTerm())
@@ -83,20 +85,7 @@ public class CandidateRole implements RaftServerRole {
                 .setLastLogIndex(last.getIndex())
                 .setLastLogTerm(last.getLogEntry().getTerm())
                 .build();
-
-        Payload payload = ByteBufPayload.create(requestVote.toByteArray());
-        if (node.nodeState.nodeState() != NodeState.CANDIDATE) {
-            LOGGER.info("[RaftServer {} -> RaftServer {}] Vote dropped", node.nodeId, sender.getNodeId());
-            return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
-        }
-        return sender.getRequestVoteSocket().requestResponse(payload)
-                .map(payload1 -> {
-                    try {
-                        return VoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RaftException("Invalid vote response!", e);
-                    }
-                })
+        return sender.requestVote(requestVote)
                 .onErrorResume(throwable -> {
                     LOGGER.error("[RaftServer {} -> RaftServer {}] Vote failure", node.nodeId, requestVote.getCandidateId(), throwable);
                     return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());

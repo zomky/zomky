@@ -31,14 +31,14 @@ public interface RaftServerRole {
                         return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                     }
 
+                    node.appendEntriesCall();
+
                     // 2.  Reply false if log doesn’t contain an entry at prevLogIndex
                     //     whose term matches prevLogTerm
                     int prevLogTerm = raftStorage.getTermByIndex(appendEntriesRequest.getPrevLogIndex());
                     if (prevLogTerm != appendEntriesRequest.getPrevLogTerm()) {
                         return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                     }
-
-                    node.appendEntriesCall();
 
                     // 3. If an existing entry conflicts with a new one (same index
                     //    but different terms), delete the existing entry and all that
