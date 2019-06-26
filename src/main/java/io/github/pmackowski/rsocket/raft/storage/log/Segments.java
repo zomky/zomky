@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.log;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,7 @@ public class Segments {
     }
 
     public Segment getSegment(long index) {
+        Preconditions.checkState(index >= 1);
         return segments.floorEntry(index).getValue();
     }
 

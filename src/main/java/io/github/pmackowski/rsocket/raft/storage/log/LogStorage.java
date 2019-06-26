@@ -1,16 +1,17 @@
 package io.github.pmackowski.rsocket.raft.storage.log;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.ChunkLogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.BufferOverflowException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
@@ -26,11 +27,22 @@ public class LogStorage implements AutoCloseable {
     public LogStorage(RaftStorageConfiguration configuration) {
         this.segments = new Segments(configuration, new SegmentsReader(), new SegmentsWriter());
         this.segmentWriter = new SegmentWriter(segments.getLastSegment());
-        this.lastLogEntry = segments.getLastSegment().getLastEntry().orElse(null);
+        initializeLastLogEntry();
     }
 
-    public IndexedLogEntry getLastEntry() {
-        return lastLogEntry;
+    private void initializeLastLogEntry() {
+        final Segment lastSegment = segments.getLastSegment();
+        lastLogEntry = lastSegment.getLastEntry().orElseGet(() -> {
+            if (lastSegment.isFirstSegment()) {
+                return null;
+            }
+            final long previousIndex = lastSegment.getFirstIndex() - 1;
+            return segments.getSegment(previousIndex).getLastEntry().orElseThrow(() -> new StorageException(String.format("Expected at least one entry in segment. No index %s", previousIndex)));
+        });
+    }
+
+    public Optional<IndexedLogEntry> getLastEntry() {
+        return Optional.ofNullable(lastLogEntry);
     }
 
     public synchronized IndexedLogEntry append(LogEntry logEntry) {
@@ -49,13 +61,16 @@ public class LogStorage implements AutoCloseable {
         logEntries.forEach(this::append);
     }
 
-    public synchronized IndexedLogEntry getEntryByIndex(long index) {
-        Segment segment = segments.getSegment(index);
-        return segment.getEntryByIndex(index);
+    public synchronized Optional<IndexedLogEntry> getEntryByIndex(long index) {
+        if (index == 0) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(segments.getSegment(index))
+                       .flatMap(segment -> segment.getEntryByIndex(index));
     }
 
     public int getTermByIndex(long index) {
-        return index <= 0 ? 0: getEntryByIndex(index).getLogEntry().getTerm();
+        return getEntryByIndex(index).map(IndexedLogEntry::getLogEntry).map(LogEntry::getTerm).orElse(0);
     }
 
     public LogStorageReader openReader() {
@@ -84,6 +99,9 @@ public class LogStorage implements AutoCloseable {
     }
 
     public synchronized void truncateFromIndex(long index) {
+        if (index == 0) {
+            return;
+        }
         long lastLogEntryIndex = segmentWriter.getLastLogEntryIndex();
         if (index > lastLogEntryIndex) {
             return;
@@ -98,10 +116,10 @@ public class LogStorage implements AutoCloseable {
         logReaders.forEach(logStorageReader -> {
             if (logStorageReader.getCurrentIndex() >= index) {
                 // TODO thread safe (reset, hasNext, next)
-                 logStorageReader.reset(index - 1);
+                 logStorageReader.reset(index-1);
             }
         });
         lastLogEntryIndex = segmentWriter.truncateFromIndex(index);
-        lastLogEntry = lastSegment.getEntryByIndex(lastLogEntryIndex);
+        lastLogEntry = lastSegment.getEntryByIndex(lastLogEntryIndex).orElse(null);
     }
 }

@@ -1,7 +1,6 @@
 package io.github.pmackowski.rsocket.raft.storage.log;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
-import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import org.junit.jupiter.api.AfterEach;
@@ -12,10 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SegmentTest {
 
@@ -53,9 +52,9 @@ class SegmentTest {
     @Test
     void firstSegmentNoEntries() {
         assertThat(firstSegment.getFirstIndex()).isEqualTo(1);
-        assertThat(firstSegment.getLastIndex()).isEqualTo(-1);
+        assertThat(firstSegment.getLastIndex()).isEqualTo(0);
 
-        assertThatThrownBy(() -> firstSegment.getEntryByIndex(1)).isInstanceOf(StorageException.class);
+        assertThat(firstSegment.getEntryByIndex(1)).isEmpty();
     }
 
     @Test
@@ -92,6 +91,12 @@ class SegmentTest {
         assertIndexLogEntry(nextSegment.getEntryByIndex(firstIndex), commandEntry(1, 1, timestamp + 1), firstIndex, 16);
         assertIndexLogEntry(nextSegment.getEntryByIndex(41), commandEntry(10, 10, timestamp + 10), 41, 17);
         assertIndexLogEntry(nextSegment.getEntryByIndex(lastIndex), commandEntry(entries, entries, timestamp + entries), lastIndex, 18);
+    }
+
+    private void assertIndexLogEntry(Optional<IndexedLogEntry> optActual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
+        assertThat(optActual).isNotEmpty();
+        IndexedLogEntry actual = optActual.get();
+        assertIndexLogEntry(actual, expectedEntry, expectedIndex, expectedSize);
     }
 
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {

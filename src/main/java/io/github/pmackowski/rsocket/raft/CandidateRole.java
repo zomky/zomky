@@ -3,7 +3,7 @@ package io.github.pmackowski.rsocket.raft;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -78,12 +78,12 @@ public class CandidateRole implements RaftServerRole {
             return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
         }
 
-        IndexedLogEntry last = raftStorage.getLast();
+        IndexedTerm last = raftStorage.getLastIndexedTerm();
         VoteRequest requestVote = VoteRequest.newBuilder()
                 .setTerm(raftStorage.getTerm())
                 .setCandidateId(node.nodeId)
                 .setLastLogIndex(last.getIndex())
-                .setLastLogTerm(last.getLogEntry().getTerm())
+                .setLastLogTerm(last.getTerm())
                 .build();
         return sender.requestVote(requestVote)
                 .onErrorResume(throwable -> {

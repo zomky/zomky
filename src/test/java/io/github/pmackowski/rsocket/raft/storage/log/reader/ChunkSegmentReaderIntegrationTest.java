@@ -20,7 +20,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -114,12 +113,6 @@ public class ChunkSegmentReaderIntegrationTest {
 
     private CommandEntry commandEntry(int term, long timestamp, String value) {
         return new CommandEntry(term, timestamp, value.getBytes());
-    }
-
-    private void appendEntries(int rangeStart, int rangeEnd, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
-        IntStream.rangeClosed(rangeStart, rangeEnd).forEach(i -> {
-            segmentWriter.appendEntry(commandEntry(i, timestampFunction.apply(i), valueFunction.apply(i)));
-        });
     }
 
     private IndexedLogEntry appendEntry(int i, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {

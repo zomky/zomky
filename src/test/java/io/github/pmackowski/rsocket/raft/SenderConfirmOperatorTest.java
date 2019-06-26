@@ -42,7 +42,7 @@ public class SenderConfirmOperatorTest {
     @BeforeEach
     public void setUp() {
         index = new AtomicLong();
-
+        node.raftStorage = raftStorage;
         Mockito.lenient().when(raftStorage.append(any(ByteBuffer.class))).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
             ByteBuffer logEntry = (ByteBuffer) invocation.getArguments()[0];

@@ -3,14 +3,15 @@ package io.github.pmackowski.rsocket.raft.storage.log;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
-import io.github.pmackowski.rsocket.raft.storage.log.reader.SegmentReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Optional;
 
 import static io.github.pmackowski.rsocket.raft.storage.RaftStorageUtils.getInt;
@@ -18,6 +19,8 @@ import static io.github.pmackowski.rsocket.raft.storage.RaftStorageUtils.openCha
 import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.deserialize;
 
 public class Segment {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Segment.class);
 
     static final String SEGMENT_FILE = "segment_%d.log";
     static final String SEGMENT_INDEX_FILE = "index_%d.log";
@@ -44,7 +47,11 @@ public class Segment {
 
     public long getLastIndex() {
         int entriesCount = segmentEntryReader.entriesCount();
-        return entriesCount > 0 ? segmentHeader.getFirstIndex() + entriesCount - 1 : -1;
+        return entriesCount > 0 ? segmentHeader.getFirstIndex() + entriesCount - 1 : 0;
+    }
+
+    public boolean isFirstSegment() {
+        return getFirstIndex() == 1;
     }
 
     public int entriesCount() {
@@ -63,14 +70,16 @@ public class Segment {
         return segmentHeader;
     }
 
-    public IndexedLogEntry getEntryByIndex(long index) {
+    public Optional<IndexedLogEntry> getEntryByIndex(long index) {
+        if (index == 0) {
+            return Optional.empty();
+        }
         return segmentEntryReader.getEntryByIndex(index);
     }
 
     public Optional<IndexedLogEntry> getLastEntry() {
         final long lastIndex = getLastIndex();
-        IndexedLogEntry indexedLogEntry = lastIndex > 0 ? segmentEntryReader.getEntryByIndex(lastIndex) : null;
-        return Optional.ofNullable(indexedLogEntry);
+        return getEntryByIndex(lastIndex);
     }
 
     private Path toPath(String file) {
@@ -93,15 +102,21 @@ public class Segment {
             this.firstIndex = segment.getFirstIndex();
         }
 
-        IndexedLogEntry getEntryByIndex(long index) {
+        Optional<IndexedLogEntry> getEntryByIndex(long index) {
             try {
                 int position = getInt(segmentIndexChannel, (index - firstIndex) * Integer.BYTES);
+                if (position == 0) {
+                    return Optional.empty();
+                }
                 int entrySize = getInt(segmentChannel, position);
                 ByteBuffer entryBuffer = ByteBuffer.allocate(entrySize);
                 segmentChannel.read(entryBuffer, position + Integer.BYTES);
                 entryBuffer.flip();
                 LogEntry logEntry = deserialize(entryBuffer, entrySize);
-                return new IndexedLogEntry(logEntry, index, entrySize);
+                return Optional.of(new IndexedLogEntry(logEntry, index, entrySize));
+            } catch (BufferUnderflowException|IllegalArgumentException e) {
+                LOGGER.warn(String.format("getEntryByIndex %s failed!", index), e);
+                return Optional.empty();
             } catch (Exception e) {
                 throw new StorageException(e);
             }

@@ -1,7 +1,6 @@
 package io.github.pmackowski.rsocket.raft.storage.log;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
-import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
@@ -12,13 +11,12 @@ import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.BufferUnderflowException;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LogStorageTest {
 
@@ -55,7 +53,7 @@ class LogStorageTest {
         assertIndexLogEntry(actual, commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
         assertIndexLogEntry(logStorage.getEntryByIndex(1), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
         assertThat(logStorage.getTermByIndex(1)).isEqualTo(1);
-        assertThat(logStorage.getLastEntry()).isEqualTo(actual);
+        assertThat(logStorage.getLastEntry()).hasValue(actual);
     }
 
     @Test
@@ -81,7 +79,7 @@ class LogStorageTest {
 
         assertIndexLogEntry(logStorage.getEntryByIndex(2), commandEntry(2, timestamp + 2, "abc2"), 2, Integer.BYTES + Long.BYTES + "abc2".length());
         assertThat(logStorage.getTermByIndex(2)).isEqualTo(2);
-        assertThat(logStorage.getLastEntry()).isEqualTo(actual);
+        assertThat(logStorage.getLastEntry()).hasValue(actual);
     }
 
     @Test
@@ -100,7 +98,7 @@ class LogStorageTest {
             assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
-        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(numberOfEntries);
+        assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(numberOfEntries);
     }
 
     @Test
@@ -121,10 +119,8 @@ class LogStorageTest {
             assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
-        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
-        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
-                .isInstanceOf(StorageException.class)
-                .hasCause(new BufferUnderflowException());
+        assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
+        assertThat(logStorage.getEntryByIndex(5)).isEmpty();
     }
 
     @Test
@@ -145,10 +141,8 @@ class LogStorageTest {
             assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
-        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
-        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
-                .isInstanceOf(StorageException.class)
-                .hasCause(new BufferUnderflowException());
+        assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
+        assertThat(logStorage.getEntryByIndex(5)).isEmpty();
     }
 
     @Test
@@ -162,8 +156,6 @@ class LogStorageTest {
         int numberOfEntries = 10;
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
-        LogStorageReader logStorageReader = logStorage.openReader();
-
         logStorage.truncateFromIndex(5);
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
@@ -171,11 +163,8 @@ class LogStorageTest {
             assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
-        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
-        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
-                .isInstanceOf(StorageException.class)
-                .hasCause(new BufferUnderflowException());
-
+        assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
+        assertThat(logStorage.getEntryByIndex(5)).isEmpty();
     }
 
     @Test
@@ -201,13 +190,18 @@ class LogStorageTest {
             assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
-        assertThat(logStorage.getLastEntry().getIndex()).isEqualTo(4);
-        assertThatThrownBy(() -> logStorage.getEntryByIndex(5))
-                .isInstanceOf(StorageException.class)
-                .hasCause(new BufferUnderflowException());
+        assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
+        assertThat(logStorage.getEntryByIndex(5)).isEmpty();
+    }
+
+    private void assertIndexLogEntry(Optional<IndexedLogEntry> optActual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
+        assertThat(optActual).isNotEmpty();
+        IndexedLogEntry actual = optActual.get();
+        assertIndexLogEntry(actual, expectedEntry, expectedIndex, expectedSize);
     }
 
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
+
         assertThat(actual.getIndex()).isEqualTo(expectedIndex);
         assertThat(actual.getSize()).isEqualTo(expectedSize);
         CommandEntry actualLogEntry = (CommandEntry) actual.getLogEntry();

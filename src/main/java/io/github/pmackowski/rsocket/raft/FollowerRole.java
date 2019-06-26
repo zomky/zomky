@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -108,12 +108,12 @@ public class FollowerRole implements RaftServerRole {
     }
 
     private Mono<PreVoteResponse> sendPreVoteRequest(DefaultRaftServer node, RaftStorage raftStorage, Sender sender, Duration timeout) {
-        IndexedLogEntry last = raftStorage.getLast();
+        IndexedTerm last = raftStorage.getLastIndexedTerm();
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
                 .setNextTerm(raftStorage.getTerm() + 1)
                 .setCandidateId(node.nodeId)
                 .setLastLogIndex(last.getIndex())
-                .setLastLogTerm(last.getLogEntry().getTerm())
+                .setLastLogTerm(last.getTerm())
                 .build();
 
         return sender.requestPreVote(preVoteRequest)

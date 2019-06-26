@@ -55,13 +55,15 @@ public class Sender {
     }
 
     public Mono<AppendEntriesResponse> appendEntries(AppendEntriesRequest appendEntriesRequest) {
-        Payload payload = ByteBufPayload.create(appendEntriesRequest.toByteArray());
-        return appendEntriesSocket.requestResponse(payload)
-                .map(payload1 -> {
+        Payload appendEntriesRequestPayload = ByteBufPayload.create(appendEntriesRequest.toByteArray());
+        return appendEntriesSocket.requestResponse(appendEntriesRequestPayload)
+                .map(appendEntriesResponsePayload -> {
                     try {
-                        return AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                        return AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(appendEntriesResponsePayload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid append entries response!", e);
+                    } finally {
+                        appendEntriesResponsePayload.release();
                     }
                 });
 

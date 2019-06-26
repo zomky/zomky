@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

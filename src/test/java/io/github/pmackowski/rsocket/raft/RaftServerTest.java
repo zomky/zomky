@@ -19,14 +19,11 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -36,6 +33,7 @@ import static org.mockito.BDDMockito.given;
 class RaftServerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
+
     private static final boolean PRE_VOTE = true; // TODO add new tests for pre vote
     private static final boolean LEADER_STICKINESS = true; // TODO add new tests for leader stickiness
 
@@ -52,7 +50,7 @@ class RaftServerTest {
     private RaftStorage raftStorage(String node) {
         return new FileSystemRaftStorage(RaftStorageConfiguration.builder()
                 .segmentSize(SizeUnit.megabytes, 1)
-                .directory(Paths.get(folder.toAbsolutePath().toString(), "node" + node ))
+                .directory(Paths.get(folder.toAbsolutePath().toString(), "node" + node))
                 .build()
         );
     }
@@ -65,32 +63,32 @@ class RaftServerTest {
         raftStorage3 = raftStorage("3");
 
         raftServerMono1 = new RaftServerBuilder()
-                    .nodeId(7000)
-                    .storage(raftStorage1)
-                    .clientPorts(Arrays.asList(7001, 7002))
-                    .stateMachine(new KVStateMachine(7000))
-                    .electionTimeout(electionTimeout1)
-                    .preVote(PRE_VOTE)
-                    .leaderStickiness(LEADER_STICKINESS)
-                    .start();
+                .nodeId(7000)
+                .storage(raftStorage1)
+                .clientPorts(Arrays.asList(7001, 7002))
+                .stateMachine(new KVStateMachine(7000))
+                .electionTimeout(electionTimeout1)
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .start();
         raftServerMono2 = new RaftServerBuilder()
-                    .nodeId(7001)
-                    .storage(raftStorage2)
-                    .clientPorts(Arrays.asList(7000, 7002))
-                    .stateMachine(new KVStateMachine(7001))
-                    .electionTimeout(electionTimeout2)
-                    .preVote(PRE_VOTE)
-                    .leaderStickiness(LEADER_STICKINESS)
-                    .start();
+                .nodeId(7001)
+                .storage(raftStorage2)
+                .clientPorts(Arrays.asList(7000, 7002))
+                .stateMachine(new KVStateMachine(7001))
+                .electionTimeout(electionTimeout2)
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .start();
         raftServerMono3 = new RaftServerBuilder()
-                    .nodeId(7002)
-                    .storage(raftStorage3)
-                    .clientPorts(Arrays.asList(7000, 7001))
-                    .stateMachine(new KVStateMachine(7002))
-                    .electionTimeout(electionTimeout3)
-                    .preVote(PRE_VOTE)
-                    .leaderStickiness(LEADER_STICKINESS)
-                    .start();
+                .nodeId(7002)
+                .storage(raftStorage3)
+                .clientPorts(Arrays.asList(7000, 7001))
+                .stateMachine(new KVStateMachine(7002))
+                .electionTimeout(electionTimeout3)
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .start();
     }
 
     @AfterEach
@@ -124,7 +122,7 @@ class RaftServerTest {
         assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
         assertThat(raftStorage3.getTerm()).isEqualTo(1);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage1.getLast().getIndex()).isEqualTo(0);
+        assertThat(raftStorage1.getLastIndexedTerm().getIndex()).isEqualTo(0);
 
     }
 
@@ -168,7 +166,7 @@ class RaftServerTest {
     }
 
     @Test
-    void testLogReplication() throws IOException, InterruptedException {
+    void testLogReplication() {
         testElection();
 
         KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
@@ -176,15 +174,15 @@ class RaftServerTest {
 
         int nbEntries = 10;
 
-        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key"+i, "val"+i)))
+        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .blockLast();
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().getIndex() == nbEntries);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().getIndex() == nbEntries);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries);
 
         /*assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
                 .isEqualTo(expectedContent(nbEntries));
@@ -205,72 +203,67 @@ class RaftServerTest {
 
         int nbEntries = 10;
 
-        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key"+i, "val"+i)))
+        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .subscribe();
 
-        kvStoreClient.put(Flux.range(11, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key"+i, "val"+i)))
+        kvStoreClient.put(Flux.range(11, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("Client2 started"))
                 .doOnNext(s -> LOGGER.info("Client2 received {}", s))
                 .doOnComplete(() -> LOGGER.info("Client2 finished"))
                 .subscribe();
 
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().getIndex() == nbEntries * 2);
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries * 2);
-        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries * 2);
     }
 
-    /*
-        @Test
-        void testLogReplicationWithLeaderFailure() throws InterruptedException {
-            testElection();
+    @Test
+    void testLogReplicationWithLeaderFailure() throws InterruptedException {
+        testElection();
 
-            KVStoreClient kvStore = new KVStoreClient(Arrays.asList(7000));
-            kvStore.start();
+        KVStoreClient kvStore = new KVStoreClient(Arrays.asList(7000));
+        kvStore.start();
 
-            int nbEntries = 10;
+        int nbEntries = 10;
 
-            kvStore.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(100)).map(i -> new KeyValue("key"+i, "val"+i)))
-                    .doOnSubscribe(subscription -> LOGGER.info("Client1 started"))
-                    .doOnNext(s -> LOGGER.info("Client1 received {}", s))
-                    .doOnComplete(() -> LOGGER.info("Client1 finished"))
-                    .blockLast();
+        kvStore.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(100)).map(i -> new KeyValue("key" + i, "val" + i)))
+                .doOnSubscribe(subscription -> LOGGER.info("Client1 started"))
+                .doOnNext(s -> LOGGER.info("Client1 received {}", s))
+                .doOnComplete(() -> LOGGER.info("Client1 finished"))
+                .blockLast();
 
-            Thread.sleep(3000);
+        Thread.sleep(3000);
 
-            raftServer1.dispose();
-            raftServer2.dispose();
-            raftServer3.dispose();
+        raftServer1.dispose();
+        raftServer2.dispose();
+        raftServer3.dispose();
 
-            Thread.sleep(2000);
+        Thread.sleep(2000);
 
-            given(electionTimeout1.nextRandom()).willReturn(Duration.ofSeconds(10));
-            given(electionTimeout2.nextRandom()).willReturn(Duration.ofMillis(300));
-            given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(1));
+        given(electionTimeout1.nextRandom()).willReturn(Duration.ofSeconds(10));
+        given(electionTimeout2.nextRandom()).willReturn(Duration.ofMillis(300));
+        given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(1));
 
-            raftServer1 = raftServerMono1.block();
-            raftServer2 = raftServerMono2.block();
-            raftServer3 = raftServerMono3.block();
+        raftServer1 = raftServerMono1.block();
+        raftServer2 = raftServerMono2.block();
+        raftServer3 = raftServerMono3.block();
 
-            KVStoreClient kvStore2 = new KVStoreClient(Arrays.asList(7001));
-            kvStore2.start();
+        KVStoreClient kvStore2 = new KVStoreClient(Arrays.asList(7001));
+        kvStore2.start();
 
-            Thread.sleep(2000);
-            kvStore2.put(Flux.range(11, nbEntries).map(i -> new KeyValue("key"+i, "val"+i)))
-                    .doOnSubscribe(subscription -> LOGGER.info("Client2 started"))
-                    .doOnNext(s -> LOGGER.info("Client2 received {}", s))
-                    .doOnComplete(() -> LOGGER.info("Client2 finished"))
-                    .blockLast();
+        Thread.sleep(2000);
+        kvStore2.put(Flux.range(11, nbEntries).map(i -> new KeyValue("key" + i, "val" + i)))
+                .doOnSubscribe(subscription -> LOGGER.info("Client2 started"))
+                .doOnNext(s -> LOGGER.info("Client2 received {}", s))
+                .doOnComplete(() -> LOGGER.info("Client2 finished"))
+                .blockLast();
 
-            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-            await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage3.getLast().equals(new LogEntryInfo().index(nbEntries * 2).term(2)));
-        }
-    */
-    private String expectedContent(int nbEntries) {
-        return IntStream.rangeClosed(1, nbEntries).mapToObj(i -> "Abc"+i).collect(Collectors.joining());
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries * 2);
+        await().atMost(10, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries * 2);
     }
 
 }

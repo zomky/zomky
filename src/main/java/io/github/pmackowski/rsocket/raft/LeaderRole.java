@@ -106,7 +106,7 @@ public class LeaderRole implements RaftServerRole {
     private void initHeartbeats(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
         LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
         try {
-            long lastLogIndex = raftStorage.getLast().getIndex();
+            long lastLogIndex = raftStorage.getLastIndexedTerm().getIndex();
             long nextIdx = lastLogIndex + 1;
             nextIndex.put(sender.getNodeId(), nextIdx);
             matchIndex.put(sender.getNodeId(), 0L);
@@ -158,7 +158,9 @@ public class LeaderRole implements RaftServerRole {
                                      nextIndex.put(sender.getNodeId(), Math.min(next, 1));
                                  }
                              })
-            ).repeatWhen(repeatFactory);
+                            .doOnError(throwable -> LOGGER.error("Error while heartbeat!!", throwable))
+                   )
+                   .repeatWhen(repeatFactory);
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftStorage raftStorage) {
@@ -170,7 +172,7 @@ public class LeaderRole implements RaftServerRole {
         // If last log index ≥ nextIndex for a follower: send
         // AppendEntries RPC with log entries starting at nextIndex
         AppendEntriesRequest.Builder builder = AppendEntriesRequest.newBuilder();
-        long lastIndex = raftStorage.getLast().getIndex();
+        long lastIndex = raftStorage.getLastIndexedTerm().getIndex();
         if (lastIndex >= senderIdxId) {
             Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderIdxId, lastIndex);
             entries.forEach(rawLogEntry -> builder.addEntries(ByteString.copyFrom(rawLogEntry))); // always copy as ByteString is immutable

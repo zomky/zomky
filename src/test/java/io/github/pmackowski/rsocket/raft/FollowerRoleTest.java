@@ -5,6 +5,7 @@ import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.PreVoteResponse;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import org.junit.jupiter.api.Test;
@@ -459,8 +460,8 @@ class FollowerRoleTest {
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(0);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
-                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(1);
-                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val1".getBytes());
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(1);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val1".getBytes());
                     verify(node).appendEntriesCall();
                     verify(node).setCommitIndex(1);
                     verify(node).convertToFollower(1);
@@ -486,8 +487,8 @@ class FollowerRoleTest {
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
-                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(3);
-                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(3);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
                     verify(node).appendEntriesCall();
                     verify(node).setCommitIndex(3);
                     verify(node).convertToFollower(2);
@@ -513,8 +514,8 @@ class FollowerRoleTest {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
                     verify(node).appendEntriesCall();
-                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
-                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
                     verify(node).setCommitIndex(2); // not 20
                     verify(node, never()).convertToFollower(anyInt());
                 }).verifyComplete();
@@ -541,8 +542,8 @@ class FollowerRoleTest {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
                     verify(node).appendEntriesCall();
-                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
-                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
                     verify(node).setCommitIndex(2);
                     verify(node, never()).convertToFollower(anyInt());
                 }).verifyComplete();
@@ -568,8 +569,8 @@ class FollowerRoleTest {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(false);
                     verify(node).appendEntriesCall();
-                    assertThat(raftStorage.getLast().getIndex()).isEqualTo(2);
-                    assertThat(((CommandEntry) raftStorage.getLast().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
                     verify(node, never()).setCommitIndex(3);
                     verify(node).convertToFollower(2);
                 }).verifyComplete();

@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import org.junit.jupiter.api.BeforeEach;

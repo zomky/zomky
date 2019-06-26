@@ -79,7 +79,7 @@ class DefaultRaftServer implements RaftServer {
 
     private Receiver receiver;
     private Senders senders;
-    private RaftStorage raftStorage;
+    RaftStorage raftStorage;
     private boolean preVote;
     private boolean leaderStickiness;
     private AtomicLong lastAppendEntriesCall = new AtomicLong(0);
@@ -119,7 +119,7 @@ class DefaultRaftServer implements RaftServer {
             stateMachineExecutor.scheduleWithFixedDelay(() -> {
                 while (lastApplied.get() < getCommitIndex()) {
                     LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, lastApplied.get() + 1);
-                    IndexedLogEntry logEntry = raftStorage.getEntryByIndex(lastApplied.incrementAndGet());
+                    IndexedLogEntry logEntry = raftStorage.getEntryByIndex(lastApplied.incrementAndGet()).get();
                     ByteBuffer response = stateMachine.applyLogEntry(logEntry.getLogEntry());
                     lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(lastApplied.get(), Unpooled.wrappedBuffer(response)));
                 }

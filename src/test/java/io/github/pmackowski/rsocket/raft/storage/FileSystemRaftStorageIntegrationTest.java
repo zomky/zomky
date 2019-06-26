@@ -42,7 +42,7 @@ class FileSystemRaftStorageIntegrationTest {
 
         assertThat(raftStorage.getVotedFor()).isEqualTo(0);
         assertThat(raftStorage.getTerm()).isEqualTo(0);
-        assertThat(raftStorage.getLast().getIndex()).isEqualTo(0);
+        assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(0);
         assertThat(raftStorage.getTermByIndex(0)).isEqualTo(0);
     }
 
@@ -59,7 +59,7 @@ class FileSystemRaftStorageIntegrationTest {
 
         assertThat(raftStorage.getVotedFor()).isEqualTo(7001);
         assertThat(raftStorage.getTerm()).isEqualTo(1);
-        assertThat(raftStorage.getLast().getIndex()).isEqualTo(0);
+        assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(0);
         assertThat(raftStorage.getTermByIndex(0)).isEqualTo(0);
     }
 

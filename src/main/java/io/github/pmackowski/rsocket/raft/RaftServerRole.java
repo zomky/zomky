@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -43,7 +43,7 @@ public interface RaftServerRole {
                     // 3. If an existing entry conflicts with a new one (same index
                     //    but different terms), delete the existing entry and all that
                     //    follow it
-                    if (raftStorage.getLast().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
+                    if (raftStorage.getLastIndexedTerm().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
                         raftStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                     }
                     // 4. Append any new entries not already in the log
@@ -54,7 +54,7 @@ public interface RaftServerRole {
 
                     //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
                     if (appendEntriesRequest.getLeaderCommit() > node.getCommitIndex()) {
-                        node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), raftStorage.getLast().getIndex()));
+                        node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), raftStorage.getLastIndexedTerm().getIndex()));
                     }
 
                     return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(true).build();
@@ -76,11 +76,12 @@ public interface RaftServerRole {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
-                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
+                    IndexedTerm last = raftStorage.getLastIndexedTerm();
                     // 3. If caller's log is is at least as up-to-date as receiver's log, return true
-                    if (preRequestVote.getLastLogTerm() < lastLogEntry.getLogEntry().getTerm() ||
-                            (preRequestVote.getLastLogTerm() == lastLogEntry.getLogEntry().getTerm() &&
-                                    preRequestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
+                    // TODO move to IndexedTerm
+                    if (preRequestVote.getLastLogTerm() < last.getTerm() ||
+                            (preRequestVote.getLastLogTerm() == last.getTerm() &&
+                                    preRequestVote.getLastLogIndex() < last.getIndex())) {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
                     return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(true).build();
@@ -107,7 +108,7 @@ public interface RaftServerRole {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
-                    IndexedLogEntry lastLogEntry = raftStorage.getLast();
+                    IndexedTerm last = raftStorage.getLastIndexedTerm();
 
                     // Raft determines which of two logs is more up-to-date
                     // by comparing the index and term of the last entries in the
@@ -115,9 +116,9 @@ public interface RaftServerRole {
                     // the log with the later term is more up-to-date. If the logs
                     // end with the same term, then whichever log is longer is
                     // more up-to-date.
-                    if (requestVote.getLastLogTerm() < lastLogEntry.getLogEntry().getTerm() ||
-                            (requestVote.getLastLogTerm() == lastLogEntry.getLogEntry().getTerm() &&
-                                    requestVote.getLastLogIndex() < lastLogEntry.getIndex())) {
+                    if (requestVote.getLastLogTerm() < last.getTerm() ||
+                            (requestVote.getLastLogTerm() == last.getTerm() &&
+                                    requestVote.getLastLogIndex() < last.getIndex())) {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 

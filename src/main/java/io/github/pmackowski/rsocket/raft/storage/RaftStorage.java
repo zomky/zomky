@@ -1,10 +1,12 @@
 package io.github.pmackowski.rsocket.raft.storage;
 
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public interface RaftStorage {
 
@@ -26,15 +28,21 @@ public interface RaftStorage {
 
     LogStorageReader openReader(long index);
 
-    LogStorageReader openCommitedEntriesReader();
+    LogStorageReader openCommittedEntriesReader();
 
-    LogStorageReader openCommitedEntriesReader(long index);
+    LogStorageReader openCommittedEntriesReader(long index);
 
     void truncateFromIndex(long index);
 
-    IndexedLogEntry getLast();
+    default IndexedTerm getLastIndexedTerm() {
+        return getLastEntry()
+                .map(lastEntry -> new IndexedTerm(lastEntry.getIndex(), lastEntry.getLogEntry().getTerm()))
+                .orElse(new IndexedTerm(0,0));
+    }
 
-    IndexedLogEntry getEntryByIndex(long index);
+    Optional<IndexedLogEntry> getLastEntry();
+
+    Optional<IndexedLogEntry> getEntryByIndex(long index);
 
     int getTermByIndex(long index);
 
