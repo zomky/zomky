@@ -35,7 +35,7 @@ public class MetaStorage implements AutoCloseable{
         }
     }
 
-    public int getTerm() {
+    public synchronized int getTerm() {
         try {
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
             nodeDataFileChannel.read(metadataBuffer, 0);
@@ -46,7 +46,7 @@ public class MetaStorage implements AutoCloseable{
         }
     }
 
-    public int getVotedFor() {
+    public synchronized int getVotedFor() {
         try {
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
             nodeDataFileChannel.read(metadataBuffer, Integer.BYTES);
@@ -57,7 +57,7 @@ public class MetaStorage implements AutoCloseable{
         }
     }
 
-    public void update(int term, int votedFor) {
+    public synchronized void update(int term, int votedFor) {
         try {
             nodeDataFileChannel.position(0);
             ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Integer.BYTES);

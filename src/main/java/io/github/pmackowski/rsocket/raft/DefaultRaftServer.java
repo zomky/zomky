@@ -5,6 +5,7 @@ import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -114,18 +115,19 @@ class DefaultRaftServer implements RaftServer {
     public void start() {
         receiver.start();
         senders.start();
-        if (stateMachine != null) {
-            stateMachineExecutor = Executors.newSingleThreadScheduledExecutor();
-            stateMachineExecutor.scheduleWithFixedDelay(() -> {
-                while (lastApplied.get() < getCommitIndex()) {
-                    LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, lastApplied.get() + 1);
-                    IndexedLogEntry logEntry = raftStorage.getEntryByIndex(lastApplied.incrementAndGet()).get();
-                    ByteBuffer response = stateMachine.applyLogEntry(logEntry.getLogEntry());
-                    lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(lastApplied.get(), Unpooled.wrappedBuffer(response)));
-                }
-            }, 0, 10, TimeUnit.MILLISECONDS);
-        }
         nodeState.onInit(this, raftStorage);
+
+        final LogStorageReader logStorageReader = raftStorage.openCommittedEntriesReader();
+        stateMachineExecutor = Executors.newScheduledThreadPool(1);
+        stateMachineExecutor.scheduleWithFixedDelay(() -> {
+            while (logStorageReader.hasNext()) {
+                final IndexedLogEntry indexedLogEntry = logStorageReader.next();
+                LOGGER.info("next {}", indexedLogEntry);
+                ByteBuffer response = stateMachine.applyLogEntry(indexedLogEntry.getLogEntry());
+                lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
+                LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, indexedLogEntry.getIndex());
+            }
+        }, 0, 10, TimeUnit.MILLISECONDS);
     }
 
     Flux<Sender> availableSenders() {

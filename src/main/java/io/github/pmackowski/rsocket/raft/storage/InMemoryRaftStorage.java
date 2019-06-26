@@ -11,8 +11,10 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 
 import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.deserialize;
 
@@ -111,22 +113,22 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public LogStorageReader openReader() {
-        return new InMemoryLogStorageReader(entries);
+        return new InMemoryLogStorageReader(entries, () -> Long.MAX_VALUE);
     }
 
     @Override
     public LogStorageReader openReader(long index) {
-        return new InMemoryLogStorageReader(entries, index);
+        return new InMemoryLogStorageReader(entries, index, () -> Long.MAX_VALUE);
     }
 
     @Override
     public LogStorageReader openCommittedEntriesReader() {
-        throw new NotImplementedException();
+        return new InMemoryLogStorageReader(entries, () -> commitIndex);
     }
 
     @Override
     public LogStorageReader openCommittedEntriesReader(long index) {
-        throw new NotImplementedException();
+        return new InMemoryLogStorageReader(entries, index, () -> commitIndex);
     }
 
     @Override
@@ -140,16 +142,18 @@ public class InMemoryRaftStorage implements RaftStorage {
         private Iterator<IndexedLogEntry> iterator;
         private long initialIndex;
         private long currentIndex;
+        private Supplier<Long> currentMaxIndexSupplier;
 
-        public InMemoryLogStorageReader(List<IndexedLogEntry> entries) {
-            this.entries = entries;
-            this.currentIndex = 1;
+        public InMemoryLogStorageReader(List<IndexedLogEntry> entries, Supplier<Long> currentMaxIndexSupplier) {
+            this(entries, 1L, currentMaxIndexSupplier);
         }
 
-        public InMemoryLogStorageReader(List<IndexedLogEntry> entries, long index) {
+        public InMemoryLogStorageReader(List<IndexedLogEntry> entries, long index, Supplier<Long> currentMaxIndexSupplier) {
             this.entries = entries;
             this.initialIndex = index;
             this.currentIndex = index;
+            this.currentMaxIndexSupplier = currentMaxIndexSupplier;
+            reset(index);
         }
 
         @Override
@@ -176,11 +180,14 @@ public class InMemoryRaftStorage implements RaftStorage {
 
         @Override
         public boolean hasNext() {
-            return iterator.hasNext();
+            return iterator.hasNext() && currentMaxIndexSupplier.get() >= currentIndex;
         }
 
         @Override
         public IndexedLogEntry next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             currentIndex++;
             return iterator.next();
         }
