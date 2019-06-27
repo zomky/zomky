@@ -270,4 +270,8 @@ class DefaultRaftServer implements RaftServer {
     public boolean lastAppendEntriesWithinElectionTimeout() {
         return System.currentTimeMillis() - lastAppendEntriesCall.get() < currentElectionTimeout.toMillis();
     }
+
+    public Mono<Payload> onAddServer(Payload payload) {
+        return nodeState.onAddServer(this, raftStorage, payload);
+    }
 }

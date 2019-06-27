@@ -40,6 +40,24 @@ message AppendEntriesResponse {
     bool success = 2;
 }
 
+message AddServerRequest {
+    int32 newServer = 1; // address of server to add to configuration
+}
+
+message AddServerResponse {
+    bool status = 1; // OK if server was added successfully
+    int32 leaderHint = 2; // address of recent leader, if known
+}
+
+message RemoveServerRequest {
+    int32 oldServer = 1; // address of server to remove from configuration
+}
+
+message RemoveServerResponse {
+    bool status = 1; // OK if server was removed successfully
+    int32 leaderHint = 2; // address of recent leader, if known
+}
+
 message InstallSnapshotRequest {
     int32 term = 1; // leader’s term
     int32 leaderId = 2; // so follower can redirect clients

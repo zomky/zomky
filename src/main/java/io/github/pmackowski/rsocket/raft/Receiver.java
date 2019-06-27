@@ -76,6 +76,10 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
+                    String metadataUtf8 = payload.getMetadataUtf8();
+                    if ("add-server".equalsIgnoreCase(metadataUtf8)) { // temporary here
+                        return node.onAddServer(payload);
+                    }
                     return node.onClientRequest(payload);
                 }
 

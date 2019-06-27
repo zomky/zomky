@@ -103,6 +103,11 @@ public class LeaderRole implements RaftServerRole {
         }
     }
 
+    @Override
+    public Mono<Payload> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
+        return null;
+    }
+
     private void initHeartbeats(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
         LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
         try {

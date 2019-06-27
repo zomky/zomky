@@ -144,4 +144,7 @@ public interface RaftServerRole {
         return Flux.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
+    default Mono<Payload> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
+        return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
+    }
 }
