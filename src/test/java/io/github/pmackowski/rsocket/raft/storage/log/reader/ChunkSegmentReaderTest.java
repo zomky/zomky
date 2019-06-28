@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.*;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(1, numberOfEntries).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();
@@ -99,7 +100,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(1, maxIndex).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         });
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(maxIndex);
 
@@ -120,7 +121,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(index, numberOfEntries).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         });
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(numberOfEntries);
         assertThat(segmentReader.hasNext()).isFalse();
@@ -141,7 +142,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(index, maxIndex).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         });
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(maxIndex);
         assertThat(segmentReader.hasNext()).isFalse();
@@ -152,11 +153,11 @@ class ChunkSegmentReaderTest {
         long timestamp = System.currentTimeMillis();
         // all entries are of the same size equals to 25
         // entry position = 4 bytes
-        // entry          = 21 bytes
+        // entry          = 22 bytes
         //  term      = 4 bytes = Integer.BYTES
         //  timestamp = 8 bytes = Long.BYTES
-        //  value     = 9 bytes (abc100000 - abc100010)
-        int entrySize = 21;
+        //  value     = 9 bytes (abc100000 - abc100010) + 1 byte (entry type)
+        int entrySize = 22;
         int entryPositionSize = Integer.BYTES;
         int rangeStart = 100_000;
         int rangeEnd = rangeStart + 10;
@@ -168,7 +169,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(rangeStart, rangeEnd).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();
@@ -182,8 +183,8 @@ class ChunkSegmentReaderTest {
         // entry          = 21 bytes
         //  term      = 4 bytes = Integer.BYTES
         //  timestamp = 8 bytes = Long.BYTES
-        //  value     = 9 bytes (abc100000 - abc100010)
-        int entrySize = 21;
+        //  value     = 9 bytes (abc100000 - abc100010) + 1 byte (entry type)
+        int entrySize = 22;
         int entryPositionSize = Integer.BYTES;
         int rangeStart = 100_000;
         int rangeEnd = rangeStart + 10;
@@ -196,7 +197,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(rangeStart, rangeEnd).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();
@@ -207,10 +208,10 @@ class ChunkSegmentReaderTest {
         long timestamp = System.currentTimeMillis();
         // all entries are of the same size equals to 25
         // entry position = 4 bytes
-        // entry          = 21 bytes
+        // entry          = 22 bytes
         //  term      = 4 bytes = Integer.BYTES
         //  timestamp = 8 bytes = Long.BYTES
-        //  value     = 9 bytes (abc100000 - abc100010)
+        //  value     = 9 bytes (abc100000 - abc100010) + 1 byte (entry type)
         int entrySize = 21;
         int entryPositionSize = Integer.BYTES;
         int rangeStart = 100_000;
@@ -224,7 +225,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(rangeStart, rangeEnd).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();
@@ -246,13 +247,13 @@ class ChunkSegmentReaderTest {
             LOGGER.info("Segment size without header {}. Written data size {}", SEGMENT_SIZE - SegmentHeader.SIZE, totalSize);
         }
 
-        int chunkSize = 100;
+        int chunkSize = 104;
         segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
 
         int j = 1;
         while (segmentReader.hasNext()) {
             String value = "abc" + j;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(j, timestamp + j, value), j, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(j, timestamp + j, value), j, LogEntry.SIZE + 1 + value.length());
             j++;
         }
         assertThat(segmentReader.hasNext()).isFalse();
@@ -283,7 +284,7 @@ class ChunkSegmentReaderTest {
         long j = lastIndex - lastEntries;
         while (segmentReader.hasNext()) {
             String value = "abc" + j;
-            assertIndexLogEntry(segmentReader.next(), commandEntry((int) j, timestamp + j, value), j, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry((int) j, timestamp + j, value), j, LogEntry.SIZE + 1 + value.length());
             j++;
         }
         assertThat(segmentReader.hasNext()).isFalse();
@@ -297,8 +298,8 @@ class ChunkSegmentReaderTest {
         // entry          = 21 bytes
         //  term      = 4 bytes = Integer.BYTES
         //  timestamp = 8 bytes = Long.BYTES
-        //  value     = 9 bytes (abc100000 - abc100010)
-        int entrySize = 21;
+        //  value     = 9 bytes (abc100000 - abc100010) + 1 byte (entry type)
+        int entrySize = 22;
         int entryPositionSize = Integer.BYTES;
         int rangeStart = 100_000;
         int rangeEnd = rangeStart + 10;
@@ -325,7 +326,7 @@ class ChunkSegmentReaderTest {
             } else {
                 value = "abc" + i;
             }
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i - rangeStart + 1, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();
@@ -346,7 +347,7 @@ class ChunkSegmentReaderTest {
         IntStream.rangeClosed(1, numberOfEntries).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
             String value = "abc" + i;
-            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(segmentReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         });
 
         assertThat(segmentReader.hasNext()).isFalse();

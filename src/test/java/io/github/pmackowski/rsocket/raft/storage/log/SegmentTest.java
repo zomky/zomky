@@ -69,9 +69,9 @@ class SegmentTest {
 
         assertThat(firstSegment.getFirstIndex()).isEqualTo(firstIndex);
         assertThat(firstSegment.getLastIndex()).isEqualTo(entries);
-        assertIndexLogEntry(firstSegment.getEntryByIndex(firstIndex), commandEntry(firstIndex, firstIndex, timestamp + firstIndex), firstIndex, 16);
-        assertIndexLogEntry(firstSegment.getEntryByIndex(10), commandEntry(10, 10, timestamp + 10), 10, 17);
-        assertIndexLogEntry(firstSegment.getEntryByIndex(entries), commandEntry(entries, entries, timestamp + entries), entries, 18);
+        assertIndexLogEntry(firstSegment.getEntryByIndex(firstIndex), commandEntry(firstIndex, firstIndex, timestamp + firstIndex), firstIndex, 17);
+        assertIndexLogEntry(firstSegment.getEntryByIndex(10), commandEntry(10, 10, timestamp + 10), 10, 18);
+        assertIndexLogEntry(firstSegment.getEntryByIndex(entries), commandEntry(entries, entries, timestamp + entries), entries, 19);
     }
 
     @Test
@@ -88,9 +88,9 @@ class SegmentTest {
 
         assertThat(nextSegment.getFirstIndex()).isEqualTo(firstIndex);
         assertThat(nextSegment.getLastIndex()).isEqualTo(lastIndex);
-        assertIndexLogEntry(nextSegment.getEntryByIndex(firstIndex), commandEntry(1, 1, timestamp + 1), firstIndex, 16);
-        assertIndexLogEntry(nextSegment.getEntryByIndex(41), commandEntry(10, 10, timestamp + 10), 41, 17);
-        assertIndexLogEntry(nextSegment.getEntryByIndex(lastIndex), commandEntry(entries, entries, timestamp + entries), lastIndex, 18);
+        assertIndexLogEntry(nextSegment.getEntryByIndex(firstIndex), commandEntry(1, 1, timestamp + 1), firstIndex, 17);
+        assertIndexLogEntry(nextSegment.getEntryByIndex(41), commandEntry(10, 10, timestamp + 10), 41, 18);
+        assertIndexLogEntry(nextSegment.getEntryByIndex(lastIndex), commandEntry(entries, entries, timestamp + entries), lastIndex, 19);
     }
 
     private void assertIndexLogEntry(Optional<IndexedLogEntry> optActual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {

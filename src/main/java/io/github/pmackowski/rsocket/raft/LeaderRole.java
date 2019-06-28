@@ -144,8 +144,7 @@ public class LeaderRole implements RaftServerRole {
                                      long candidateCommitIndex = lastLogIndex;
                                      while (candidateCommitIndex > node.getCommitIndex()) {
                                          long committed = committed(candidateCommitIndex);
-                                         // hardcoded, 1 means majority for 3 elements cluster
-                                         int noCommittedRequired = 1;
+                                         int noCommittedRequired = node.quorum() - 1;
                                          if (committed >= noCommittedRequired && raftStorage.getTermByIndex(candidateCommitIndex) == raftStorage.getTerm()) {
                                              break;
                                          } else {

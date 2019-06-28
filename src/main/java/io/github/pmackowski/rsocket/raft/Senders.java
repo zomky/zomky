@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.TcpClientTransport;
@@ -20,11 +21,21 @@ public class Senders {
 
     private ConcurrentMap<Integer, Sender> senders = new ConcurrentHashMap<>();
 
-    public Senders(DefaultRaftServer raftServer, List<Integer> clientPorts) {
-        clientPorts.forEach(clientPort -> {
+    public Senders(DefaultRaftServer raftServer) {
+        raftServer.getCurrentConfiguration().allMembersExcept(raftServer.nodeId).forEach(clientPort -> {
             senders.put(clientPort, Sender.unavailableSender(clientPort));
         });
         this.raftServer = raftServer;
+    }
+
+    public void addServer(int newMember) {
+        senders.put(newMember, Sender.unavailableSender(newMember));
+    }
+
+    public void replaceWith(Configuration currentConfiguration) { // temporary, works only for add server
+        currentConfiguration.getMembers().forEach(member -> {
+            senders.putIfAbsent(member, Sender.unavailableSender(member));
+        });
     }
 
     public void start() {

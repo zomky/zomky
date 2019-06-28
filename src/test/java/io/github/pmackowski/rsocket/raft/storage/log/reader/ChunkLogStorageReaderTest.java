@@ -5,8 +5,10 @@ import io.github.pmackowski.rsocket.raft.storage.log.LogStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -56,7 +58,7 @@ class ChunkLogStorageReaderTest {
         while (logStorageReader.hasNext()) {
             i++;
             String value = "abc" + i;
-            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(100);
         assertThat(logStorageReader.hasNext()).isFalse();
@@ -73,7 +75,7 @@ class ChunkLogStorageReaderTest {
         while (logStorageReader.hasNext()) {
             i++;
             String value = "abc" + i;
-            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(maxIndex);
         assertThat(logStorageReader.hasNext()).isFalse();
@@ -89,7 +91,36 @@ class ChunkLogStorageReaderTest {
         while (logStorageReader.hasNext() && i < 10) {
             i++;
             String value = "abc" + i;
-            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        }
+        assertThat(i).isEqualTo(10);
+
+        logStorageReader.reset(35);
+
+        i = 34;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        }
+        assertThat(i).isEqualTo(100);
+
+
+        assertThat(logStorageReader.hasNext()).isFalse();
+    }
+
+    @Test // TODO
+    @Disabled
+    void resetLogThatHasManySegmentsSameSegment() {
+        logStorageReader = logStorage.openReader(1);
+
+        long timestamp = System.currentTimeMillis();
+        appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
+        int i = 0;
+        while (logStorageReader.hasNext() && i < 10) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(10);
 
@@ -99,7 +130,7 @@ class ChunkLogStorageReaderTest {
         while (logStorageReader.hasNext()) {
             i++;
             String value = "abc" + i;
-            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(100);
 

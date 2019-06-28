@@ -66,7 +66,7 @@ public class MetaStorage implements AutoCloseable{
             metadataBuffer.flip();
             Configuration configuration = new Configuration();
             while (metadataBuffer.hasRemaining()) {
-                configuration.addMember(metadataBuffer.getInt());
+                configuration = configuration.addMember(metadataBuffer.getInt());
             }
             return configuration;
         } catch (IOException e) {

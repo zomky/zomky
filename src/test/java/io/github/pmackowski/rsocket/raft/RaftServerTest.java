@@ -35,17 +35,17 @@ class RaftServerTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
 
     private static final boolean PRE_VOTE = false; // TODO add new tests for pre vote
-    private static final boolean LEADER_STICKINESS = true; // TODO add new tests for leader stickiness
+    private static final boolean LEADER_STICKINESS = false; // TODO add new tests for leader stickiness
 
     @TempDir
     Path folder;
 
     @Mock
-    ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3;
+    ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3, electionTimeout4;
 
-    Mono<RaftServer> raftServerMono1, raftServerMono2, raftServerMono3;
-    RaftServer raftServer1, raftServer2, raftServer3;
-    RaftStorage raftStorage1, raftStorage2, raftStorage3;
+    Mono<RaftServer> raftServerMono1, raftServerMono2, raftServerMono3, raftServerMono4;
+    RaftServer raftServer1, raftServer2, raftServer3, raftServer4;
+    RaftStorage raftStorage1, raftStorage2, raftStorage3, raftStorage4;
 
     private RaftStorage raftStorage(String node) {
         return new FileSystemRaftStorage(RaftStorageConfiguration.builder()
@@ -61,11 +61,11 @@ class RaftServerTest {
         raftStorage1 = raftStorage("1");
         raftStorage2 = raftStorage("2");
         raftStorage3 = raftStorage("3");
+        raftStorage4 = raftStorage("4");
 
         raftServerMono1 = new RaftServerBuilder()
                 .nodeId(7000)
                 .storage(raftStorage1)
-                .clientPorts(Arrays.asList(7001, 7002))
                 .stateMachine(new KVStateMachine(7000))
                 .electionTimeout(electionTimeout1)
                 .preVote(PRE_VOTE)
@@ -74,7 +74,6 @@ class RaftServerTest {
         raftServerMono2 = new RaftServerBuilder()
                 .nodeId(7001)
                 .storage(raftStorage2)
-                .clientPorts(Arrays.asList(7000, 7002))
                 .stateMachine(new KVStateMachine(7001))
                 .electionTimeout(electionTimeout2)
                 .preVote(PRE_VOTE)
@@ -83,7 +82,6 @@ class RaftServerTest {
         raftServerMono3 = new RaftServerBuilder()
                 .nodeId(7002)
                 .storage(raftStorage3)
-                .clientPorts(Arrays.asList(7000, 7001))
                 .stateMachine(new KVStateMachine(7002))
                 .electionTimeout(electionTimeout3)
                 .preVote(PRE_VOTE)
@@ -96,6 +94,15 @@ class RaftServerTest {
         raftStorage1.close();
         raftStorage2.close();
         raftStorage3.close();
+        if (raftStorage4 != null) {
+            raftStorage4.close();
+        }
+        raftServer1.dispose();
+        raftServer2.dispose();
+        raftServer3.dispose();
+        if (raftServer4 != null) {
+            raftServer4.dispose();
+        }
     }
 
     @Test
@@ -183,14 +190,48 @@ class RaftServerTest {
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries);
 
-        /*assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7000))
-                .isEqualTo(expectedContent(nbEntries));
+    }
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7001))
-                .isEqualTo(expectedContent(nbEntries));
+    @Test
+    void testLogReplicationWithConfigurationChange() {
+        testElection();
 
-        assertThat(DefaultRaftStorageTestUtils.getContent(folder.toAbsolutePath().toString(), 7002))
-                .isEqualTo(expectedContent(nbEntries));*/
+        KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
+        kvStoreClient.start();
+
+        int nbEntries = 10;
+
+        raftServer1.addServer(7003);
+
+        given(electionTimeout4.nextRandom()).willReturn(Duration.ofSeconds(10));
+        raftServerMono4 = new RaftServerBuilder()
+                .nodeId(7003)
+                .storage(raftStorage4)
+                .stateMachine(new KVStateMachine(7003))
+                .electionTimeout(electionTimeout4)
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .start();
+
+        raftServer4 = raftServerMono4.block();
+
+        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
+                .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
+                .doOnNext(s -> {
+                    if ("val4".equals(s.getValue())) {
+                        raftServer1.addServer(7004);
+                    }
+                    if ("val7".equals(s.getValue())) {
+                        raftServer1.addServer(7005);
+                    }
+                    LOGGER.info("KVStoreClient received {}", s);
+                })
+                .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
+                .blockLast();
+
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 3);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 3);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 3);
     }
 
     @Test

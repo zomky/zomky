@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft.storage.log;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,7 @@ class SegmentWriterTest {
             while (i < 10) {
                 i++;
                 int size = buffer.getInt();
-                CommandEntry command = deserialize(buffer, size);
+                CommandEntry command = deserialize(buffer, size, CommandEntry.class);
                 assertThat(command.getValue()).isEqualTo(("abc"+i).getBytes());
                 assertThat(command.getTerm()).isEqualTo(1);
             }
@@ -86,7 +87,7 @@ class SegmentWriterTest {
         IndexedLogEntry actual = segmentWriter.appendEntry(commandEntry);
 
         assertThat(actual.getIndex()).isEqualTo(1);
-        assertThat(actual.getSize()).isEqualTo(Integer.BYTES + Long.BYTES + "abc1".length()); // term + timestamp
+        assertThat(actual.getSize()).isEqualTo(LogEntry.SIZE + 1 + "abc1".length()); // term + timestamp
         CommandEntry actualCommandEntry = (CommandEntry) actual.getLogEntry();
         assertThat(actualCommandEntry.getTerm()).isEqualTo(1);
         assertThat(actualCommandEntry.getTimestamp()).isEqualTo(10);
@@ -99,7 +100,7 @@ class SegmentWriterTest {
         commandEntry = new CommandEntry(2, 20, ("abc2").getBytes());
         actual = segmentWriter.appendEntry(commandEntry);
         assertThat(actual.getIndex()).isEqualTo(2);
-        assertThat(actual.getSize()).isEqualTo(Integer.BYTES + Long.BYTES + "abc2".length()); // term + timestamp
+        assertThat(actual.getSize()).isEqualTo(LogEntry.SIZE + 1 + "abc2".length()); // term + timestamp
         actualCommandEntry = (CommandEntry) actual.getLogEntry();
         assertThat(actualCommandEntry.getTerm()).isEqualTo(2);
         assertThat(actualCommandEntry.getTimestamp()).isEqualTo(20);

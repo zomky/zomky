@@ -7,6 +7,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.Segments;
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,7 +80,7 @@ public class ChunkSegmentReaderIntegrationTest {
                     final IndexedLogEntry next = segmentReader.next();
                     if (jj % 100_000 == 0) {
                         LOGGER.info("read {}", next);
-                        assertIndexLogEntry(next, commandEntry(jj, timestamp + jj, value), jj, Integer.BYTES + Long.BYTES + value.length());
+                        assertIndexLogEntry(next, commandEntry(jj, timestamp + jj, value), jj, LogEntry.SIZE + 1 + value.length());
                     }
                     j.incrementAndGet();
                 }

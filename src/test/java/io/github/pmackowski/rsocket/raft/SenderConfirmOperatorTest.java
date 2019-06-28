@@ -124,7 +124,7 @@ public class SenderConfirmOperatorTest {
     private Flux<Payload> payloads(int nbMessages) {
         return Flux.range(1,nbMessages).map(i -> {
             LogEntry logEntry = new CommandEntry(i, i, ("abc"+i).getBytes());
-            ByteBuffer buffer = ByteBuffer.allocate(12 + ("abc"+i).length());
+            ByteBuffer buffer = ByteBuffer.allocate(LogEntry.SIZE + ("abc"+i).length() + 1);
             serialize(logEntry, buffer);
             buffer.flip();
             return DefaultPayload.create(buffer);

@@ -12,4 +12,5 @@ public interface RaftServer extends Closeable {
 
     boolean isFollower();
 
+    void addServer(int newServer);
 }

@@ -14,8 +14,6 @@ public class CandidateRole implements RaftServerRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CandidateRole.class);
 
-    private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
-
     private Disposable subscription;
 
     @Override
@@ -53,7 +51,7 @@ public class CandidateRole implements RaftServerRole {
                 })
                 .filter(VoteResponse::getVoteGranted)
                 // wait until quorum achieved or election timeout elapsed
-                .buffer(QUORUM - 1)
+                .buffer(node.quorum() - 1)
                 .timeout(node.nextElectionTimeout())
                 .next()
                 .doOnSuccess(s -> {

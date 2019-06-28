@@ -4,8 +4,12 @@ import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -92,11 +96,14 @@ class DefaultRaftServer implements RaftServer {
     private List<ConfirmListener> confirmListeners = new ArrayList<>();
     private List<LastAppliedListener> lastAppliedListeners = new ArrayList<>();
 
+    private volatile Configuration currentConfiguration;
+    private volatile long previousConfigurationId;
+    private volatile long currentConfigurationId;
+
     ElectionTimeout electionTimeout;
 
     DefaultRaftServer(int port,
                       RaftStorage raftStorage,
-                      List<Integer> clientPorts,
                       StateMachine<ByteBuffer> stateMachine,
                       ElectionTimeout electionTimeout,
                       boolean preVote,
@@ -107,8 +114,9 @@ class DefaultRaftServer implements RaftServer {
         this.electionTimeout = electionTimeout;
         this.preVote = preVote;
         this.leaderStickiness = leaderStickiness;
+        this.currentConfiguration = raftStorage.getConfiguration(); // at startup always committed configuration
         this.receiver = new Receiver(this);
-        this.senders = new Senders(this, clientPorts);
+        this.senders = new Senders(this);
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
     }
 
@@ -120,12 +128,18 @@ class DefaultRaftServer implements RaftServer {
         final LogStorageReader logStorageReader = raftStorage.openCommittedEntriesReader();
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
         stateMachineExecutor.scheduleWithFixedDelay(() -> {
-            while (logStorageReader.hasNext()) {
-                final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-                LOGGER.info("next {}", indexedLogEntry);
-                ByteBuffer response = stateMachine.applyLogEntry(indexedLogEntry.getLogEntry());
-                lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, indexedLogEntry.getIndex());
+            try {
+                while (logStorageReader.hasNext()) {
+                    final IndexedLogEntry indexedLogEntry = logStorageReader.next();
+                    LOGGER.info("next {}", indexedLogEntry);
+                    if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
+                        ByteBuffer response = stateMachine.applyLogEntry(indexedLogEntry.getLogEntry());
+                        lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
+                        LOGGER.info("[RaftServer {}] index {} has been applied to state machine", nodeId, indexedLogEntry.getIndex());
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.error("Main loop failure", e);
             }
         }, 0, 10, TimeUnit.MILLISECONDS);
     }
@@ -153,6 +167,11 @@ class DefaultRaftServer implements RaftServer {
 
     public void setCommitIndex(long commitIndex) {
         raftStorage.commit(commitIndex);
+        if (commitIndex >= currentConfigurationId && currentConfigurationId > previousConfigurationId) {
+            LOGGER.info("[RaftServer {}] Configuration {} committed", nodeId, currentConfiguration);
+            raftStorage.updateConfiguration(currentConfiguration);
+            previousConfigurationId = currentConfigurationId;
+        }
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
     }
 
@@ -273,5 +292,54 @@ class DefaultRaftServer implements RaftServer {
 
     public Mono<Payload> onAddServer(Payload payload) {
         return nodeState.onAddServer(this, raftStorage, payload);
+    }
+
+    @Override
+    public void addServer(int newMember) {
+        // 1. Reply NOT_LEADER if not leader
+        if (!isLeader()) {
+            throw new RaftException("Leader can only add server!");
+        }
+
+        // 2. Catch up new server for fixed number of rounds. Reply TIMEOUT
+        // if new server does not make progress for an election timeout or
+        // if the last round takes longer than election timeout
+
+        // 3. Wait until previous configuration in log is committed.
+
+        if (!currentConfiguration.equals(raftStorage.getConfiguration())) {
+            throw new RaftException("Other configure request is in progress!");
+        }
+
+        // 4. Append new configuration entry to log (old configuration plus new server),
+        // commit it using majority of new configuration
+
+        Configuration newConfiguration = currentConfiguration.addMember(newMember);
+
+        ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
+        IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
+        currentConfigurationId = indexedLogEntry.getIndex();
+        currentConfiguration = newConfiguration;
+        senders.addServer(newMember);
+    }
+
+    public Configuration getCurrentConfiguration() {
+        return currentConfiguration;
+    }
+
+    public int quorum() {
+        return currentConfiguration.quorum();
+    }
+
+    // for followers
+    public void apply(IndexedLogEntry indexedLogEntry) {
+        LogEntry logEntry = indexedLogEntry.getLogEntry();
+        if (logEntry instanceof ConfigurationEntry) {
+            LOGGER.info("[RaftServer {}] New configuration {}", nodeId, logEntry);
+            ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
+            currentConfiguration = new Configuration(configurationEntry.getMembers());
+            currentConfigurationId = indexedLogEntry.getIndex();
+            senders.replaceWith(currentConfiguration);
+        }
     }
 }

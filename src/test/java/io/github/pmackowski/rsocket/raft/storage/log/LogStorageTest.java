@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft.storage.log;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,8 +51,8 @@ class LogStorageTest {
 
         final IndexedLogEntry actual = appendEntry(i, entry -> timestamp + entry, entry -> value);
 
-        assertIndexLogEntry(actual, commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
-        assertIndexLogEntry(logStorage.getEntryByIndex(1), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+        assertIndexLogEntry(actual, commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        assertIndexLogEntry(logStorage.getEntryByIndex(1), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         assertThat(logStorage.getTermByIndex(1)).isEqualTo(1);
         assertThat(logStorage.getLastEntry()).hasValue(actual);
     }
@@ -66,7 +67,7 @@ class LogStorageTest {
         long timestamp = System.currentTimeMillis();
 
         IndexedLogEntry actual = appendEntry(1, entry -> timestamp + entry, entry -> "abc1");
-        assertIndexLogEntry(actual, commandEntry(1, timestamp + 1, "abc1"), 1, Integer.BYTES + Long.BYTES + "abc1".length());
+        assertIndexLogEntry(actual, commandEntry(1, timestamp + 1, "abc1"), 1, LogEntry.SIZE + 1 + "abc1".length());
         logStorage.close();
 
         logStorage = new LogStorage(RaftStorageConfiguration.builder()
@@ -75,9 +76,9 @@ class LogStorageTest {
                 .build());
 
         actual = appendEntry(2, entry -> timestamp + entry, entry -> "abc2");
-        assertIndexLogEntry(actual, commandEntry(2, timestamp + 2, "abc2"), 2, Integer.BYTES + Long.BYTES + "abc2".length());
+        assertIndexLogEntry(actual, commandEntry(2, timestamp + 2, "abc2"), 2, LogEntry.SIZE + 1 + "abc2".length());
 
-        assertIndexLogEntry(logStorage.getEntryByIndex(2), commandEntry(2, timestamp + 2, "abc2"), 2, Integer.BYTES + Long.BYTES + "abc2".length());
+        assertIndexLogEntry(logStorage.getEntryByIndex(2), commandEntry(2, timestamp + 2, "abc2"), 2, LogEntry.SIZE + 1 + "abc2".length());
         assertThat(logStorage.getTermByIndex(2)).isEqualTo(2);
         assertThat(logStorage.getLastEntry()).hasValue(actual);
     }
@@ -95,7 +96,7 @@ class LogStorageTest {
 
         IntStream.rangeClosed(1, numberOfEntries).forEach(i -> {
             String value = "abc" + i;
-            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(numberOfEntries);
@@ -116,7 +117,7 @@ class LogStorageTest {
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String value = "abc" + i;
-            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
@@ -138,7 +139,7 @@ class LogStorageTest {
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String value = "abc" + i;
-            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
@@ -160,7 +161,7 @@ class LogStorageTest {
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String value = "abc" + i;
-            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);
@@ -187,7 +188,7 @@ class LogStorageTest {
 
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String value = "abc" + i;
-            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, Integer.BYTES + Long.BYTES + value.length());
+            assertIndexLogEntry(logStorage.getEntryByIndex(i), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
             assertThat(logStorage.getTermByIndex(i)).isEqualTo(i);
         });
         assertThat(logStorage.getLastEntry().get().getIndex()).isEqualTo(4);

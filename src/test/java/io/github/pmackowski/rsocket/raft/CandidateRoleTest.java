@@ -32,6 +32,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderElected() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
@@ -51,6 +52,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderElectedQuorumReached() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
@@ -68,6 +70,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderElectedInSecondRound() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
 
@@ -99,6 +102,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderElectedOneSenderGrantedVoteOtherIsHanging() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
@@ -118,6 +122,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderNotElected() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(
@@ -143,6 +148,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderNotElectedConvertToFollowerIfGreaterTerm() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(
@@ -167,6 +173,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderNotElectedNoAvailableSenders() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(10));
         given(node.availableSenders()).willReturn(Flux.create(emitter -> {}));
 
@@ -179,6 +186,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderNotElectedAllSendersHanging() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(
@@ -205,6 +213,7 @@ public class CandidateRoleTest {
 
     @Test
     void leaderNotElectedAllSendersAreBroken() throws InterruptedException {
+        given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
         given(node.isCandidate()).willReturn(true);
         given(node.availableSenders()).willReturn(

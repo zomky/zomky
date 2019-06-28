@@ -50,6 +50,7 @@ public class LeaderRoleTest {
     void setUp() {
         Mockito.lenient().when(sender1.getNodeId()).thenReturn(1);
         Mockito.lenient().when(sender2.getNodeId()).thenReturn(2);
+        Mockito.lenient().when(node.quorum()).thenReturn(2);
     }
 
     @Test
@@ -126,7 +127,7 @@ public class LeaderRoleTest {
         assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(2);
 
         assertThat(appendEntriesRequest.getEntriesList().stream()
-                .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer()))
+                .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
                 .map(CommandEntry::getValue)
                 .map(String::new)
                 .collect(Collectors.toList())).containsExactly("val1", "val2");
@@ -165,7 +166,7 @@ public class LeaderRoleTest {
         assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(1);
 
         assertThat(appendEntriesRequest.getEntriesList().stream()
-                .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer()))
+                .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
                 .map(CommandEntry::getValue)
                 .map(String::new)
                 .collect(Collectors.toList())).containsExactly("val3");

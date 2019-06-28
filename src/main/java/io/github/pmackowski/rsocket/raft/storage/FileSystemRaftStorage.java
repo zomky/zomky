@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.LogStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.storage.meta.MetaStorage;
 
 import java.io.IOException;
@@ -118,5 +119,15 @@ public class FileSystemRaftStorage implements RaftStorage {
     public void close() {
         logStorage.close();
         metaStorage.close();
+    }
+
+    @Override
+    public void updateConfiguration(Configuration configuration) {
+        metaStorage.updateConfiguration(configuration);
+    }
+
+    @Override
+    public Configuration getConfiguration() {
+        return metaStorage.getConfiguration();
     }
 }
