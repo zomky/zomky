@@ -30,6 +30,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
+@IntegrationTest
 class RaftServerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftServerTest.class);
