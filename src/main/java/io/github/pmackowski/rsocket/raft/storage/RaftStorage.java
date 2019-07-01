@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 
 import java.nio.ByteBuffer;
 import java.util.Optional;
@@ -47,5 +48,9 @@ public interface RaftStorage {
     int getTermByIndex(long index);
 
     void close();
+
+    void updateConfiguration(Configuration configuration);
+
+    Configuration getConfiguration();
 
 }

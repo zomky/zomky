@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -64,7 +65,7 @@ public class InMemoryRaftStorage implements RaftStorage {
         int size = 0;
         if (logEntry instanceof CommandEntry) {
             CommandEntry commandEntry = (CommandEntry) logEntry;
-            size = commandEntry.getValue().length + 12;
+            size = commandEntry.getValue().length + LogEntry.SIZE +1;
         }
         last = new IndexedLogEntry(logEntry, entries.size() + 1, size);
         entries.add(last);
@@ -134,6 +135,16 @@ public class InMemoryRaftStorage implements RaftStorage {
     @Override
     public void close() {
 
+    }
+
+    @Override
+    public void updateConfiguration(Configuration configuration) {
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public Configuration getConfiguration() {
+        throw new NotImplementedException();
     }
 
     private static class InMemoryLogStorageReader implements LogStorageReader {

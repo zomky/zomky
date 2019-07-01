@@ -8,6 +8,7 @@ import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -587,7 +588,7 @@ class FollowerRoleTest {
 
     private ByteString entry(int term, String value) {
         CommandEntry commandEntry = commandEntry(term, value);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(12 + value.length());
+        ByteBuffer byteBuffer = ByteBuffer.allocate(LogEntry.SIZE + value.length() + 1);
         serialize(commandEntry, byteBuffer);
         byteBuffer.flip();
 

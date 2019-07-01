@@ -2,6 +2,8 @@ package io.github.pmackowski.rsocket.raft.storage.log.entry;
 
 public class LogEntry {
 
+    public static final int SIZE = Integer.BYTES + Long.BYTES;
+
     protected int term;
     protected long timestamp;
 

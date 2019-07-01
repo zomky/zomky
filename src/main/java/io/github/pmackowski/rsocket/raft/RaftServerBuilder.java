@@ -11,17 +11,11 @@ public class RaftServerBuilder {
     private ElectionTimeout electionTimeout;
     private RaftStorage raftStorage;
     private int nodeId;
-    private List<Integer> clientPorts;
     private boolean preVote;
     private boolean leaderStickiness;
 
     public RaftServerBuilder nodeId(int nodeId) {
         this.nodeId = nodeId;
-        return this;
-    }
-
-    public RaftServerBuilder clientPorts(List<Integer> clientPorts) {
-        this.clientPorts = clientPorts;
         return this;
     }
 
@@ -52,7 +46,7 @@ public class RaftServerBuilder {
 
     public Mono<RaftServer> start() {
         return Mono.defer(() -> {
-           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, clientPorts, stateMachine, electionTimeout, preVote, leaderStickiness);
+           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, stateMachine, electionTimeout, preVote, leaderStickiness);
            return Mono.just(kvStoreServer).doOnNext(DefaultRaftServer::start);
         });
     }

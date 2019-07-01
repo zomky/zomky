@@ -45,6 +45,26 @@ public final class Rpc {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_AppendEntriesResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_AddServerRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_AddServerRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_AddServerResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_AddServerResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_RemoveServerRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_RemoveServerRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_RemoveServerResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_RemoveServerResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_InstallSnapshotRequest_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -80,15 +100,20 @@ public final class Rpc {
       "\005\022\020\n\010leaderId\030\002 \001(\005\022\024\n\014prevLogIndex\030\003 \001(",
       "\003\022\023\n\013prevLogTerm\030\004 \001(\003\022\017\n\007entries\030\005 \003(\014\022" +
       "\024\n\014leaderCommit\030\006 \001(\003\"6\n\025AppendEntriesRe" +
-      "sponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 \001(\010\"\211\001" +
-      "\n\026InstallSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\020" +
-      "\n\010leaderId\030\002 \001(\005\022\031\n\021lastIncludedIndex\030\003 " +
-      "\001(\003\022\030\n\020lastIncludedTerm\030\004 \001(\003\022\014\n\004data\030\005 " +
-      "\001(\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotResp" +
-      "onse\022\014\n\004term\030\001 \001(\005\"B\n\016CommandRequest\022\013\n\003" +
-      "key\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\024\n\014setOperation" +
-      "\030\003 \001(\010B)\n%io.github.pmackowski.rsocket.r",
-      "aft.rpcP\001b\006proto3"
+      "sponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 \001(\010\"%\n" +
+      "\020AddServerRequest\022\021\n\tnewServer\030\001 \001(\005\"7\n\021" +
+      "AddServerResponse\022\016\n\006status\030\001 \001(\010\022\022\n\nlea" +
+      "derHint\030\002 \001(\005\"(\n\023RemoveServerRequest\022\021\n\t" +
+      "oldServer\030\001 \001(\005\":\n\024RemoveServerResponse\022" +
+      "\016\n\006status\030\001 \001(\010\022\022\n\nleaderHint\030\002 \001(\005\"\211\001\n\026" +
+      "InstallSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\020\n\010" +
+      "leaderId\030\002 \001(\005\022\031\n\021lastIncludedIndex\030\003 \001(",
+      "\003\022\030\n\020lastIncludedTerm\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
+      "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
+      "se\022\014\n\004term\030\001 \001(\005\"B\n\016CommandRequest\022\013\n\003ke" +
+      "y\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\024\n\014setOperation\030\003" +
+      " \001(\010B)\n%io.github.pmackowski.rsocket.raf" +
+      "t.rpcP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -138,20 +163,44 @@ public final class Rpc {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AppendEntriesResponse_descriptor,
         new java.lang.String[] { "Term", "Success", });
-    internal_static_InstallSnapshotRequest_descriptor =
+    internal_static_AddServerRequest_descriptor =
       getDescriptor().getMessageTypes().get(6);
+    internal_static_AddServerRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_AddServerRequest_descriptor,
+        new java.lang.String[] { "NewServer", });
+    internal_static_AddServerResponse_descriptor =
+      getDescriptor().getMessageTypes().get(7);
+    internal_static_AddServerResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_AddServerResponse_descriptor,
+        new java.lang.String[] { "Status", "LeaderHint", });
+    internal_static_RemoveServerRequest_descriptor =
+      getDescriptor().getMessageTypes().get(8);
+    internal_static_RemoveServerRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_RemoveServerRequest_descriptor,
+        new java.lang.String[] { "OldServer", });
+    internal_static_RemoveServerResponse_descriptor =
+      getDescriptor().getMessageTypes().get(9);
+    internal_static_RemoveServerResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_RemoveServerResponse_descriptor,
+        new java.lang.String[] { "Status", "LeaderHint", });
+    internal_static_InstallSnapshotRequest_descriptor =
+      getDescriptor().getMessageTypes().get(10);
     internal_static_InstallSnapshotRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotRequest_descriptor,
         new java.lang.String[] { "Term", "LeaderId", "LastIncludedIndex", "LastIncludedTerm", "Data", "Done", });
     internal_static_InstallSnapshotResponse_descriptor =
-      getDescriptor().getMessageTypes().get(7);
+      getDescriptor().getMessageTypes().get(11);
     internal_static_InstallSnapshotResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotResponse_descriptor,
         new java.lang.String[] { "Term", });
     internal_static_CommandRequest_descriptor =
-      getDescriptor().getMessageTypes().get(8);
+      getDescriptor().getMessageTypes().get(12);
     internal_static_CommandRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_CommandRequest_descriptor,

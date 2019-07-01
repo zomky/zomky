@@ -29,6 +29,7 @@ public class MetaStorage implements AutoCloseable{
             nodeDataFileChannel = nodeDataFile.getChannel();
             if (nodeDataFileChannel.size() == 0) {
                 update(0, 0);
+                updateConfiguration(Configuration.DEFAULT_CONFIGURATION);
             }
         } catch (Exception e) {
             throw  new StorageException(e);
@@ -57,12 +58,42 @@ public class MetaStorage implements AutoCloseable{
         }
     }
 
+    public synchronized Configuration getConfiguration() {
+        try {
+            int members = (int) (nodeDataFileChannel.size() / Integer.BYTES - 2);
+            ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES * members);
+            nodeDataFileChannel.read(metadataBuffer, Integer.BYTES * 2);
+            metadataBuffer.flip();
+            Configuration configuration = new Configuration();
+            while (metadataBuffer.hasRemaining()) {
+                configuration = configuration.addMember(metadataBuffer.getInt());
+            }
+            return configuration;
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
+    }
+
     public synchronized void update(int term, int votedFor) {
         try {
             nodeDataFileChannel.position(0);
             ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Integer.BYTES);
             byteBuffer.putInt(term);
             byteBuffer.putInt(votedFor);
+            byteBuffer.flip();
+            nodeDataFileChannel.write(byteBuffer);
+        } catch (IOException e) {
+            throw new StorageException(e);
+        }
+    }
+
+    public synchronized void updateConfiguration(Configuration configuration) {
+        try {
+            nodeDataFileChannel.position(2 * Integer.BYTES);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(configuration.membersCount() * Integer.BYTES);
+            configuration.getMembers().forEach(member -> {
+                byteBuffer.putInt(member);
+            });
             byteBuffer.flip();
             nodeDataFileChannel.write(byteBuffer);
         } catch (IOException e) {

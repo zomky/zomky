@@ -2,7 +2,10 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -46,10 +49,13 @@ public interface RaftServerRole {
                     if (raftStorage.getLastIndexedTerm().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
                         raftStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
                     }
+
                     // 4. Append any new entries not already in the log
                     appendEntriesRequest.getEntriesList().forEach(entry -> {
                         ByteBuffer byteBuffer = entry.asReadOnlyByteBuffer();
-                        raftStorage.append(byteBuffer);
+                        LogEntry logEntry = LogEntrySerializer.deserialize(byteBuffer);
+                        IndexedLogEntry indexedLogEntry = raftStorage.append(logEntry);
+                        node.apply(indexedLogEntry);
                     });
 
                     //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -144,4 +150,7 @@ public interface RaftServerRole {
         return Flux.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
+    default Mono<Payload> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
+        return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
+    }
 }

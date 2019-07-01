@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.TcpClientTransport;
@@ -7,8 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class Senders {
 
@@ -20,11 +22,34 @@ public class Senders {
 
     private ConcurrentMap<Integer, Sender> senders = new ConcurrentHashMap<>();
 
-    public Senders(DefaultRaftServer raftServer, List<Integer> clientPorts) {
-        clientPorts.forEach(clientPort -> {
+    public Senders(DefaultRaftServer raftServer) {
+        raftServer.getCurrentConfiguration().allMembersExcept(raftServer.nodeId).forEach(clientPort -> {
             senders.put(clientPort, Sender.unavailableSender(clientPort));
         });
         this.raftServer = raftServer;
+    }
+
+    public void addServer(int newMember) {
+        final Sender sender = Sender.unavailableSender(newMember);
+        senders.put(newMember, sender);
+    }
+
+    public void removeServer(int oldMember) {
+        // TODO lock
+        final Sender sender = senders.remove(oldMember);
+        if (sender != null) {
+            sender.stop();
+            raftServer.senderUnavailable(sender);
+        }
+    }
+
+    public void replaceWith(Configuration currentConfiguration) {
+        currentConfiguration.allMembersExcept(raftServer.nodeId).forEach(member -> {
+            senders.putIfAbsent(member, Sender.unavailableSender(member));
+        });
+        final Set<Integer> members = currentConfiguration.getMembers();
+        final Set<Sender> toRemove = senders.values().stream().filter(sender -> !members.contains(sender.getNodeId())).collect(Collectors.toSet());
+        toRemove.forEach(i -> removeServer(i.getNodeId()));
     }
 
     public void start() {
@@ -80,15 +105,18 @@ public class Senders {
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
         LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", raftServer.nodeId, nodeId);
-        senders.put(nodeId, sender);
+        if (raftServer.getCurrentConfiguration().contains(nodeId)) {
+            senders.put(nodeId, sender);
+        }
         raftServer.senderUnavailable(sender);
     }
 
     private void doAvailableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
         LOGGER.info("[RaftServer {} -> RaftServer {}] connection available", raftServer.nodeId, nodeId);
         Sender sender = Sender.availableSender(nodeId, requestVoteSocket, appendEntriesSocket);
-        senders.put(nodeId, sender);
+        if (raftServer.getCurrentConfiguration().contains(nodeId)) {
+            senders.put(nodeId, sender);
+        }
         raftServer.senderAvailable(sender);
     }
-
 }
