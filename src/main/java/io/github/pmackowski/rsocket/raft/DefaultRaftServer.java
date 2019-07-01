@@ -161,6 +161,11 @@ class DefaultRaftServer implements RaftServer {
         raftStorage.update(term + 1, nodeId);
     }
 
+    @Override
+    public ElectionTimeout getElectionTimeout() {
+        return electionTimeout;
+    }
+
     public long getCommitIndex() {
         return raftStorage.commitIndex();
     }
@@ -306,8 +311,7 @@ class DefaultRaftServer implements RaftServer {
         // if the last round takes longer than election timeout
 
         // 3. Wait until previous configuration in log is committed.
-
-        if (!currentConfiguration.equals(raftStorage.getConfiguration())) {
+        if (currentConfigurationId > previousConfigurationId) {// || !currentConfiguration.equals(raftStorage.getConfiguration())) {
             throw new RaftException("Other configure request is in progress!");
         }
 
@@ -315,12 +319,39 @@ class DefaultRaftServer implements RaftServer {
         // commit it using majority of new configuration
 
         Configuration newConfiguration = currentConfiguration.addMember(newMember);
-
         ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
         IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
         currentConfigurationId = indexedLogEntry.getIndex();
         currentConfiguration = newConfiguration;
         senders.addServer(newMember);
+    }
+
+    @Override
+    public void removeServer(int oldMember) {
+        // 1. Reply NOT_LEADER if not leader
+        if (!isLeader()) {
+            throw new RaftException("Leader can only remove server!");
+        }
+
+        // 2. Wait until previous configuration in log is committed.
+        if (currentConfigurationId > previousConfigurationId) {// || !currentConfiguration.equals(raftStorage.getConfiguration())) {
+            throw new RaftException("Other configure request is in progress!");
+        }
+
+        // 3. Append new configuration entry to log (old configuration plus new server),
+        // commit it using majority of new configuration.
+
+        Configuration newConfiguration = currentConfiguration.removeMember(oldMember);
+        ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
+        IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
+        currentConfigurationId = indexedLogEntry.getIndex();
+        currentConfiguration = newConfiguration;
+        senders.removeServer(oldMember);
+
+        // 4. If this server was removed, step down.
+        if (oldMember == nodeId) {
+            convertToFollower(raftStorage.getTerm()); // TODO non-voting member
+        }
     }
 
     public Configuration getCurrentConfiguration() {
@@ -335,8 +366,8 @@ class DefaultRaftServer implements RaftServer {
     public void apply(IndexedLogEntry indexedLogEntry) {
         LogEntry logEntry = indexedLogEntry.getLogEntry();
         if (logEntry instanceof ConfigurationEntry) {
-            LOGGER.info("[RaftServer {}] New configuration {}", nodeId, logEntry);
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
+            LOGGER.info("[RaftServer {}] New configuration {}", nodeId, configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
             senders.replaceWith(currentConfiguration);

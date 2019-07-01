@@ -34,6 +34,10 @@ public class Configuration {
         return new Configuration(newMember, members);
     }
 
+    public Configuration removeMember(int oldMember) {
+        return new Configuration(allMembersExcept(oldMember));
+    }
+
     public Set<Integer> getMembers() {
         return members;
     }
@@ -43,7 +47,11 @@ public class Configuration {
     }
 
     public Set<Integer> allMembersExcept(int memberId) {
-        return getMembers().stream().filter(member -> member != memberId).collect(Collectors.toSet());
+        return getMembers().stream().filter(member -> !member.equals(memberId)).collect(Collectors.toSet());
+    }
+
+    public boolean contains(int nodeId) {
+        return members.contains(nodeId);
     }
 
     @Override

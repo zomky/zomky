@@ -4,6 +4,8 @@ import io.rsocket.Closeable;
 
 public interface RaftServer extends Closeable {
 
+    ElectionTimeout getElectionTimeout();
+
     int getCurrentLeaderId();
 
     boolean isLeader();
@@ -13,4 +15,6 @@ public interface RaftServer extends Closeable {
     boolean isFollower();
 
     void addServer(int newServer);
+
+    void removeServer(int oldMember);
 }

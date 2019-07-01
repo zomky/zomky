@@ -1,5 +1,9 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.integration;
 
+import io.github.pmackowski.rsocket.raft.ElectionTimeout;
+import io.github.pmackowski.rsocket.raft.IntegrationTest;
+import io.github.pmackowski.rsocket.raft.RaftServer;
+import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.statemachine.kv.KeyValue;
@@ -233,6 +237,28 @@ class RaftServerTest {
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 3);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 3);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 3);
+    }
+
+    @Test
+    void testLogReplicationWithConfigurationChangeRemoveServer() {
+        testElection();
+
+        KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
+        kvStoreClient.start();
+
+        int nbEntries = 10;
+
+        raftServer1.removeServer(7002);
+
+        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
+                .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
+                .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
+                .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
+                .blockLast();
+
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 1);
+//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 1);
     }
 
     @Test
