@@ -42,12 +42,12 @@ class FollowerRoleTest {
 
     @Test
     void electionTimeout() throws InterruptedException {
-        Duration electionTimeout = Duration.ofMillis(10);
+        Duration electionTimeout = Duration.ofMillis(50);
         given(node.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(false);
         followerRole.onInit(node, raftStorage);
 
-        int lag = 10;
+        int lag = 20;
         Thread.sleep(electionTimeout.toMillis() + lag);
         verify(node).convertToCandidate();
     }
@@ -102,11 +102,11 @@ class FollowerRoleTest {
 
     @Test
     void noElectionTimeout() throws InterruptedException {
-        Duration electionTimeout = Duration.ofMillis(10);
+        Duration electionTimeout = Duration.ofMillis(50);
         given(node.nextElectionTimeout()).willReturn(electionTimeout);
         followerRole.onInit(node, raftStorage);
 
-        long lessThanElectionTimeout = electionTimeout.toMillis() - 5;
+        long lessThanElectionTimeout = electionTimeout.toMillis() - 20;
         Thread.sleep(lessThanElectionTimeout);
         verify(node, never()).convertToCandidate();
     }

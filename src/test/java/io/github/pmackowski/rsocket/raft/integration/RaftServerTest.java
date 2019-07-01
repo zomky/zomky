@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.blockhound.BlockHound;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -62,6 +63,10 @@ class RaftServerTest {
 
     @BeforeEach
     public void setUp() {
+        BlockHound.builder()
+                .allowBlockingCallsInside("java.io.FileInputStream", "readBytes")
+                .install();
+
         LOGGER.info("Raft directory {}", folder.toAbsolutePath().toString());
         raftStorage1 = raftStorage("1");
         raftStorage2 = raftStorage("2");

@@ -19,6 +19,7 @@
 buildscript {
     repositories {
         mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
         maven { url "http://repo.spring.io/plugins-release" }
     }
     dependencies {
@@ -127,6 +128,8 @@ configure(allprojects) { project ->
         testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
         implementation "org.slf4j:slf4j-api:$slf4jVersion"
         testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
+
+        testCompile 'io.projectreactor.tools:blockhound:1.0.0.M4'
 
     }
 
