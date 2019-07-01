@@ -125,7 +125,7 @@ configure(allprojects) { project ->
         testCompile "org.mockito:mockito-core:$mockitoVersion"
         testCompile "org.assertj:assertj-core:$assertjVersion"
         testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
-        testRuntime "org.slf4j:slf4j-api:$slf4jVersion"
+        implementation "org.slf4j:slf4j-api:$slf4jVersion"
         testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
 
     }

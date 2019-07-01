@@ -17,8 +17,8 @@ import reactor.retry.Repeat;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 public class LeaderRole implements RaftServerRole {
@@ -35,7 +35,7 @@ public class LeaderRole implements RaftServerRole {
      * to send to that server (initialized to leader
      * last log index + 1)
      */
-    private ConcurrentMap<Integer, Long> nextIndex = new ConcurrentHashMap<>();
+    private Map<Integer, Long> nextIndex = new ConcurrentHashMap<>();
 
     /**
      * Reinitialized after election,
@@ -43,11 +43,13 @@ public class LeaderRole implements RaftServerRole {
      * known to be replicated on server
      * (initialized to 0, increases monotonically)
      */
-    private ConcurrentMap<Integer, Long> matchIndex = new ConcurrentHashMap<>();
+    private Map<Integer, Long> matchIndex = new ConcurrentHashMap<>();
 
-    private ConcurrentMap<Integer, Disposable> heartbeats = new ConcurrentHashMap<>();
+    private Map<Integer, Disposable> heartbeats = new ConcurrentHashMap<>();
 
-    private ConcurrentMap<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
+    private Map<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
+
+    private CommitIndexCalculator commitIndexCalculator;
 
     public LeaderRole() {
         this(HEARTBEAT_TIMEOUT);
@@ -58,7 +60,12 @@ public class LeaderRole implements RaftServerRole {
     }
 
     LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory) {
+        this(repeatFactory, new CommitIndexCalculator());
+    }
+
+    LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory, CommitIndexCalculator commitIndexCalculator) {
         this.repeatFactory = repeatFactory;
+        this.commitIndexCalculator = commitIndexCalculator;
     }
 
     @Override
@@ -137,20 +144,7 @@ public class LeaderRole implements RaftServerRole {
                                      nextIndex.put(sender.getNodeId(), nextIdx);
                                      matchIndex.put(sender.getNodeId(), lastLogIndex);
 
-                                     // If there exists an N such that N > commitIndex, a majority
-                                     // of matchIndex[i] ≥ N, and log[N].term == currentTerm:
-                                     // set commitIndex = N
-                                     // TODO provide faster implementation
-                                     long candidateCommitIndex = lastLogIndex;
-                                     while (candidateCommitIndex > node.getCommitIndex()) {
-                                         long committed = committed(candidateCommitIndex);
-                                         int noCommittedRequired = node.quorum() - 1;
-                                         if (committed >= noCommittedRequired && raftStorage.getTermByIndex(candidateCommitIndex) == raftStorage.getTerm()) {
-                                             break;
-                                         } else {
-                                             candidateCommitIndex--;
-                                         }
-                                     }
+                                     long candidateCommitIndex = commitIndexCalculator.calculate(raftStorage, node, matchIndex, lastLogIndex);
                                      if (candidateCommitIndex > node.getCommitIndex()) {
                                          node.setCommitIndex(candidateCommitIndex);
                                      }
@@ -191,7 +185,4 @@ public class LeaderRole implements RaftServerRole {
                 .build();
     }
 
-    private long committed(long idx) {
-        return matchIndex.values().stream().filter(matchIndex1 -> matchIndex1 >= idx).count();
-    }
 }
