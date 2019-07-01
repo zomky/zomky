@@ -21,7 +21,7 @@ public interface RemoveServerResponseOrBuilder extends
    * address of recent leader, if known
    * </pre>
    *
-   * <code>optional int32 leaderHint = 2;</code>
+   * <code>optional int32 leader_hint = 2;</code>
    */
   int getLeaderHint();
 }

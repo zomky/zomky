@@ -153,10 +153,10 @@ public  final class CommandRequest extends
     }
   }
 
-  public static final int SETOPERATION_FIELD_NUMBER = 3;
+  public static final int SET_OPERATION_FIELD_NUMBER = 3;
   private boolean setOperation_;
   /**
-   * <code>optional bool setOperation = 3;</code>
+   * <code>optional bool set_operation = 3;</code>
    */
   public boolean getSetOperation() {
     return setOperation_;
@@ -236,7 +236,7 @@ public  final class CommandRequest extends
     hash = (53 * hash) + getKey().hashCode();
     hash = (37 * hash) + VALUE_FIELD_NUMBER;
     hash = (53 * hash) + getValue().hashCode();
-    hash = (37 * hash) + SETOPERATION_FIELD_NUMBER;
+    hash = (37 * hash) + SET_OPERATION_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
         getSetOperation());
     hash = (29 * hash) + unknownFields.hashCode();
@@ -606,13 +606,13 @@ public  final class CommandRequest extends
 
     private boolean setOperation_ ;
     /**
-     * <code>optional bool setOperation = 3;</code>
+     * <code>optional bool set_operation = 3;</code>
      */
     public boolean getSetOperation() {
       return setOperation_;
     }
     /**
-     * <code>optional bool setOperation = 3;</code>
+     * <code>optional bool set_operation = 3;</code>
      */
     public Builder setSetOperation(boolean value) {
       
@@ -621,7 +621,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional bool setOperation = 3;</code>
+     * <code>optional bool set_operation = 3;</code>
      */
     public Builder clearSetOperation() {
       

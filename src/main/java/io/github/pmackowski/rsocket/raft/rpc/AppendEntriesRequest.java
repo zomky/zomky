@@ -121,40 +121,40 @@ public  final class AppendEntriesRequest extends
     return term_;
   }
 
-  public static final int LEADERID_FIELD_NUMBER = 2;
+  public static final int LEADER_ID_FIELD_NUMBER = 2;
   private int leaderId_;
   /**
    * <pre>
    * leaderId so follower can redirect clients
    * </pre>
    *
-   * <code>optional int32 leaderId = 2;</code>
+   * <code>optional int32 leader_id = 2;</code>
    */
   public int getLeaderId() {
     return leaderId_;
   }
 
-  public static final int PREVLOGINDEX_FIELD_NUMBER = 3;
+  public static final int PREV_LOG_INDEX_FIELD_NUMBER = 3;
   private long prevLogIndex_;
   /**
    * <pre>
    * index of log entry immediately preceding new ones
    * </pre>
    *
-   * <code>optional int64 prevLogIndex = 3;</code>
+   * <code>optional int64 prev_log_index = 3;</code>
    */
   public long getPrevLogIndex() {
     return prevLogIndex_;
   }
 
-  public static final int PREVLOGTERM_FIELD_NUMBER = 4;
+  public static final int PREV_LOG_TERM_FIELD_NUMBER = 4;
   private long prevLogTerm_;
   /**
    * <pre>
    * term of prevLogIndex entry
    * </pre>
    *
-   * <code>optional int64 prevLogTerm = 4;</code>
+   * <code>optional int64 prev_log_term = 4;</code>
    */
   public long getPrevLogTerm() {
     return prevLogTerm_;
@@ -194,14 +194,14 @@ public  final class AppendEntriesRequest extends
     return entries_.get(index);
   }
 
-  public static final int LEADERCOMMIT_FIELD_NUMBER = 6;
+  public static final int LEADER_COMMIT_FIELD_NUMBER = 6;
   private long leaderCommit_;
   /**
    * <pre>
    * leader’s commitIndex
    * </pre>
    *
-   * <code>optional int64 leaderCommit = 6;</code>
+   * <code>optional int64 leader_commit = 6;</code>
    */
   public long getLeaderCommit() {
     return leaderCommit_;
@@ -313,19 +313,19 @@ public  final class AppendEntriesRequest extends
     hash = (19 * hash) + getDescriptorForType().hashCode();
     hash = (37 * hash) + TERM_FIELD_NUMBER;
     hash = (53 * hash) + getTerm();
-    hash = (37 * hash) + LEADERID_FIELD_NUMBER;
+    hash = (37 * hash) + LEADER_ID_FIELD_NUMBER;
     hash = (53 * hash) + getLeaderId();
-    hash = (37 * hash) + PREVLOGINDEX_FIELD_NUMBER;
+    hash = (37 * hash) + PREV_LOG_INDEX_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getPrevLogIndex());
-    hash = (37 * hash) + PREVLOGTERM_FIELD_NUMBER;
+    hash = (37 * hash) + PREV_LOG_TERM_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getPrevLogTerm());
     if (getEntriesCount() > 0) {
       hash = (37 * hash) + ENTRIES_FIELD_NUMBER;
       hash = (53 * hash) + getEntriesList().hashCode();
     }
-    hash = (37 * hash) + LEADERCOMMIT_FIELD_NUMBER;
+    hash = (37 * hash) + LEADER_COMMIT_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getLeaderCommit());
     hash = (29 * hash) + unknownFields.hashCode();
@@ -630,7 +630,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public int getLeaderId() {
       return leaderId_;
@@ -640,7 +640,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public Builder setLeaderId(int value) {
       
@@ -653,7 +653,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public Builder clearLeaderId() {
       
@@ -668,7 +668,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prevLogIndex = 3;</code>
+     * <code>optional int64 prev_log_index = 3;</code>
      */
     public long getPrevLogIndex() {
       return prevLogIndex_;
@@ -678,7 +678,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prevLogIndex = 3;</code>
+     * <code>optional int64 prev_log_index = 3;</code>
      */
     public Builder setPrevLogIndex(long value) {
       
@@ -691,7 +691,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prevLogIndex = 3;</code>
+     * <code>optional int64 prev_log_index = 3;</code>
      */
     public Builder clearPrevLogIndex() {
       
@@ -706,7 +706,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prevLogTerm = 4;</code>
+     * <code>optional int64 prev_log_term = 4;</code>
      */
     public long getPrevLogTerm() {
       return prevLogTerm_;
@@ -716,7 +716,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prevLogTerm = 4;</code>
+     * <code>optional int64 prev_log_term = 4;</code>
      */
     public Builder setPrevLogTerm(long value) {
       
@@ -729,7 +729,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prevLogTerm = 4;</code>
+     * <code>optional int64 prev_log_term = 4;</code>
      */
     public Builder clearPrevLogTerm() {
       
@@ -844,7 +844,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 6;</code>
+     * <code>optional int64 leader_commit = 6;</code>
      */
     public long getLeaderCommit() {
       return leaderCommit_;
@@ -854,7 +854,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 6;</code>
+     * <code>optional int64 leader_commit = 6;</code>
      */
     public Builder setLeaderCommit(long value) {
       
@@ -867,7 +867,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leaderCommit = 6;</code>
+     * <code>optional int64 leader_commit = 6;</code>
      */
     public Builder clearLeaderCommit() {
       

@@ -71,14 +71,14 @@ public  final class AddServerRequest extends
             io.github.pmackowski.rsocket.raft.rpc.AddServerRequest.class, io.github.pmackowski.rsocket.raft.rpc.AddServerRequest.Builder.class);
   }
 
-  public static final int NEWSERVER_FIELD_NUMBER = 1;
+  public static final int NEW_SERVER_FIELD_NUMBER = 1;
   private int newServer_;
   /**
    * <pre>
    * address of server to add to configuration
    * </pre>
    *
-   * <code>optional int32 newServer = 1;</code>
+   * <code>optional int32 new_server = 1;</code>
    */
   public int getNewServer() {
     return newServer_;
@@ -138,7 +138,7 @@ public  final class AddServerRequest extends
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptorForType().hashCode();
-    hash = (37 * hash) + NEWSERVER_FIELD_NUMBER;
+    hash = (37 * hash) + NEW_SERVER_FIELD_NUMBER;
     hash = (53 * hash) + getNewServer();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
@@ -359,7 +359,7 @@ public  final class AddServerRequest extends
      * address of server to add to configuration
      * </pre>
      *
-     * <code>optional int32 newServer = 1;</code>
+     * <code>optional int32 new_server = 1;</code>
      */
     public int getNewServer() {
       return newServer_;
@@ -369,7 +369,7 @@ public  final class AddServerRequest extends
      * address of server to add to configuration
      * </pre>
      *
-     * <code>optional int32 newServer = 1;</code>
+     * <code>optional int32 new_server = 1;</code>
      */
     public Builder setNewServer(int value) {
       
@@ -382,7 +382,7 @@ public  final class AddServerRequest extends
      * address of server to add to configuration
      * </pre>
      *
-     * <code>optional int32 newServer = 1;</code>
+     * <code>optional int32 new_server = 1;</code>
      */
     public Builder clearNewServer() {
       

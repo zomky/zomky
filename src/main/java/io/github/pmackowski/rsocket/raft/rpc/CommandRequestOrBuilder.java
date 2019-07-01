@@ -28,7 +28,7 @@ public interface CommandRequestOrBuilder extends
       getValueBytes();
 
   /**
-   * <code>optional bool setOperation = 3;</code>
+   * <code>optional bool set_operation = 3;</code>
    */
   boolean getSetOperation();
 }

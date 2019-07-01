@@ -12,7 +12,7 @@ public interface AddServerRequestOrBuilder extends
    * address of server to add to configuration
    * </pre>
    *
-   * <code>optional int32 newServer = 1;</code>
+   * <code>optional int32 new_server = 1;</code>
    */
   int getNewServer();
 }

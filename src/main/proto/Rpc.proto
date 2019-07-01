@@ -28,11 +28,11 @@ message VoteResponse {
 
 message AppendEntriesRequest {
     int32 term = 1; // set leader’s term
-    int32 leaderId = 2; // leaderId so follower can redirect clients
-    int64 prevLogIndex = 3; // index of log entry immediately preceding new ones
-    int64 prevLogTerm = 4; // term of prevLogIndex entry
+    int32 leader_id = 2; // leaderId so follower can redirect clients
+    int64 prev_log_index = 3; // index of log entry immediately preceding new ones
+    int64 prev_log_term = 4; // term of prevLogIndex entry
     repeated bytes entries = 5; // log entries to store (empty for heartbeat may send more than one for efficiency)
-    int64 leaderCommit = 6; // leader’s commitIndex
+    int64 leader_commit = 6; // leader’s commitIndex
 }
 
 message AppendEntriesResponse {
@@ -41,28 +41,28 @@ message AppendEntriesResponse {
 }
 
 message AddServerRequest {
-    int32 newServer = 1; // address of server to add to configuration
+    int32 new_server = 1; // address of server to add to configuration
 }
 
 message AddServerResponse {
     bool status = 1; // OK if server was added successfully
-    int32 leaderHint = 2; // address of recent leader, if known
+    int32 leader_hint = 2; // address of recent leader, if known
 }
 
 message RemoveServerRequest {
-    int32 oldServer = 1; // address of server to remove from configuration
+    int32 old_server = 1; // address of server to remove from configuration
 }
 
 message RemoveServerResponse {
     bool status = 1; // OK if server was removed successfully
-    int32 leaderHint = 2; // address of recent leader, if known
+    int32 leader_hint = 2; // address of recent leader, if known
 }
 
 message InstallSnapshotRequest {
     int32 term = 1; // leader’s term
-    int32 leaderId = 2; // so follower can redirect clients
-    int64 lastIncludedIndex = 3; // the snapshot replaces all entries up through and including this index
-    int64 lastIncludedTerm = 4; // lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
+    int32 leader_id = 2; // so follower can redirect clients
+    int64 last_included_index = 3; // the snapshot replaces all entries up through and including this index
+    int64 last_included_term = 4; // lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
     bytes data = 5; // raw bytes of the snapshot chunk, starting at offset
     bool done = 6; // true if this is the last chunk
 }
@@ -74,5 +74,5 @@ message InstallSnapshotResponse {
 message CommandRequest {
     string key = 1;
     string value = 2;
-    bool setOperation = 3;
+    bool set_operation = 3;
 }

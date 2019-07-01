@@ -114,40 +114,40 @@ public  final class InstallSnapshotRequest extends
     return term_;
   }
 
-  public static final int LEADERID_FIELD_NUMBER = 2;
+  public static final int LEADER_ID_FIELD_NUMBER = 2;
   private int leaderId_;
   /**
    * <pre>
    * so follower can redirect clients
    * </pre>
    *
-   * <code>optional int32 leaderId = 2;</code>
+   * <code>optional int32 leader_id = 2;</code>
    */
   public int getLeaderId() {
     return leaderId_;
   }
 
-  public static final int LASTINCLUDEDINDEX_FIELD_NUMBER = 3;
+  public static final int LAST_INCLUDED_INDEX_FIELD_NUMBER = 3;
   private long lastIncludedIndex_;
   /**
    * <pre>
    * the snapshot replaces all entries up through and including this index
    * </pre>
    *
-   * <code>optional int64 lastIncludedIndex = 3;</code>
+   * <code>optional int64 last_included_index = 3;</code>
    */
   public long getLastIncludedIndex() {
     return lastIncludedIndex_;
   }
 
-  public static final int LASTINCLUDEDTERM_FIELD_NUMBER = 4;
+  public static final int LAST_INCLUDED_TERM_FIELD_NUMBER = 4;
   private long lastIncludedTerm_;
   /**
    * <pre>
    * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
    * </pre>
    *
-   * <code>optional int64 lastIncludedTerm = 4;</code>
+   * <code>optional int64 last_included_term = 4;</code>
    */
   public long getLastIncludedTerm() {
     return lastIncludedTerm_;
@@ -280,12 +280,12 @@ public  final class InstallSnapshotRequest extends
     hash = (19 * hash) + getDescriptorForType().hashCode();
     hash = (37 * hash) + TERM_FIELD_NUMBER;
     hash = (53 * hash) + getTerm();
-    hash = (37 * hash) + LEADERID_FIELD_NUMBER;
+    hash = (37 * hash) + LEADER_ID_FIELD_NUMBER;
     hash = (53 * hash) + getLeaderId();
-    hash = (37 * hash) + LASTINCLUDEDINDEX_FIELD_NUMBER;
+    hash = (37 * hash) + LAST_INCLUDED_INDEX_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getLastIncludedIndex());
-    hash = (37 * hash) + LASTINCLUDEDTERM_FIELD_NUMBER;
+    hash = (37 * hash) + LAST_INCLUDED_TERM_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getLastIncludedTerm());
     hash = (37 * hash) + DATA_FIELD_NUMBER;
@@ -580,7 +580,7 @@ public  final class InstallSnapshotRequest extends
      * so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public int getLeaderId() {
       return leaderId_;
@@ -590,7 +590,7 @@ public  final class InstallSnapshotRequest extends
      * so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public Builder setLeaderId(int value) {
       
@@ -603,7 +603,7 @@ public  final class InstallSnapshotRequest extends
      * so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leaderId = 2;</code>
+     * <code>optional int32 leader_id = 2;</code>
      */
     public Builder clearLeaderId() {
       
@@ -618,7 +618,7 @@ public  final class InstallSnapshotRequest extends
      * the snapshot replaces all entries up through and including this index
      * </pre>
      *
-     * <code>optional int64 lastIncludedIndex = 3;</code>
+     * <code>optional int64 last_included_index = 3;</code>
      */
     public long getLastIncludedIndex() {
       return lastIncludedIndex_;
@@ -628,7 +628,7 @@ public  final class InstallSnapshotRequest extends
      * the snapshot replaces all entries up through and including this index
      * </pre>
      *
-     * <code>optional int64 lastIncludedIndex = 3;</code>
+     * <code>optional int64 last_included_index = 3;</code>
      */
     public Builder setLastIncludedIndex(long value) {
       
@@ -641,7 +641,7 @@ public  final class InstallSnapshotRequest extends
      * the snapshot replaces all entries up through and including this index
      * </pre>
      *
-     * <code>optional int64 lastIncludedIndex = 3;</code>
+     * <code>optional int64 last_included_index = 3;</code>
      */
     public Builder clearLastIncludedIndex() {
       
@@ -656,7 +656,7 @@ public  final class InstallSnapshotRequest extends
      * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
      * </pre>
      *
-     * <code>optional int64 lastIncludedTerm = 4;</code>
+     * <code>optional int64 last_included_term = 4;</code>
      */
     public long getLastIncludedTerm() {
       return lastIncludedTerm_;
@@ -666,7 +666,7 @@ public  final class InstallSnapshotRequest extends
      * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
      * </pre>
      *
-     * <code>optional int64 lastIncludedTerm = 4;</code>
+     * <code>optional int64 last_included_term = 4;</code>
      */
     public Builder setLastIncludedTerm(long value) {
       
@@ -679,7 +679,7 @@ public  final class InstallSnapshotRequest extends
      * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
      * </pre>
      *
-     * <code>optional int64 lastIncludedTerm = 4;</code>
+     * <code>optional int64 last_included_term = 4;</code>
      */
     public Builder clearLastIncludedTerm() {
       

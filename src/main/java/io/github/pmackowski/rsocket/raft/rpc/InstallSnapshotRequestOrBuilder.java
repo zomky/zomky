@@ -21,7 +21,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * so follower can redirect clients
    * </pre>
    *
-   * <code>optional int32 leaderId = 2;</code>
+   * <code>optional int32 leader_id = 2;</code>
    */
   int getLeaderId();
 
@@ -30,7 +30,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * the snapshot replaces all entries up through and including this index
    * </pre>
    *
-   * <code>optional int64 lastIncludedIndex = 3;</code>
+   * <code>optional int64 last_included_index = 3;</code>
    */
   long getLastIncludedIndex();
 
@@ -39,7 +39,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
    * </pre>
    *
-   * <code>optional int64 lastIncludedTerm = 4;</code>
+   * <code>optional int64 last_included_term = 4;</code>
    */
   long getLastIncludedTerm();
 

@@ -96,24 +96,24 @@ public final class Rpc {
       "\005\022\024\n\014candidate_id\030\002 \001(\005\022\026\n\016last_log_inde" +
       "x\030\003 \001(\003\022\025\n\rlast_log_term\030\004 \001(\003\"2\n\014VoteRe" +
       "sponse\022\014\n\004term\030\001 \001(\005\022\024\n\014vote_granted\030\002 \001" +
-      "(\010\"\210\001\n\024AppendEntriesRequest\022\014\n\004term\030\001 \001(" +
-      "\005\022\020\n\010leaderId\030\002 \001(\005\022\024\n\014prevLogIndex\030\003 \001(",
-      "\003\022\023\n\013prevLogTerm\030\004 \001(\003\022\017\n\007entries\030\005 \003(\014\022" +
-      "\024\n\014leaderCommit\030\006 \001(\003\"6\n\025AppendEntriesRe" +
-      "sponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 \001(\010\"%\n" +
-      "\020AddServerRequest\022\021\n\tnewServer\030\001 \001(\005\"7\n\021" +
-      "AddServerResponse\022\016\n\006status\030\001 \001(\010\022\022\n\nlea" +
-      "derHint\030\002 \001(\005\"(\n\023RemoveServerRequest\022\021\n\t" +
-      "oldServer\030\001 \001(\005\":\n\024RemoveServerResponse\022" +
-      "\016\n\006status\030\001 \001(\010\022\022\n\nleaderHint\030\002 \001(\005\"\211\001\n\026" +
-      "InstallSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\020\n\010" +
-      "leaderId\030\002 \001(\005\022\031\n\021lastIncludedIndex\030\003 \001(",
-      "\003\022\030\n\020lastIncludedTerm\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
-      "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
-      "se\022\014\n\004term\030\001 \001(\005\"B\n\016CommandRequest\022\013\n\003ke" +
-      "y\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\024\n\014setOperation\030\003" +
-      " \001(\010B)\n%io.github.pmackowski.rsocket.raf" +
-      "t.rpcP\001b\006proto3"
+      "(\010\"\216\001\n\024AppendEntriesRequest\022\014\n\004term\030\001 \001(" +
+      "\005\022\021\n\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003",
+      " \001(\003\022\025\n\rprev_log_term\030\004 \001(\003\022\017\n\007entries\030\005" +
+      " \003(\014\022\025\n\rleader_commit\030\006 \001(\003\"6\n\025AppendEnt" +
+      "riesResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 " +
+      "\001(\010\"&\n\020AddServerRequest\022\022\n\nnew_server\030\001 " +
+      "\001(\005\"8\n\021AddServerResponse\022\016\n\006status\030\001 \001(\010" +
+      "\022\023\n\013leader_hint\030\002 \001(\005\")\n\023RemoveServerReq" +
+      "uest\022\022\n\nold_server\030\001 \001(\005\";\n\024RemoveServer" +
+      "Response\022\016\n\006status\030\001 \001(\010\022\023\n\013leader_hint\030" +
+      "\002 \001(\005\"\216\001\n\026InstallSnapshotRequest\022\014\n\004term" +
+      "\030\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\033\n\023last_includ",
+      "ed_index\030\003 \001(\003\022\032\n\022last_included_term\030\004 \001" +
+      "(\003\022\014\n\004data\030\005 \001(\014\022\014\n\004done\030\006 \001(\010\"\'\n\027Instal" +
+      "lSnapshotResponse\022\014\n\004term\030\001 \001(\005\"C\n\016Comma" +
+      "ndRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\025\n" +
+      "\rset_operation\030\003 \001(\010B)\n%io.github.pmacko" +
+      "wski.rsocket.raft.rpcP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {

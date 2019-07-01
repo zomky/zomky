@@ -12,7 +12,7 @@ public interface RemoveServerRequestOrBuilder extends
    * address of server to remove from configuration
    * </pre>
    *
-   * <code>optional int32 oldServer = 1;</code>
+   * <code>optional int32 old_server = 1;</code>
    */
   int getOldServer();
 }

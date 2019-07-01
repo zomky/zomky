@@ -90,14 +90,14 @@ public  final class RemoveServerResponse extends
     return status_;
   }
 
-  public static final int LEADERHINT_FIELD_NUMBER = 2;
+  public static final int LEADER_HINT_FIELD_NUMBER = 2;
   private int leaderHint_;
   /**
    * <pre>
    * address of recent leader, if known
    * </pre>
    *
-   * <code>optional int32 leaderHint = 2;</code>
+   * <code>optional int32 leader_hint = 2;</code>
    */
   public int getLeaderHint() {
     return leaderHint_;
@@ -169,7 +169,7 @@ public  final class RemoveServerResponse extends
     hash = (37 * hash) + STATUS_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
         getStatus());
-    hash = (37 * hash) + LEADERHINT_FIELD_NUMBER;
+    hash = (37 * hash) + LEADER_HINT_FIELD_NUMBER;
     hash = (53 * hash) + getLeaderHint();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
@@ -434,7 +434,7 @@ public  final class RemoveServerResponse extends
      * address of recent leader, if known
      * </pre>
      *
-     * <code>optional int32 leaderHint = 2;</code>
+     * <code>optional int32 leader_hint = 2;</code>
      */
     public int getLeaderHint() {
       return leaderHint_;
@@ -444,7 +444,7 @@ public  final class RemoveServerResponse extends
      * address of recent leader, if known
      * </pre>
      *
-     * <code>optional int32 leaderHint = 2;</code>
+     * <code>optional int32 leader_hint = 2;</code>
      */
     public Builder setLeaderHint(int value) {
       
@@ -457,7 +457,7 @@ public  final class RemoveServerResponse extends
      * address of recent leader, if known
      * </pre>
      *
-     * <code>optional int32 leaderHint = 2;</code>
+     * <code>optional int32 leader_hint = 2;</code>
      */
     public Builder clearLeaderHint() {
       

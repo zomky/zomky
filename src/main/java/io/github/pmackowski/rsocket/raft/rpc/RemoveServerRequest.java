@@ -71,14 +71,14 @@ public  final class RemoveServerRequest extends
             io.github.pmackowski.rsocket.raft.rpc.RemoveServerRequest.class, io.github.pmackowski.rsocket.raft.rpc.RemoveServerRequest.Builder.class);
   }
 
-  public static final int OLDSERVER_FIELD_NUMBER = 1;
+  public static final int OLD_SERVER_FIELD_NUMBER = 1;
   private int oldServer_;
   /**
    * <pre>
    * address of server to remove from configuration
    * </pre>
    *
-   * <code>optional int32 oldServer = 1;</code>
+   * <code>optional int32 old_server = 1;</code>
    */
   public int getOldServer() {
     return oldServer_;
@@ -138,7 +138,7 @@ public  final class RemoveServerRequest extends
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptorForType().hashCode();
-    hash = (37 * hash) + OLDSERVER_FIELD_NUMBER;
+    hash = (37 * hash) + OLD_SERVER_FIELD_NUMBER;
     hash = (53 * hash) + getOldServer();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
@@ -359,7 +359,7 @@ public  final class RemoveServerRequest extends
      * address of server to remove from configuration
      * </pre>
      *
-     * <code>optional int32 oldServer = 1;</code>
+     * <code>optional int32 old_server = 1;</code>
      */
     public int getOldServer() {
       return oldServer_;
@@ -369,7 +369,7 @@ public  final class RemoveServerRequest extends
      * address of server to remove from configuration
      * </pre>
      *
-     * <code>optional int32 oldServer = 1;</code>
+     * <code>optional int32 old_server = 1;</code>
      */
     public Builder setOldServer(int value) {
       
@@ -382,7 +382,7 @@ public  final class RemoveServerRequest extends
      * address of server to remove from configuration
      * </pre>
      *
-     * <code>optional int32 oldServer = 1;</code>
+     * <code>optional int32 old_server = 1;</code>
      */
     public Builder clearOldServer() {
       
