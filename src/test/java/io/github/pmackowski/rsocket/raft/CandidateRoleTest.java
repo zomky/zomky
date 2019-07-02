@@ -51,6 +51,16 @@ public class CandidateRoleTest {
     }
 
     @Test
+    void leaderElectedOneNode() {
+        given(node.quorum()).willReturn(1);
+
+        candidateRole.onInit(node, raftStorage);
+
+        verify(node).voteForMyself();
+        verify(node).convertToLeader();
+    }
+
+    @Test
     void leaderElectedQuorumReached() throws InterruptedException {
         given(node.quorum()).willReturn(2);
         given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));

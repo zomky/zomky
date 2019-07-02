@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
 import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.rpc.*;
@@ -95,6 +96,7 @@ class DefaultRaftServer implements RaftServer {
 
     private List<ConfirmListener> confirmListeners = new ArrayList<>();
     private List<LastAppliedListener> lastAppliedListeners = new ArrayList<>();
+    private List<ConfigurationChangeListener> configurationChangeListeners = new ArrayList<>();
 
     private volatile Configuration currentConfiguration;
     private volatile long previousConfigurationId;
@@ -104,6 +106,7 @@ class DefaultRaftServer implements RaftServer {
 
     DefaultRaftServer(int port,
                       RaftStorage raftStorage,
+                      Configuration initialConfiguration,
                       StateMachine<ByteBuffer> stateMachine,
                       ElectionTimeout electionTimeout,
                       boolean preVote,
@@ -114,7 +117,12 @@ class DefaultRaftServer implements RaftServer {
         this.electionTimeout = electionTimeout;
         this.preVote = preVote;
         this.leaderStickiness = leaderStickiness;
-        this.currentConfiguration = raftStorage.getConfiguration(); // at startup always committed configuration
+        this.currentConfiguration = raftStorage.getConfiguration();
+        if (currentConfiguration == null) {
+            this.raftStorage.updateConfiguration(initialConfiguration);
+            this.currentConfiguration = initialConfiguration;
+        }
+
         this.receiver = new Receiver(this);
         this.senders = new Senders(this);
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
@@ -192,6 +200,10 @@ class DefaultRaftServer implements RaftServer {
         lastAppliedListeners.add(lastAppliedListener);
     }
 
+    public void addConfigurationChangeListener(ConfigurationChangeListener configurationChangeListener) {
+        configurationChangeListeners.add(configurationChangeListener);
+    }
+
     void onSenderAvailable(SenderAvailableCallback senderAvailableCallback) {
         senderAvailableCallbacks.add(senderAvailableCallback);
     }
@@ -234,6 +246,10 @@ class DefaultRaftServer implements RaftServer {
     Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
         return nodeState.onRequestVote(this, raftStorage, requestVote)
                 .doOnNext(voteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
+    }
+
+    void convertToPassive() {
+        transitionBetweenStates(this.nodeState.nodeState(), new PassiveRole());
     }
 
     void convertToFollower(int term) {
@@ -311,19 +327,21 @@ class DefaultRaftServer implements RaftServer {
         // if the last round takes longer than election timeout
 
         // 3. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {// || !currentConfiguration.equals(raftStorage.getConfiguration())) {
+        if (currentConfigurationId > previousConfigurationId) {
             throw new RaftException("Other configure request is in progress!");
         }
 
         // 4. Append new configuration entry to log (old configuration plus new server),
         // commit it using majority of new configuration
 
-        Configuration newConfiguration = currentConfiguration.addMember(newMember);
+        Configuration oldConfiguration = currentConfiguration;
+        Configuration newConfiguration = oldConfiguration.addMember(newMember);
         ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
         IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
         currentConfigurationId = indexedLogEntry.getIndex();
         currentConfiguration = newConfiguration;
         senders.addServer(newMember);
+        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
     }
 
     @Override
@@ -334,23 +352,25 @@ class DefaultRaftServer implements RaftServer {
         }
 
         // 2. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {// || !currentConfiguration.equals(raftStorage.getConfiguration())) {
+        if (currentConfigurationId > previousConfigurationId) {
             throw new RaftException("Other configure request is in progress!");
         }
 
         // 3. Append new configuration entry to log (old configuration plus new server),
         // commit it using majority of new configuration.
 
-        Configuration newConfiguration = currentConfiguration.removeMember(oldMember);
+        Configuration oldConfiguration = currentConfiguration;
+        Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
         ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
         IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
         currentConfigurationId = indexedLogEntry.getIndex();
         currentConfiguration = newConfiguration;
         senders.removeServer(oldMember);
+        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
 
         // 4. If this server was removed, step down.
         if (oldMember == nodeId) {
-            convertToFollower(raftStorage.getTerm()); // TODO non-voting member
+            convertToPassive();
         }
     }
 

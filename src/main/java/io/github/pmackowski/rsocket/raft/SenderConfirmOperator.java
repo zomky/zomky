@@ -90,6 +90,9 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
             try {
                 IndexedLogEntry logEntryInfo = raftStorage.append(payload.getData());
+                if (node.quorum() == 1) {
+                    node.setCommitIndex(logEntryInfo.getIndex());
+                }
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);

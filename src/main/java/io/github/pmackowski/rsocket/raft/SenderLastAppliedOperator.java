@@ -91,6 +91,9 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
                 final CommandRequest commandRequest = CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                 CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), commandRequest.toByteArray());
                 IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
+                if (node.quorum() == 1) {
+                    node.setCommitIndex(logEntryInfo.getIndex());
+                }
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);

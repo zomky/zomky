@@ -19,9 +19,11 @@ import reactor.test.StepVerifier;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.serialize;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -41,23 +43,22 @@ class FollowerRoleTest {
     //// ELECTION TIMEOUT ////
 
     @Test
-    void electionTimeout() throws InterruptedException {
+    void electionTimeout() {
         Duration electionTimeout = Duration.ofMillis(50);
         given(node.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(false);
         followerRole.onInit(node, raftStorage);
 
-        int lag = 20;
-        Thread.sleep(electionTimeout.toMillis() + lag);
-        verify(node).convertToCandidate();
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(node).convertToCandidate());
     }
 
     @Test
-    void electionTimeoutWithPreVoteEnabled() throws InterruptedException {
-        Duration electionTimeout = Duration.ofMillis(10);
+    void electionTimeoutWithPreVoteEnabled() {
+        Duration electionTimeout = Duration.ofMillis(50);
         given(node.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
         given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
                 .newBuilder()
@@ -71,9 +72,7 @@ class FollowerRoleTest {
 
         followerRole.onInit(node, raftStorage);
 
-        int lag = 50;
-        Thread.sleep(electionTimeout.toMillis() + lag);
-        verify(node).convertToCandidate();
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(node).convertToCandidate());
     }
 
     @Test
@@ -82,6 +81,7 @@ class FollowerRoleTest {
         given(node.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
         given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
                 .newBuilder()

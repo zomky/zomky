@@ -16,8 +16,6 @@ public class FollowerRole implements RaftServerRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerRole.class);
 
-    private static final int QUORUM = 2; // hardcoded (assuming cluster of 3 nodes)
-
     private static DirectProcessor<Long> processor;
     private static FluxSink<Long> sink;
 
@@ -99,7 +97,7 @@ public class FollowerRole implements RaftServerRole {
         return node.availableSenders()
                     .flatMap(sender -> sendPreVoteRequest(node, raftStorage, sender, timeout))
                     .filter(PreVoteResponse::getVoteGranted)
-                    .buffer(QUORUM - 1)
+                    .buffer(node.quorum() - 1)
                     .timeout(timeout)
                     .next()
                     .map(i -> true)
