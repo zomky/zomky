@@ -1,13 +1,13 @@
 package io.github.pmackowski.rsocket.raft.storage;
 
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -28,6 +28,7 @@ public class InMemoryRaftStorage implements RaftStorage {
     private volatile long commitIndex;
     private volatile int term;
     private volatile int votedFor;
+    private Configuration configuration;
 
     @Override
     public void commit(long commitIndex) {
@@ -66,6 +67,10 @@ public class InMemoryRaftStorage implements RaftStorage {
         if (logEntry instanceof CommandEntry) {
             CommandEntry commandEntry = (CommandEntry) logEntry;
             size = commandEntry.getValue().length + LogEntry.SIZE +1;
+        }
+        if (logEntry instanceof ConfigurationEntry) {
+            ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
+            size = configurationEntry.getMembers().size() * Integer.BYTES + 1;
         }
         last = new IndexedLogEntry(logEntry, entries.size() + 1, size);
         entries.add(last);
@@ -139,12 +144,12 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public void updateConfiguration(Configuration configuration) {
-        throw new NotImplementedException();
+        this.configuration = configuration;
     }
 
     @Override
     public Configuration getConfiguration() {
-        throw new NotImplementedException();
+        return configuration;
     }
 
     private static class InMemoryLogStorageReader implements LogStorageReader {

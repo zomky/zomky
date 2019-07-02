@@ -1,7 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.meta;
 
-import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.StorageException;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -29,7 +29,6 @@ public class MetaStorage implements AutoCloseable{
             nodeDataFileChannel = nodeDataFile.getChannel();
             if (nodeDataFileChannel.size() == 0) {
                 update(0, 0);
-                updateConfiguration(Configuration.DEFAULT_CONFIGURATION);
             }
         } catch (Exception e) {
             throw  new StorageException(e);
@@ -68,7 +67,7 @@ public class MetaStorage implements AutoCloseable{
             while (metadataBuffer.hasRemaining()) {
                 configuration = configuration.addMember(metadataBuffer.getInt());
             }
-            return configuration;
+            return configuration.getMembers().isEmpty() ? null : configuration; // TODO
         } catch (IOException e) {
             throw new StorageException(e);
         }

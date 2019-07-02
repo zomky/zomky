@@ -103,11 +103,10 @@ public class LeaderRole implements RaftServerRole {
 
     @Override
     public Flux<Payload> onClientRequests(DefaultRaftServer raftServer, RaftStorage raftStorage, Publisher<Payload> payloads) {
-        if (raftServer.stateMachine != null) {
-            return new SenderLastAppliedOperator(payloads, raftServer, raftStorage);
-        } else {
-            return new SenderConfirmOperator(payloads, raftServer, raftStorage);
-        }
+        // TODO it has nothing to do with state machine, should depend on the client
+        return (raftServer.stateMachine != null) ?
+            new SenderLastAppliedOperator(payloads, raftServer, raftStorage) :
+            new SenderConfirmOperator(payloads, raftServer, raftStorage);
     }
 
     @Override

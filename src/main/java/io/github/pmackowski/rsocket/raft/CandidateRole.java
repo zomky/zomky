@@ -23,15 +23,22 @@ public class CandidateRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer node, RaftStorage raftStorage) {
-        ElectionContext electionContext = new ElectionContext(false);
-        subscription = Mono.defer(() -> startElection(node, raftStorage, electionContext))
-                .repeatWhen(leaderNotElected(electionContext))
-                .subscribe();
+        if (node.quorum() == 1)  {
+            node.voteForMyself();
+            node.convertToLeader();
+        } else {
+            ElectionContext electionContext = new ElectionContext(false);
+            subscription = Mono.defer(() -> startElection(node, raftStorage, electionContext))
+                    .repeatWhen(leaderNotElected(electionContext))
+                    .subscribe();
+        }
     }
 
     @Override
     public void onExit(DefaultRaftServer node, RaftStorage raftStorage) {
-        subscription.dispose();
+        if (subscription != null) {
+            subscription.dispose();
+        }
     }
 
     private Mono<Void> startElection(DefaultRaftServer node, RaftStorage raftStorage, ElectionContext electionContext) {

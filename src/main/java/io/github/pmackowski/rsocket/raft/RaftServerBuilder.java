@@ -1,9 +1,8 @@
 package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 public class RaftServerBuilder {
 
@@ -13,6 +12,7 @@ public class RaftServerBuilder {
     private int nodeId;
     private boolean preVote;
     private boolean leaderStickiness;
+    private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
 
     public RaftServerBuilder nodeId(int nodeId) {
         this.nodeId = nodeId;
@@ -44,9 +44,14 @@ public class RaftServerBuilder {
         return this;
     }
 
+    public RaftServerBuilder initialConfiguration(Configuration configuration) {
+        this.configuration = configuration;
+        return this;
+    }
+
     public Mono<RaftServer> start() {
         return Mono.defer(() -> {
-           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, stateMachine, electionTimeout, preVote, leaderStickiness);
+           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, configuration, stateMachine, electionTimeout, preVote, leaderStickiness);
            return Mono.just(kvStoreServer).doOnNext(DefaultRaftServer::start);
         });
     }
