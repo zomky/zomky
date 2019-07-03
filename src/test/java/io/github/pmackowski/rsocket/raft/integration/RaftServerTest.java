@@ -4,9 +4,9 @@ import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.RaftServer;
 import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStateMachine;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStoreClient;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KeyValue;
+import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
+import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
+import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
@@ -160,12 +160,15 @@ class RaftServerTest {
         assertThat(raftServer2.isFollower()).isTrue();
         assertThat(raftServer3.isFollower()).isTrue();
 
-        assertThat(raftStorage1.getTerm()).isEqualTo(1);
+        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1);
         assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage2.getTerm()).isEqualTo(1);
+        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1);
         assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage3.getTerm()).isEqualTo(1);
+        assertThat(raftStorage3.getTerm()).isGreaterThanOrEqualTo(1);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7000);
+        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+
+        int currentTerm = raftStorage1.getTerm();
 
         raftServer1.dispose();
 
@@ -173,11 +176,11 @@ class RaftServerTest {
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer3.getCurrentLeaderId() == 7001);
         assertThat(raftServer2.isLeader()).isTrue();
         assertThat(raftServer3.isFollower()).isTrue();
-        assertThat(raftStorage1.getTerm()).isEqualTo(1);
+        assertThat(raftStorage1.getTerm()).isEqualTo(currentTerm);
         assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage2.getTerm()).isEqualTo(2);
+        assertThat(raftStorage2.getTerm()).isGreaterThan(currentTerm);
         assertThat(raftStorage2.getVotedFor()).isEqualTo(7001);
-        assertThat(raftStorage3.getTerm()).isEqualTo(2);
+        assertThat(raftStorage3.getTerm()).isGreaterThan(currentTerm);
         assertThat(raftStorage3.getVotedFor()).isEqualTo(7001);
     }
 

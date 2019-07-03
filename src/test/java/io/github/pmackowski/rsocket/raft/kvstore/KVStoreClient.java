@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.statemachine.kv;
+package io.github.pmackowski.rsocket.raft.kvstore;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.RaftException;

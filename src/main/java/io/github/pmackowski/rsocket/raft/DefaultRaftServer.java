@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-class DefaultRaftServer implements RaftServer {
+class DefaultRaftServer implements InternalRaftServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRaftServer.class);
 
@@ -228,7 +228,8 @@ class DefaultRaftServer implements RaftServer {
         setCurrentLeader(0);
     }
 
-    Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
+    @Override
+    public Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
         return nodeState.onAppendEntries(this, raftStorage, appendEntries)
                 .doOnNext(response -> setCurrentLeader(appendEntries.getLeaderId()))
                 .doOnNext(response -> {

@@ -163,7 +163,7 @@ configure(rootProject) {
             excludeTags 'integration'
         }
 
-        failFast = true
+        failFast = false
 
         afterSuite { desc, result ->
             if (!desc.parent) {

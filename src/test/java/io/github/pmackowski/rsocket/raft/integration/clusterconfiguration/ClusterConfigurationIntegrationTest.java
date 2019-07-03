@@ -1,12 +1,12 @@
-package io.github.pmackowski.rsocket.raft.integration;
+package io.github.pmackowski.rsocket.raft.integration.clusterconfiguration;
 
 import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.RaftServer;
 import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStateMachine;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KVStoreClient;
-import io.github.pmackowski.rsocket.raft.statemachine.kv.KeyValue;
+import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
+import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
+import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
@@ -76,8 +76,6 @@ class ClusterConfigurationIntegrationTest {
 
     @Test
     void testElection() {
-        given(electionTimeout.nextRandom()).willReturn(Duration.ofMillis(300));
-
         raftServer = raftServerMono.block();
 
         await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer.getCurrentLeaderId() == 7000);

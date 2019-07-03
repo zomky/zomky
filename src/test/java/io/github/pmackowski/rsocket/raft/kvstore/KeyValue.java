@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.statemachine.kv;
+package io.github.pmackowski.rsocket.raft.kvstore;
 
 public class KeyValue {
 

@@ -34,30 +34,36 @@ public class FollowerRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer node, RaftStorage raftStorage) {
-        subscription = processor.timeout(node.nextElectionTimeout())
-                .onErrorResume(throwable -> {
-                    LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, throwable.getMessage());
-                    if (node.preVote()) {
-                        return sendPreVotes(node, raftStorage)
-                                .doOnNext(preVotes -> {
-                                    if (preVotes) {
-                                        node.convertToCandidate();
-                                    } else {
-                                        node.refreshFollower();
-                                    }
-                                })
-                                .then(Mono.empty());
-                    } else {
-                        node.convertToCandidate();
-                        return Mono.empty();
-                    }
-                })
-                .subscribe();
+        if (node.quorum() == 1) {
+            node.convertToCandidate();
+        } else {
+            subscription = processor.timeout(node.nextElectionTimeout())
+                    .onErrorResume(throwable -> {
+                        LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, throwable.getMessage());
+                        if (node.preVote() && node.quorum() - 1 > 0) {
+                            return sendPreVotes(node, raftStorage)
+                                    .doOnNext(preVotes -> {
+                                        if (preVotes) {
+                                            node.convertToCandidate();
+                                        } else {
+                                            node.refreshFollower();
+                                        }
+                                    })
+                                    .then(Mono.empty());
+                        } else {
+                            node.convertToCandidate();
+                            return Mono.empty();
+                        }
+                    })
+                    .subscribe();
+        }
     }
 
     @Override
     public void onExit(DefaultRaftServer node, RaftStorage raftStorage) {
-        subscription.dispose();
+        if (subscription != null) {
+            subscription.dispose();
+        }
     }
 
     @Override
@@ -83,7 +89,7 @@ public class FollowerRole implements RaftServerRole {
 
     private void restartElectionTimer(DefaultRaftServer node) {
         try {
-            if (!subscription.isDisposed()) {
+            if (subscription != null && !subscription.isDisposed()) {
                 LOGGER.debug("[RaftServer {}] restartElectionTimer ...", node.nodeId);
                 sink.next(System.currentTimeMillis());
             }
