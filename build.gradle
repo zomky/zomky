@@ -119,6 +119,7 @@ configure(allprojects) { project ->
         testCompile "org.junit.jupiter:junit-jupiter-api:$junitVersion"
         testRuntime "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
         testCompile "org.junit.jupiter:junit-jupiter-migrationsupport:$junitVersion"
+        testCompile "org.junit.jupiter:junit-jupiter-params:$junitVersion"
         testCompile "org.mockito:mockito-junit-jupiter:2.25.1"
 
         testCompile 'org.awaitility:awaitility:3.1.2'
