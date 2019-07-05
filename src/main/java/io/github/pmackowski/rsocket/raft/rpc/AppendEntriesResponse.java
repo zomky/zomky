@@ -17,6 +17,7 @@ public  final class AppendEntriesResponse extends
   private AppendEntriesResponse() {
     term_ = 0;
     success_ = false;
+    lastLogIndex_ = 0L;
   }
 
   @java.lang.Override
@@ -52,6 +53,11 @@ public  final class AppendEntriesResponse extends
           case 16: {
 
             success_ = input.readBool();
+            break;
+          }
+          case 24: {
+
+            lastLogIndex_ = input.readInt64();
             break;
           }
         }
@@ -99,6 +105,19 @@ public  final class AppendEntriesResponse extends
     return success_;
   }
 
+  public static final int LAST_LOG_INDEX_FIELD_NUMBER = 3;
+  private long lastLogIndex_;
+  /**
+   * <pre>
+   * last log index, set only if success equals to false (extension to Raft)
+   * </pre>
+   *
+   * <code>optional int64 last_log_index = 3;</code>
+   */
+  public long getLastLogIndex() {
+    return lastLogIndex_;
+  }
+
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
@@ -117,6 +136,9 @@ public  final class AppendEntriesResponse extends
     if (success_ != false) {
       output.writeBool(2, success_);
     }
+    if (lastLogIndex_ != 0L) {
+      output.writeInt64(3, lastLogIndex_);
+    }
   }
 
   public int getSerializedSize() {
@@ -131,6 +153,10 @@ public  final class AppendEntriesResponse extends
     if (success_ != false) {
       size += com.google.protobuf.CodedOutputStream
         .computeBoolSize(2, success_);
+    }
+    if (lastLogIndex_ != 0L) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt64Size(3, lastLogIndex_);
     }
     memoizedSize = size;
     return size;
@@ -152,6 +178,8 @@ public  final class AppendEntriesResponse extends
         == other.getTerm());
     result = result && (getSuccess()
         == other.getSuccess());
+    result = result && (getLastLogIndex()
+        == other.getLastLogIndex());
     return result;
   }
 
@@ -167,6 +195,9 @@ public  final class AppendEntriesResponse extends
     hash = (37 * hash) + SUCCESS_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
         getSuccess());
+    hash = (37 * hash) + LAST_LOG_INDEX_FIELD_NUMBER;
+    hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
+        getLastLogIndex());
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -289,6 +320,8 @@ public  final class AppendEntriesResponse extends
 
       success_ = false;
 
+      lastLogIndex_ = 0L;
+
       return this;
     }
 
@@ -313,6 +346,7 @@ public  final class AppendEntriesResponse extends
       io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse result = new io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse(this);
       result.term_ = term_;
       result.success_ = success_;
+      result.lastLogIndex_ = lastLogIndex_;
       onBuilt();
       return result;
     }
@@ -359,6 +393,9 @@ public  final class AppendEntriesResponse extends
       }
       if (other.getSuccess() != false) {
         setSuccess(other.getSuccess());
+      }
+      if (other.getLastLogIndex() != 0L) {
+        setLastLogIndex(other.getLastLogIndex());
       }
       onChanged();
       return this;
@@ -446,6 +483,44 @@ public  final class AppendEntriesResponse extends
     public Builder clearSuccess() {
       
       success_ = false;
+      onChanged();
+      return this;
+    }
+
+    private long lastLogIndex_ ;
+    /**
+     * <pre>
+     * last log index, set only if success equals to false (extension to Raft)
+     * </pre>
+     *
+     * <code>optional int64 last_log_index = 3;</code>
+     */
+    public long getLastLogIndex() {
+      return lastLogIndex_;
+    }
+    /**
+     * <pre>
+     * last log index, set only if success equals to false (extension to Raft)
+     * </pre>
+     *
+     * <code>optional int64 last_log_index = 3;</code>
+     */
+    public Builder setLastLogIndex(long value) {
+      
+      lastLogIndex_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * last log index, set only if success equals to false (extension to Raft)
+     * </pre>
+     *
+     * <code>optional int64 last_log_index = 3;</code>
+     */
+    public Builder clearLastLogIndex() {
+      
+      lastLogIndex_ = 0L;
       onChanged();
       return this;
     }

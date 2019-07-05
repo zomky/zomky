@@ -20,4 +20,13 @@ public interface AppendEntriesResponseOrBuilder extends
    * <code>optional bool success = 2;</code>
    */
   boolean getSuccess();
+
+  /**
+   * <pre>
+   * last log index, set only if success equals to false (extension to Raft)
+   * </pre>
+   *
+   * <code>optional int64 last_log_index = 3;</code>
+   */
+  long getLastLogIndex();
 }

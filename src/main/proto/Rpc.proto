@@ -38,6 +38,7 @@ message AppendEntriesRequest {
 message AppendEntriesResponse {
     int32 term = 1; // currentTerm, for leader to update itself
     bool success = 2;
+    int64 last_log_index = 3; // last log index, set only if success equals to false (extension to Raft)
 }
 
 message AddServerRequest {

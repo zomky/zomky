@@ -5,6 +5,8 @@ import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
+import io.rsocket.RSocketFactory;
+import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.util.ByteBufPayload;
 import reactor.core.publisher.Mono;
 
@@ -14,6 +16,19 @@ public class Sender {
     private final RSocket requestVoteSocket;
     private final RSocket appendEntriesSocket;
     private final boolean available;
+
+    public static Sender createSender(int nodeId) {
+        RSocket requestVoteSocket = RSocketFactory.connect()
+                .transport(TcpClientTransport.create(nodeId))
+                .start()
+                .block();
+
+        RSocket appendEntriesSocket = RSocketFactory.connect()
+                .transport(TcpClientTransport.create(nodeId + 10000))
+                .start()
+                .block();
+        return new Sender(nodeId, requestVoteSocket, appendEntriesSocket, true);
+    }
 
     public static Sender availableSender(int nodeId, RSocket requestVoteSocket, RSocket appendEntriesSocket) {
         return new Sender(nodeId, requestVoteSocket, appendEntriesSocket, true);

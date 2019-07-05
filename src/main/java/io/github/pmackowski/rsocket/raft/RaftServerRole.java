@@ -142,6 +142,10 @@ public interface RaftServerRole {
                 });
     }
 
+    default Mono<AddServerResponse> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+        return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
+    }
+
     default Mono<Payload> onClientRequest(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
         return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
@@ -150,7 +154,4 @@ public interface RaftServerRole {
         return Flux.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
-    default Mono<Payload> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
-        return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
-    }
 }

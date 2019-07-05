@@ -99,21 +99,22 @@ public final class Rpc {
       "(\010\"\216\001\n\024AppendEntriesRequest\022\014\n\004term\030\001 \001(" +
       "\005\022\021\n\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030\003",
       " \001(\003\022\025\n\rprev_log_term\030\004 \001(\003\022\017\n\007entries\030\005" +
-      " \003(\014\022\025\n\rleader_commit\030\006 \001(\003\"6\n\025AppendEnt" +
+      " \003(\014\022\025\n\rleader_commit\030\006 \001(\003\"N\n\025AppendEnt" +
       "riesResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002 " +
-      "\001(\010\"&\n\020AddServerRequest\022\022\n\nnew_server\030\001 " +
-      "\001(\005\"8\n\021AddServerResponse\022\016\n\006status\030\001 \001(\010" +
-      "\022\023\n\013leader_hint\030\002 \001(\005\")\n\023RemoveServerReq" +
-      "uest\022\022\n\nold_server\030\001 \001(\005\";\n\024RemoveServer" +
+      "\001(\010\022\026\n\016last_log_index\030\003 \001(\003\"&\n\020AddServer" +
+      "Request\022\022\n\nnew_server\030\001 \001(\005\"8\n\021AddServer" +
       "Response\022\016\n\006status\030\001 \001(\010\022\023\n\013leader_hint\030" +
-      "\002 \001(\005\"\216\001\n\026InstallSnapshotRequest\022\014\n\004term" +
-      "\030\001 \001(\005\022\021\n\tleader_id\030\002 \001(\005\022\033\n\023last_includ",
-      "ed_index\030\003 \001(\003\022\032\n\022last_included_term\030\004 \001" +
-      "(\003\022\014\n\004data\030\005 \001(\014\022\014\n\004done\030\006 \001(\010\"\'\n\027Instal" +
-      "lSnapshotResponse\022\014\n\004term\030\001 \001(\005\"C\n\016Comma" +
-      "ndRequest\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\025\n" +
-      "\rset_operation\030\003 \001(\010B)\n%io.github.pmacko" +
-      "wski.rsocket.raft.rpcP\001b\006proto3"
+      "\002 \001(\005\")\n\023RemoveServerRequest\022\022\n\nold_serv" +
+      "er\030\001 \001(\005\";\n\024RemoveServerResponse\022\016\n\006stat" +
+      "us\030\001 \001(\010\022\023\n\013leader_hint\030\002 \001(\005\"\216\001\n\026Instal" +
+      "lSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\021\n\tleader",
+      "_id\030\002 \001(\005\022\033\n\023last_included_index\030\003 \001(\003\022\032" +
+      "\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(\014" +
+      "\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespons" +
+      "e\022\014\n\004term\030\001 \001(\005\"C\n\016CommandRequest\022\013\n\003key" +
+      "\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\025\n\rset_operation\030\003" +
+      " \001(\010B)\n%io.github.pmackowski.rsocket.raf" +
+      "t.rpcP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -162,7 +163,7 @@ public final class Rpc {
     internal_static_AppendEntriesResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AppendEntriesResponse_descriptor,
-        new java.lang.String[] { "Term", "Success", });
+        new java.lang.String[] { "Term", "Success", "LastLogIndex", });
     internal_static_AddServerRequest_descriptor =
       getDescriptor().getMessageTypes().get(6);
     internal_static_AddServerRequest_fieldAccessorTable = new

@@ -5,7 +5,7 @@ import java.util.Random;
 
 public class ElectionTimeout {
 
-    private static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 150;
+    public static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 150;
     private static final Random RANDOM = new Random();
 
     // [ELECTION_TIMEOUT_MIN_IN_MILLIS, 2*ELECTION_TIMEOUT_MIN_IN_MILLIS)

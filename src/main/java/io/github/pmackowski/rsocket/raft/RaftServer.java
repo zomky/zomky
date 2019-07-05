@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
 import io.rsocket.Closeable;
 
 public interface RaftServer extends Closeable {
@@ -14,7 +15,7 @@ public interface RaftServer extends Closeable {
 
     boolean isFollower();
 
-    void addServer(int newServer);
+    void addServer(AddServerRequest newServer);
 
     void removeServer(int oldMember);
 }

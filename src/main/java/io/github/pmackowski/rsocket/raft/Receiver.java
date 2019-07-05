@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
 import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
 import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
@@ -78,7 +79,10 @@ public class Receiver {
                 public Mono<Payload> requestResponse(Payload payload) {
                     String metadataUtf8 = payload.getMetadataUtf8();
                     if ("add-server".equalsIgnoreCase(metadataUtf8)) { // temporary here
-                        return node.onAddServer(payload);
+                        return Mono.just(payload)
+                                .map(this::toAddServerRequest)
+                                .flatMap(addServerRequest -> node.onAddServer(addServerRequest))
+                                .map(addServerResponse -> ByteBufPayload.create(addServerResponse.toByteArray()));
                     }
                     return node.onClientRequest(payload);
                 }
@@ -87,6 +91,15 @@ public class Receiver {
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                     return node.onClientRequests(payloads);
                 }
+
+                private AddServerRequest toAddServerRequest(Payload payload) {
+                    try {
+                        return AddServerRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid add server request!", e);
+                    }
+                }
+
             });
         }
     }

@@ -30,6 +30,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class DefaultRaftServer implements InternalRaftServer {
 
@@ -102,6 +104,8 @@ class DefaultRaftServer implements InternalRaftServer {
     private volatile long previousConfigurationId;
     private volatile long currentConfigurationId;
 
+    Lock configurationLock = new ReentrantLock();
+
     ElectionTimeout electionTimeout;
 
     DefaultRaftServer(int port,
@@ -110,7 +114,8 @@ class DefaultRaftServer implements InternalRaftServer {
                       StateMachine<ByteBuffer> stateMachine,
                       ElectionTimeout electionTimeout,
                       boolean preVote,
-                      boolean leaderStickiness) {
+                      boolean leaderStickiness,
+                      boolean passive) {
         this.nodeId = port;
         this.raftStorage = raftStorage;
         this.stateMachine = stateMachine;
@@ -121,6 +126,9 @@ class DefaultRaftServer implements InternalRaftServer {
         if (currentConfiguration == null) {
             this.raftStorage.updateConfiguration(initialConfiguration);
             this.currentConfiguration = initialConfiguration;
+        }
+        if (passive) {
+            this.nodeState = new PassiveRole();
         }
 
         this.receiver = new Receiver(this);
@@ -154,6 +162,10 @@ class DefaultRaftServer implements InternalRaftServer {
 
     Flux<Sender> availableSenders() {
         return senders.availableSenders();
+    }
+
+    Mono<Sender> createSender(AddServerRequest addServerRequest) {
+        return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache();
     }
 
     Mono<Payload> onClientRequest(Payload payload) {
@@ -312,67 +324,59 @@ class DefaultRaftServer implements InternalRaftServer {
         return System.currentTimeMillis() - lastAppendEntriesCall.get() < currentElectionTimeout.toMillis();
     }
 
-    public Mono<Payload> onAddServer(Payload payload) {
-        return nodeState.onAddServer(this, raftStorage, payload);
+    public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
+        return nodeState.onAddServer(this, raftStorage, addServerRequest);
     }
 
     @Override
-    public void addServer(int newMember) {
-        // 1. Reply NOT_LEADER if not leader
-        if (!isLeader()) {
-            throw new RaftException("Leader can only add server!");
-        }
-
-        // 2. Catch up new server for fixed number of rounds. Reply TIMEOUT
-        // if new server does not make progress for an election timeout or
-        // if the last round takes longer than election timeout
-
-        // 3. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {
-            throw new RaftException("Other configure request is in progress!");
-        }
-
-        // 4. Append new configuration entry to log (old configuration plus new server),
-        // commit it using majority of new configuration
-
-        Configuration oldConfiguration = currentConfiguration;
-        Configuration newConfiguration = oldConfiguration.addMember(newMember);
-        ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
-        IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
-        currentConfigurationId = indexedLogEntry.getIndex();
-        currentConfiguration = newConfiguration;
-        senders.addServer(newMember);
-        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
+    public void addServer(AddServerRequest addServerRequest) {
+        waitUntilPreviousConfigurationFinished(() -> {
+            // Append new configuration entry to log (old configuration plus new server),
+            // commit it using majority of new configuration
+            Configuration oldConfiguration = currentConfiguration;
+            Configuration newConfiguration = oldConfiguration.addMember(addServerRequest.getNewServer());
+            updateConfiguration(newConfiguration);
+            senders.addServer(addServerRequest.getNewServer());
+            configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
+        });
     }
 
     @Override
     public void removeServer(int oldMember) {
-        // 1. Reply NOT_LEADER if not leader
-        if (!isLeader()) {
-            throw new RaftException("Leader can only remove server!");
+        waitUntilPreviousConfigurationFinished(() -> {
+            // Append new configuration entry to log (old configuration plus new server),
+            // commit it using majority of new configuration.
+            Configuration oldConfiguration = currentConfiguration;
+            Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
+            updateConfiguration(newConfiguration);
+            senders.removeServer(oldMember);
+            configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
+
+            // If this server was removed, step down.
+            if (oldMember == nodeId) {
+                convertToPassive();
+            }
+        });
+    }
+
+    private void waitUntilPreviousConfigurationFinished(Runnable runnable) {
+        configurationLock.lock();
+        try {
+            // Wait until previous configuration in log is committed.
+            while (currentConfigurationId > previousConfigurationId) {
+
+            }
+            runnable.run();
+        } finally {
+            configurationLock.unlock();
         }
+    }
 
-        // 2. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {
-            throw new RaftException("Other configure request is in progress!");
-        }
-
-        // 3. Append new configuration entry to log (old configuration plus new server),
-        // commit it using majority of new configuration.
-
-        Configuration oldConfiguration = currentConfiguration;
-        Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
+    private void updateConfiguration(Configuration newConfiguration) {
         ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
         IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
         currentConfigurationId = indexedLogEntry.getIndex();
         currentConfiguration = newConfiguration;
-        senders.removeServer(oldMember);
-        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
-
-        // 4. If this server was removed, step down.
-        if (oldMember == nodeId) {
-            convertToPassive();
-        }
     }
 
     public Configuration getCurrentConfiguration() {
@@ -392,6 +396,21 @@ class DefaultRaftServer implements InternalRaftServer {
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
             senders.replaceWith(currentConfiguration);
+        }
+    }
+
+    // for passive server that is being catched up
+    public void applyPassive(IndexedLogEntry indexedLogEntry) {
+        LogEntry logEntry = indexedLogEntry.getLogEntry();
+        if (logEntry instanceof ConfigurationEntry) {
+            ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
+            LOGGER.info("[RaftServer {}] New configuration {}", nodeId, configurationEntry.getMembers());
+            currentConfiguration = new Configuration(configurationEntry.getMembers());
+            currentConfigurationId = indexedLogEntry.getIndex();
+            senders.replaceWith(currentConfiguration);
+            if (currentConfiguration.getMembers().contains(nodeId)) {
+                convertToFollower(raftStorage.getTerm());
+            }
         }
     }
 }
