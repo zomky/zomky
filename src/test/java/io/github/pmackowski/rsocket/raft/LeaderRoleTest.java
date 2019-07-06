@@ -90,12 +90,8 @@ public class LeaderRoleTest {
         leaderRole.onInit(node, raftStorage);
 
         // then
-        ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1).appendEntries(argument.capture());
-        AppendEntriesRequest actualAppendEntriesRequest = argument.getValue();
-        assertThat(actualAppendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(actualAppendEntriesRequest.getPrevLogIndex()).isEqualTo(2);
-        assertThat(actualAppendEntriesRequest.getEntriesCount()).isEqualTo(0);
+        List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(1));
+        assertAppendEntriesRequest(2, 0, appendEntriesHistory, 1);
     }
 
     @Test

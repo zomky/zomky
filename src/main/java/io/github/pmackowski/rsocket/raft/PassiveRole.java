@@ -77,9 +77,10 @@ public class PassiveRole implements RaftServerRole {
     }
 
     private AppendEntriesResponse replyTrue(int currentTerm) {
+//        final long lastLogIndex = raftStorage.getLastIndexedTerm().getIndex();
         return AppendEntriesResponse.newBuilder()
                 .setTerm(currentTerm)
-                .setSuccess(false)
+                .setSuccess(true)
                 .build();
     }
 }

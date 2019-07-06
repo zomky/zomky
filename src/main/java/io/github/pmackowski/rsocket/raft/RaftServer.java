@@ -1,7 +1,9 @@
 package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.rpc.AddServerResponse;
 import io.rsocket.Closeable;
+import reactor.core.publisher.Mono;
 
 public interface RaftServer extends Closeable {
 
@@ -14,6 +16,8 @@ public interface RaftServer extends Closeable {
     boolean isCandidate();
 
     boolean isFollower();
+
+    Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest);
 
     void addServer(AddServerRequest newServer);
 

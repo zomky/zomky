@@ -7,6 +7,7 @@ import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
+import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
@@ -214,7 +215,7 @@ class RaftServerTest {
 
         int nbEntries = 10;
 
-        raftServer1.addServer(7003);
+        raftServer1.addServer(AddServerRequest.newBuilder().setNewServer(7003).build());
 
         given(electionTimeout4.nextRandom()).willReturn(Duration.ofSeconds(10));
         raftServerMono4 = new RaftServerBuilder()
@@ -232,10 +233,10 @@ class RaftServerTest {
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> {
                     if ("val4".equals(s.getValue())) {
-                        raftServer1.addServer(7004);
+                        raftServer1.addServer(AddServerRequest.newBuilder().setNewServer(7004).build());
                     }
                     if ("val7".equals(s.getValue())) {
-                        raftServer1.addServer(7005);
+                        raftServer1.addServer(AddServerRequest.newBuilder().setNewServer(7005).build());
                     }
                     LOGGER.info("KVStoreClient received {}", s);
                 })

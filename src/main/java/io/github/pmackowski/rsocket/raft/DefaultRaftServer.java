@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -165,7 +166,7 @@ class DefaultRaftServer implements InternalRaftServer {
     }
 
     Mono<Sender> createSender(AddServerRequest addServerRequest) {
-        return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache();
+        return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache().subscribeOn(Schedulers.elastic());
     }
 
     Mono<Payload> onClientRequest(Payload payload) {
@@ -324,6 +325,7 @@ class DefaultRaftServer implements InternalRaftServer {
         return System.currentTimeMillis() - lastAppendEntriesCall.get() < currentElectionTimeout.toMillis();
     }
 
+    @Override
     public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
         return nodeState.onAddServer(this, raftStorage, addServerRequest);
     }
