@@ -1,8 +1,8 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.listener;
 
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 
-public interface SenderUnavailableCallback {
+public interface SenderUnavailableListener {
 
     void handle(Sender sender);
 

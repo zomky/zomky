@@ -1,8 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
-import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
-import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
+import io.github.pmackowski.rsocket.raft.listener.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
@@ -102,8 +100,8 @@ class DefaultRaftServer implements InternalRaftServer {
     private AtomicLong lastAppendEntriesCall = new AtomicLong(0);
     private volatile Duration currentElectionTimeout = Duration.ofMillis(0);
 
-    private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
-    private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
+    private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
+    private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
     private List<ConfirmListener> confirmListeners = new ArrayList<>();
     private List<LastAppliedListener> lastAppliedListeners = new ArrayList<>();
@@ -227,22 +225,22 @@ class DefaultRaftServer implements InternalRaftServer {
         configurationChangeListeners.add(configurationChangeListener);
     }
 
-    void onSenderAvailable(SenderAvailableCallback senderAvailableCallback) {
-        senderAvailableCallbacks.add(senderAvailableCallback);
+    void onSenderAvailable(SenderAvailableListener senderAvailableListener) {
+        senderAvailableListeners.add(senderAvailableListener);
     }
 
-    void onSenderUnavailable(SenderUnavailableCallback senderUnavailableCallback) {
-        senderUnavailableCallbacks.add(senderUnavailableCallback);
+    void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener) {
+        senderUnavailableListeners.add(senderUnavailableListener);
     }
 
     @Override
     public void senderAvailable(Sender sender) {
-        senderAvailableCallbacks.forEach(senderAvailableCallback -> senderAvailableCallback.handle(sender));
+        senderAvailableListeners.forEach(senderAvailableListener -> senderAvailableListener.handle(sender));
     }
 
     @Override
     public void senderUnavailable(Sender sender) {
-        senderUnavailableCallbacks.forEach(senderUnavailableCallback -> senderUnavailableCallback.handle(sender));
+        senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
     }
 
     void setCurrentLeader(int nodeId) {
