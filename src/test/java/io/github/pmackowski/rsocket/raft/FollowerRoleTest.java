@@ -1,14 +1,15 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.PreVoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.PreVoteResponse;
-import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.VoteRequest;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

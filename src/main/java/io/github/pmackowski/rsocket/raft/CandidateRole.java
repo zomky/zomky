@@ -1,9 +1,10 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.VoteRequest;
-import io.github.pmackowski.rsocket.raft.rpc.VoteResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.VoteRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.VoteResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;

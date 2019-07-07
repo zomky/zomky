@@ -1,6 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.*;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
@@ -143,6 +143,10 @@ public interface RaftServerRole {
     }
 
     default Mono<AddServerResponse> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+        return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
+    }
+
+    default Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
         return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 

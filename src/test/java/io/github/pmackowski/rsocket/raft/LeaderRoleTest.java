@@ -1,11 +1,12 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

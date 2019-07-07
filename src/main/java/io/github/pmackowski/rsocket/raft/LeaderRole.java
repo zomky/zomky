@@ -1,13 +1,11 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AddServerResponse;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -125,6 +123,15 @@ public class LeaderRole implements RaftServerRole {
         return (raftServer.stateMachine != null) ?
             new SenderLastAppliedOperator(payloads, raftServer, raftStorage) :
             new SenderConfirmOperator(payloads, raftServer, raftStorage);
+    }
+
+    @Override
+    public Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
+        return Mono.just(removeServerRequest)
+                .doOnNext(i -> raftServer.removeServer(removeServerRequest))
+                .doOnError(throwable -> LOGGER.error("Remove server has failed!", throwable))
+                .thenReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(true).build())
+                .onErrorReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(false).build());
     }
 
     @Override

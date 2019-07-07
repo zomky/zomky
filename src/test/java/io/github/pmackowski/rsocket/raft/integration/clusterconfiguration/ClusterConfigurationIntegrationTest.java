@@ -8,7 +8,7 @@ import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
-import io.github.pmackowski.rsocket.raft.rpc.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import org.junit.jupiter.api.AfterEach;

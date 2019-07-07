@@ -3,7 +3,6 @@ package io.github.pmackowski.rsocket.raft;
 import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
 import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
-import io.github.pmackowski.rsocket.raft.rpc.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
@@ -11,6 +10,10 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import io.github.pmackowski.rsocket.raft.transport.Receiver;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.Senders;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -68,6 +71,11 @@ class DefaultRaftServer implements InternalRaftServer {
     @Override
     public boolean isCandidate() {
         return nodeState.nodeState() == NodeState.CANDIDATE;
+    }
+
+    @Override
+    public boolean isPassive() {
+        return nodeState.nodeState() == NodeState.PASSIVE;
     }
 
     StateMachine<ByteBuffer> stateMachine;
@@ -132,8 +140,8 @@ class DefaultRaftServer implements InternalRaftServer {
             this.nodeState = new PassiveRole();
         }
 
-        this.receiver = new Receiver(this);
-        this.senders = new Senders(this);
+        this.receiver = new Receiver(this, this.nodeId);
+        this.senders = new Senders(this, this.nodeId);
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
     }
 
@@ -169,11 +177,13 @@ class DefaultRaftServer implements InternalRaftServer {
         return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache().subscribeOn(Schedulers.elastic());
     }
 
-    Mono<Payload> onClientRequest(Payload payload) {
+    @Override
+    public Mono<Payload> onClientRequest(Payload payload) {
         return nodeState.onClientRequest(this, raftStorage, payload);
     }
 
-    Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
+    @Override
+    public Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
         return nodeState.onClientRequests(this, raftStorage, payloads);
     }
 
@@ -225,11 +235,13 @@ class DefaultRaftServer implements InternalRaftServer {
         senderUnavailableCallbacks.add(senderUnavailableCallback);
     }
 
-    void senderAvailable(Sender sender) {
+    @Override
+    public void senderAvailable(Sender sender) {
         senderAvailableCallbacks.forEach(senderAvailableCallback -> senderAvailableCallback.handle(sender));
     }
 
-    void senderUnavailable(Sender sender) {
+    @Override
+    public void senderUnavailable(Sender sender) {
         senderUnavailableCallbacks.forEach(senderUnavailableCallback -> senderUnavailableCallback.handle(sender));
     }
 
@@ -252,12 +264,14 @@ class DefaultRaftServer implements InternalRaftServer {
                 });
     }
 
-    Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
+    @Override
+    public Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
         return nodeState.onPreRequestVote(this, raftStorage, preRequestVote)
                 .doOnNext(preVoteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), nodeId, preRequestVote, preVoteResponse));
     }
 
-    Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
+    @Override
+    public Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
         return nodeState.onRequestVote(this, raftStorage, requestVote)
                 .doOnNext(voteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
     }
@@ -327,11 +341,17 @@ class DefaultRaftServer implements InternalRaftServer {
 
     @Override
     public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
-        return nodeState.onAddServer(this, raftStorage, addServerRequest);
+        return nodeState.onAddServer(this, raftStorage, addServerRequest)
+                .doOnNext(addServerResponse -> LOGGER.info("[RaftServer {}] Add server \n{} \n-> \n{}", nodeId, addServerRequest.getNewServer(), addServerResponse.getStatus()));
     }
 
     @Override
-    public void addServer(AddServerRequest addServerRequest) {
+    public Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest) {
+        return nodeState.onRemoveServer(this, raftStorage, removeServerRequest)
+                .doOnNext(removeServerResponse -> LOGGER.info("[RaftServer {}] Remove server \n{} \n-> \n{}", nodeId, removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
+    }
+
+    void addServer(AddServerRequest addServerRequest) {
         waitUntilPreviousConfigurationFinished(() -> {
             // Append new configuration entry to log (old configuration plus new server),
             // commit it using majority of new configuration
@@ -343,9 +363,9 @@ class DefaultRaftServer implements InternalRaftServer {
         });
     }
 
-    @Override
-    public void removeServer(int oldMember) {
+    void removeServer(RemoveServerRequest removeServerRequest) {
         waitUntilPreviousConfigurationFinished(() -> {
+            int oldMember = removeServerRequest.getOldServer();
             // Append new configuration entry to log (old configuration plus new server),
             // commit it using majority of new configuration.
             Configuration oldConfiguration = currentConfiguration;
@@ -398,6 +418,9 @@ class DefaultRaftServer implements InternalRaftServer {
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
             senders.replaceWith(currentConfiguration);
+//            if (!currentConfiguration.getMembers().contains(nodeId)) {
+//                convertToPassive();
+//            }
         }
     }
 
