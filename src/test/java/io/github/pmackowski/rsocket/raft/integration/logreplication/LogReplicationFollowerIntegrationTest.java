@@ -3,9 +3,8 @@ package io.github.pmackowski.rsocket.raft.integration.logreplication;
 import io.github.pmackowski.rsocket.raft.*;
 import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,6 @@ import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import static io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils.entry;
 import static io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils.logEntry;

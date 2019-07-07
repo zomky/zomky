@@ -11,6 +11,8 @@ import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
 import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.RemoveServerRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -214,7 +216,6 @@ class RaftServerTest {
 
         int nbEntries = 10;
 
-        raftServer1.addServer(7003);
 
         given(electionTimeout4.nextRandom()).willReturn(Duration.ofSeconds(10));
         raftServerMono4 = new RaftServerBuilder()
@@ -230,21 +231,21 @@ class RaftServerTest {
 
         kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
-                .doOnNext(s -> {
+                .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
+                .flatMap(s -> {
                     if ("val4".equals(s.getValue())) {
-                        raftServer1.addServer(7004);
+                        return raftServer1.onAddServer(AddServerRequest.newBuilder().setNewServer(7003).build());
+                    } else {
+                        return Flux.empty();
                     }
-                    if ("val7".equals(s.getValue())) {
-                        raftServer1.addServer(7005);
-                    }
-                    LOGGER.info("KVStoreClient received {}", s);
                 })
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .blockLast();
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 3);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 3);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 3);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage4.getLastIndexedTerm().getIndex() == nbEntries + 1);
     }
 
     @Test
@@ -256,17 +257,22 @@ class RaftServerTest {
 
         int nbEntries = 10;
 
-        raftServer1.removeServer(7002);
-
         kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
+                .flatMap(s -> {
+                    if ("val4".equals(s.getValue())) {
+                        return raftServer1.onRemoveServer(RemoveServerRequest.newBuilder().setOldServer(7002).build());
+                    } else {
+                        return Flux.empty();
+                    }
+                })
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .blockLast();
 
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 1);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == nbEntries + 1);
-//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage3.getLastIndexedTerm().getIndex() == nbEntries + 1);
+//        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer3.isPassive());
     }
 
     @Test

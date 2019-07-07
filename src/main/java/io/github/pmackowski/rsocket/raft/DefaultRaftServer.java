@@ -1,9 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
-import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
-import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
-import io.github.pmackowski.rsocket.raft.rpc.*;
+import io.github.pmackowski.rsocket.raft.listener.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
@@ -11,6 +8,10 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import io.github.pmackowski.rsocket.raft.transport.Receiver;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.Senders;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -30,6 +32,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class DefaultRaftServer implements InternalRaftServer {
 
@@ -67,6 +71,11 @@ class DefaultRaftServer implements InternalRaftServer {
         return nodeState.nodeState() == NodeState.CANDIDATE;
     }
 
+    @Override
+    public boolean isPassive() {
+        return nodeState.nodeState() == NodeState.PASSIVE;
+    }
+
     StateMachine<ByteBuffer> stateMachine;
     private ScheduledExecutorService stateMachineExecutor;
 
@@ -91,8 +100,8 @@ class DefaultRaftServer implements InternalRaftServer {
     private AtomicLong lastAppendEntriesCall = new AtomicLong(0);
     private volatile Duration currentElectionTimeout = Duration.ofMillis(0);
 
-    private Set<SenderAvailableCallback> senderAvailableCallbacks = new HashSet<>();
-    private Set<SenderUnavailableCallback> senderUnavailableCallbacks = new HashSet<>();
+    private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
+    private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
     private List<ConfirmListener> confirmListeners = new ArrayList<>();
     private List<LastAppliedListener> lastAppliedListeners = new ArrayList<>();
@@ -102,6 +111,8 @@ class DefaultRaftServer implements InternalRaftServer {
     private volatile long previousConfigurationId;
     private volatile long currentConfigurationId;
 
+    Lock configurationLock = new ReentrantLock();
+
     ElectionTimeout electionTimeout;
 
     DefaultRaftServer(int port,
@@ -110,7 +121,8 @@ class DefaultRaftServer implements InternalRaftServer {
                       StateMachine<ByteBuffer> stateMachine,
                       ElectionTimeout electionTimeout,
                       boolean preVote,
-                      boolean leaderStickiness) {
+                      boolean leaderStickiness,
+                      boolean passive) {
         this.nodeId = port;
         this.raftStorage = raftStorage;
         this.stateMachine = stateMachine;
@@ -122,9 +134,12 @@ class DefaultRaftServer implements InternalRaftServer {
             this.raftStorage.updateConfiguration(initialConfiguration);
             this.currentConfiguration = initialConfiguration;
         }
+        if (passive) {
+            this.nodeState = new PassiveRole();
+        }
 
-        this.receiver = new Receiver(this);
-        this.senders = new Senders(this);
+        this.receiver = new Receiver(this, this.nodeId);
+        this.senders = new Senders(this, this.nodeId);
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
     }
 
@@ -156,11 +171,17 @@ class DefaultRaftServer implements InternalRaftServer {
         return senders.availableSenders();
     }
 
-    Mono<Payload> onClientRequest(Payload payload) {
+    Mono<Sender> createSender(AddServerRequest addServerRequest) {
+        return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache().subscribeOn(Schedulers.elastic());
+    }
+
+    @Override
+    public Mono<Payload> onClientRequest(Payload payload) {
         return nodeState.onClientRequest(this, raftStorage, payload);
     }
 
-    Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
+    @Override
+    public Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
         return nodeState.onClientRequests(this, raftStorage, payloads);
     }
 
@@ -204,20 +225,22 @@ class DefaultRaftServer implements InternalRaftServer {
         configurationChangeListeners.add(configurationChangeListener);
     }
 
-    void onSenderAvailable(SenderAvailableCallback senderAvailableCallback) {
-        senderAvailableCallbacks.add(senderAvailableCallback);
+    void onSenderAvailable(SenderAvailableListener senderAvailableListener) {
+        senderAvailableListeners.add(senderAvailableListener);
     }
 
-    void onSenderUnavailable(SenderUnavailableCallback senderUnavailableCallback) {
-        senderUnavailableCallbacks.add(senderUnavailableCallback);
+    void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener) {
+        senderUnavailableListeners.add(senderUnavailableListener);
     }
 
-    void senderAvailable(Sender sender) {
-        senderAvailableCallbacks.forEach(senderAvailableCallback -> senderAvailableCallback.handle(sender));
+    @Override
+    public void senderAvailable(Sender sender) {
+        senderAvailableListeners.forEach(senderAvailableListener -> senderAvailableListener.handle(sender));
     }
 
-    void senderUnavailable(Sender sender) {
-        senderUnavailableCallbacks.forEach(senderUnavailableCallback -> senderUnavailableCallback.handle(sender));
+    @Override
+    public void senderUnavailable(Sender sender) {
+        senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
     }
 
     void setCurrentLeader(int nodeId) {
@@ -239,12 +262,14 @@ class DefaultRaftServer implements InternalRaftServer {
                 });
     }
 
-    Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
+    @Override
+    public Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
         return nodeState.onPreRequestVote(this, raftStorage, preRequestVote)
                 .doOnNext(preVoteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), nodeId, preRequestVote, preVoteResponse));
     }
 
-    Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
+    @Override
+    public Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
         return nodeState.onRequestVote(this, raftStorage, requestVote)
                 .doOnNext(voteResponse -> LOGGER.info("[RaftServer {} -> RaftServer {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
     }
@@ -312,67 +337,66 @@ class DefaultRaftServer implements InternalRaftServer {
         return System.currentTimeMillis() - lastAppendEntriesCall.get() < currentElectionTimeout.toMillis();
     }
 
-    public Mono<Payload> onAddServer(Payload payload) {
-        return nodeState.onAddServer(this, raftStorage, payload);
+    @Override
+    public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
+        return nodeState.onAddServer(this, raftStorage, addServerRequest)
+                .doOnNext(addServerResponse -> LOGGER.info("[RaftServer {}] Add server \n{} \n-> \n{}", nodeId, addServerRequest.getNewServer(), addServerResponse.getStatus()));
     }
 
     @Override
-    public void addServer(int newMember) {
-        // 1. Reply NOT_LEADER if not leader
-        if (!isLeader()) {
-            throw new RaftException("Leader can only add server!");
+    public Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest) {
+        return nodeState.onRemoveServer(this, raftStorage, removeServerRequest)
+                .doOnNext(removeServerResponse -> LOGGER.info("[RaftServer {}] Remove server \n{} \n-> \n{}", nodeId, removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
+    }
+
+    void addServer(AddServerRequest addServerRequest) {
+        waitUntilPreviousConfigurationFinished(() -> {
+            // Append new configuration entry to log (old configuration plus new server),
+            // commit it using majority of new configuration
+            Configuration oldConfiguration = currentConfiguration;
+            Configuration newConfiguration = oldConfiguration.addMember(addServerRequest.getNewServer());
+            updateConfiguration(newConfiguration);
+            senders.addServer(addServerRequest.getNewServer());
+            configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
+        });
+    }
+
+    void removeServer(RemoveServerRequest removeServerRequest) {
+        waitUntilPreviousConfigurationFinished(() -> {
+            int oldMember = removeServerRequest.getOldServer();
+            // Append new configuration entry to log (old configuration plus new server),
+            // commit it using majority of new configuration.
+            Configuration oldConfiguration = currentConfiguration;
+            Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
+            updateConfiguration(newConfiguration);
+            senders.removeServer(oldMember);
+            configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
+
+            // If this server was removed, step down.
+            if (oldMember == nodeId) {
+                convertToPassive();
+            }
+        });
+    }
+
+    private void waitUntilPreviousConfigurationFinished(Runnable runnable) {
+        configurationLock.lock();
+        try {
+            // Wait until previous configuration in log is committed.
+            while (currentConfigurationId > previousConfigurationId) {
+
+            }
+            runnable.run();
+        } finally {
+            configurationLock.unlock();
         }
+    }
 
-        // 2. Catch up new server for fixed number of rounds. Reply TIMEOUT
-        // if new server does not make progress for an election timeout or
-        // if the last round takes longer than election timeout
-
-        // 3. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {
-            throw new RaftException("Other configure request is in progress!");
-        }
-
-        // 4. Append new configuration entry to log (old configuration plus new server),
-        // commit it using majority of new configuration
-
-        Configuration oldConfiguration = currentConfiguration;
-        Configuration newConfiguration = oldConfiguration.addMember(newMember);
+    private void updateConfiguration(Configuration newConfiguration) {
         ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
         IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
         currentConfigurationId = indexedLogEntry.getIndex();
         currentConfiguration = newConfiguration;
-        senders.addServer(newMember);
-        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
-    }
-
-    @Override
-    public void removeServer(int oldMember) {
-        // 1. Reply NOT_LEADER if not leader
-        if (!isLeader()) {
-            throw new RaftException("Leader can only remove server!");
-        }
-
-        // 2. Wait until previous configuration in log is committed.
-        if (currentConfigurationId > previousConfigurationId) {
-            throw new RaftException("Other configure request is in progress!");
-        }
-
-        // 3. Append new configuration entry to log (old configuration plus new server),
-        // commit it using majority of new configuration.
-
-        Configuration oldConfiguration = currentConfiguration;
-        Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
-        ConfigurationEntry configurationEntry = new ConfigurationEntry(raftStorage.getTerm(), System.currentTimeMillis(), newConfiguration.getMembers());
-        IndexedLogEntry indexedLogEntry = raftStorage.append(configurationEntry);
-        currentConfigurationId = indexedLogEntry.getIndex();
-        currentConfiguration = newConfiguration;
-        senders.removeServer(oldMember);
-        configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
-
-        // 4. If this server was removed, step down.
-        if (oldMember == nodeId) {
-            convertToPassive();
-        }
     }
 
     public Configuration getCurrentConfiguration() {
@@ -392,6 +416,24 @@ class DefaultRaftServer implements InternalRaftServer {
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
             senders.replaceWith(currentConfiguration);
+//            if (!currentConfiguration.getMembers().contains(nodeId)) {
+//                convertToPassive();
+//            }
+        }
+    }
+
+    // for passive server that is being catched up
+    public void applyPassive(IndexedLogEntry indexedLogEntry) {
+        LogEntry logEntry = indexedLogEntry.getLogEntry();
+        if (logEntry instanceof ConfigurationEntry) {
+            ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
+            LOGGER.info("[RaftServer {}] New configuration {}", nodeId, configurationEntry.getMembers());
+            currentConfiguration = new Configuration(configurationEntry.getMembers());
+            currentConfigurationId = indexedLogEntry.getIndex();
+            senders.replaceWith(currentConfiguration);
+            if (currentConfiguration.getMembers().contains(nodeId)) {
+                convertToFollower(raftStorage.getTerm());
+            }
         }
     }
 }

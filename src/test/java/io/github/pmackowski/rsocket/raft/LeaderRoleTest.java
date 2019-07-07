@@ -1,22 +1,27 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.verification.VerificationMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
+import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.List;
@@ -26,8 +31,7 @@ import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntryS
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderRoleTest {
@@ -87,12 +91,8 @@ public class LeaderRoleTest {
         leaderRole.onInit(node, raftStorage);
 
         // then
-        ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1).appendEntries(argument.capture());
-        AppendEntriesRequest actualAppendEntriesRequest = argument.getValue();
-        assertThat(actualAppendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(actualAppendEntriesRequest.getPrevLogIndex()).isEqualTo(2);
-        assertThat(actualAppendEntriesRequest.getEntriesCount()).isEqualTo(0);
+        List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(1));
+        assertAppendEntriesRequest(2, 0, appendEntriesHistory, 1);
     }
 
     @Test
@@ -111,20 +111,11 @@ public class LeaderRoleTest {
         // then
         Thread.sleep(50);
 
-        ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1, times(2)).appendEntries(argument.capture());
+        List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(2));
+        assertAppendEntriesRequest(0, 0, appendEntriesHistory, 1);
+        assertAppendEntriesRequest(0, 2, appendEntriesHistory, 2);
 
-        List<AppendEntriesRequest> appendEntries = argument.getAllValues();
-
-        AppendEntriesRequest appendEntriesRequest = appendEntries.get(0);
-        assertThat(appendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(appendEntriesRequest.getPrevLogIndex()).isEqualTo(0);
-        assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(0);
-
-        appendEntriesRequest = appendEntries.get(1);
-        assertThat(appendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(appendEntriesRequest.getPrevLogIndex()).isEqualTo(0);
-        assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(2);
+        AppendEntriesRequest appendEntriesRequest = appendEntriesHistory.get(1);
 
         assertThat(appendEntriesRequest.getEntriesList().stream()
                 .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
@@ -150,26 +141,104 @@ public class LeaderRoleTest {
         // then
         Thread.sleep(120);
 
-        ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1, times(2)).appendEntries(argument.capture());
+        List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(2));
+        assertAppendEntriesRequest(2, 0, appendEntriesHistory, 1);
+        assertAppendEntriesRequest(2, 1, appendEntriesHistory, 2);
 
-        List<AppendEntriesRequest> appendEntries = argument.getAllValues();
-
-        AppendEntriesRequest appendEntriesRequest = appendEntries.get(0);
-        assertThat(appendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(appendEntriesRequest.getPrevLogIndex()).isEqualTo(2);
-        assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(0);
-
-        appendEntriesRequest = appendEntries.get(1);
-        assertThat(appendEntriesRequest.getTerm()).isEqualTo(1);
-        assertThat(appendEntriesRequest.getPrevLogIndex()).isEqualTo(2);
-        assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(1);
+        AppendEntriesRequest appendEntriesRequest = appendEntriesHistory.get(1);
 
         assertThat(appendEntriesRequest.getEntriesList().stream()
                 .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
                 .map(CommandEntry::getValue)
                 .map(String::new)
                 .collect(Collectors.toList())).containsExactly("val3");
+    }
+
+    @Test
+    @DisplayName("Joining server log is empty")
+    void onAddServers() {
+        // given
+        given(node.createSender(any())).willReturn(Mono.just(sender1));
+        when(sender1.appendEntries(any(AppendEntriesRequest.class)))
+                .thenReturn(appendEntriesResponse(false, 0, Duration.ofMillis(100)))  // not counted as round
+                .thenReturn(appendEntriesResponse(true, 0, Duration.ofMillis(100)))   // round 1
+                .thenReturn(appendEntriesResponse(true, 0, Duration.ofMillis(100)));  // round 2
+
+        int catchUpMaxRounds = 2;
+
+        leaderRole = new LeaderRole(catchUpMaxRounds);
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
+
+        // when
+        StepVerifier.create(leaderRole.onAddServer(node, raftStorage, addServerRequest()))
+                .thenAwait(Duration.ofMillis(200))
+                .then(() -> {
+                    raftStorage.append(commandEntry(2,  "val3"));
+                    raftStorage.append(commandEntry(2,  "val3"));
+                    raftStorage.append(commandEntry(2,  "val3"));
+                    raftStorage.append(commandEntry(2,  "val3"));
+                    raftStorage.append(commandEntry(2,  "val3"));
+                })
+                .assertNext(addServerResponse -> {
+                    assertThat(addServerResponse.getStatus()).isTrue();
+//                    assertThat(addServerResponse.getLeaderHint()).isEqualTo(7003);
+                })
+                .verifyComplete();
+
+        List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(catchUpMaxRounds + 1));
+        assertAppendEntriesRequest(2, 0, appendEntriesHistory, 1);
+        assertAppendEntriesRequest(0, 2, appendEntriesHistory, 2);
+        assertAppendEntriesRequest(2, 5, appendEntriesHistory, 3);
+
+    }
+
+    private AddServerRequest addServerRequest() {
+        return AddServerRequest.newBuilder().setNewServer(7003).build();
+    }
+
+    private List<AppendEntriesRequest> appendEntriesHistory() {
+        return appendEntriesHistory(atLeastOnce());
+    }
+
+    private List<AppendEntriesRequest> appendEntriesHistory(VerificationMode verificationMode) {
+        ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
+        verify(sender1, verificationMode).appendEntries(argument.capture());
+        return argument.getAllValues();
+    }
+
+    private void assertAppendEntriesRequest(long prevlogIndex, int entriesCount, List<AppendEntriesRequest> appendEntriesHistory, int position) {
+        AppendEntriesRequest appendEntriesRequest = appendEntriesHistory.get(position-1);
+        //assertThat(appendEntriesRequest.getTerm()).isEqualTo(1);
+        assertThat(appendEntriesRequest.getPrevLogIndex()).isEqualTo(prevlogIndex);
+        assertThat(appendEntriesRequest.getEntriesCount()).isEqualTo(entriesCount);
+    }
+
+    private Mono<AppendEntriesResponse> appendEntriesResponse(boolean success, int term, long lastLogIndex) {
+        return appendEntriesResponse(success, term, lastLogIndex, null);
+    }
+
+    private Mono<AppendEntriesResponse> appendEntriesResponse(boolean success, long lastLogIndex) {
+        return appendEntriesResponse(success, 1, lastLogIndex, null);
+    }
+
+    private Mono<AppendEntriesResponse> appendEntriesResponse(boolean success, long lastLogIndex, Duration delay) {
+        return appendEntriesResponse(success, 1, lastLogIndex, delay);
+    }
+
+    private Mono<AppendEntriesResponse> appendEntriesResponse(boolean success, int term, long lastLogIndex, Duration delay) {
+        Mono result = Mono.just(AppendEntriesResponse
+                            .newBuilder()
+                            .setSuccess(success)
+                            .setTerm(term)
+                            .setLastLogIndex(lastLogIndex)
+                            .build()
+                    );
+        if (delay != null) {
+            result = result.delayElement(delay);
+        }
+        return result;
     }
 
     private Mono<AppendEntriesResponse> appendEntriesResponseSuccess(int term) {

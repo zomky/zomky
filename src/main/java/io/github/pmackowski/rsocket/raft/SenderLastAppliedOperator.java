@@ -1,6 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.rpc.CommandRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;

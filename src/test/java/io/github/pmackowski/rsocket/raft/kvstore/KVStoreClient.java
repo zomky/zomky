@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.kvstore;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.rpc.CommandRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -37,7 +37,7 @@ public class KVStoreClient {
         Iterator<Integer> iterator = clientPorts.iterator();
         // or maybe ask for leader in first step
         while (iterator.hasNext() && !rSocketInitialized) {
-            Integer next = iterator.next() + 20000;
+            Integer next = iterator.next() + 10000;
             try {
                 RSocket rSocket = RSocketFactory.connect()
                         .transport(TcpClientTransport.create(next))

@@ -1,11 +1,11 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.rpc.AppendEntriesResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -19,6 +19,8 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class LeaderRole implements RaftServerRole {
@@ -26,9 +28,10 @@ public class LeaderRole implements RaftServerRole {
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRole.class);
 
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(100);
+    private static final int CATCH_UP_MAX_ROUNDS = 3;
 
     private Function<Flux<Long>, ? extends Publisher<?>> repeatFactory;
-
+    private int catchUpMaxRounds;
     /**
      * Reinitialized after election,
      * index of the next log entry
@@ -52,20 +55,33 @@ public class LeaderRole implements RaftServerRole {
     private CommitIndexCalculator commitIndexCalculator;
 
     public LeaderRole() {
-        this(HEARTBEAT_TIMEOUT);
+        this(HEARTBEAT_TIMEOUT, CATCH_UP_MAX_ROUNDS);
+    }
+
+    public LeaderRole(int catchUpMaxRounds) {
+        this(HEARTBEAT_TIMEOUT, catchUpMaxRounds);
     }
 
     public LeaderRole(Duration heartbeatTimeout) {
-        this(Repeat.onlyIf(objectRepeatContext -> true).fixedBackoff(heartbeatTimeout));
+        this(Repeat.onlyIf(objectRepeatContext -> true).fixedBackoff(heartbeatTimeout), CATCH_UP_MAX_ROUNDS);
+    }
+
+    public LeaderRole(Duration heartbeatTimeout, int catchUpMaxRounds) {
+        this(Repeat.onlyIf(objectRepeatContext -> true).fixedBackoff(heartbeatTimeout), catchUpMaxRounds);
     }
 
     LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory) {
-        this(repeatFactory, new CommitIndexCalculator());
+        this(repeatFactory, CATCH_UP_MAX_ROUNDS);
     }
 
-    LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory, CommitIndexCalculator commitIndexCalculator) {
+    LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory, int catchUpMaxRounds) {
+        this(repeatFactory, new CommitIndexCalculator(), catchUpMaxRounds);
+    }
+
+    LeaderRole(Function<Flux<Long>, ? extends Publisher<?>> repeatFactory, CommitIndexCalculator commitIndexCalculator, int catchUpMaxRounds) {
         this.repeatFactory = repeatFactory;
         this.commitIndexCalculator = commitIndexCalculator;
+        this.catchUpMaxRounds = catchUpMaxRounds;
     }
 
     @Override
@@ -110,23 +126,117 @@ public class LeaderRole implements RaftServerRole {
     }
 
     @Override
-    public Mono<Payload> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
-        return null;
+    public Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
+        return Mono.just(removeServerRequest)
+                .doOnNext(i -> raftServer.removeServer(removeServerRequest))
+                .doOnError(throwable -> LOGGER.error("Remove server has failed!", throwable))
+                .thenReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(true).build())
+                .onErrorReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(false).build());
+    }
+
+    @Override
+    public Mono<AddServerResponse> onAddServer(DefaultRaftServer node, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+        // Catch up new server for fixed number of rounds. Reply TIMEOUT
+        // if new server does not make progress for an election timeout or
+        // if the last round takes longer than election timeout
+
+        final BoundedLogStorageReader logStorageReader = new BoundedLogStorageReader(raftStorage.openReader());
+        CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
+        return node.createSender(addServerRequest).flatMap(sender -> {
+                final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftStorage, logStorageReader);
+                return sender.appendEntries(appendEntriesRequest)
+                        .doOnNext(appendEntriesResponse -> {
+                            // first response almost always will be false
+                            boolean success = appendEntriesResponse.getSuccess();
+                            long lastLogIndex = success ?
+                                    appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesCount() :
+                                    appendEntriesResponse.getLastLogIndex();
+                            long senderNextIndex = lastLogIndex + 1;
+                            catchUpContext.setSenderNextIndex(senderNextIndex);
+                            if (success) {
+                                catchUpContext.incrementRound();
+                            } else {
+                                catchUpContext.logFailure();
+                            }
+                        })
+                        .doOnError(throwable -> LOGGER.error("Error while catching up!!", throwable));
+            })
+            .elapsed()
+            .repeatWhen(lessThanMaxRounds(catchUpContext))
+            .last()
+            .doOnNext(tuple -> {
+                long elapsedTime = tuple.getT1();
+                if (elapsedTime > ElectionTimeout.ELECTION_TIMEOUT_MIN_IN_MILLIS) {
+                    throw new RaftException(new TimeoutException());
+                }
+            })
+            .doOnNext(i -> node.addServer(addServerRequest))
+            .doOnError(throwable -> LOGGER.error("Add server has failed!", throwable))
+            .thenReturn(AddServerResponse.newBuilder().setLeaderHint(node.nodeId).setStatus(true).build())
+            .onErrorReturn(AddServerResponse.newBuilder().setLeaderHint(node.nodeId).setStatus(false).build());
+    }
+
+    private Repeat<CatchUpContext> lessThanMaxRounds(CatchUpContext catchUpContext) {
+        return Repeat.<CatchUpContext>onlyIf(repeatContext -> repeatContext.applicationContext().repeat())
+                .withApplicationContext(catchUpContext);
+    }
+
+    private static class CatchUpContext {
+
+        private int maxRounds;
+        private volatile long senderNextIndex;
+        private volatile long rounds;
+        private AtomicBoolean logFailure = new AtomicBoolean(false);
+
+        CatchUpContext(long senderNextIndex, int maxRounds) {
+            LOGGER.info("senderNextIndex {}", senderNextIndex);
+            this.senderNextIndex = senderNextIndex;
+            this.maxRounds = maxRounds;
+        }
+
+        long getSenderNextIndex() {
+            return senderNextIndex;
+        }
+
+        boolean repeat() {
+            return rounds < maxRounds;
+        }
+
+        void setSenderNextIndex(long senderNextIndex) {
+            LOGGER.info("setSenderNextIndex {}", senderNextIndex);
+            this.senderNextIndex = senderNextIndex;
+        }
+
+        void incrementRound() {
+            LOGGER.info("incrementRound");
+            this.rounds = rounds + 1;
+        }
+
+        void logFailure() {
+            LOGGER.info("logFailure");
+            if (!logFailure.compareAndSet(false, true)) {
+                throw new RaftException("Server cannot be added");
+            }
+        }
     }
 
     private void initHeartbeats(DefaultRaftServer node, RaftStorage raftStorage, Sender sender) {
         LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
         try {
-            long lastLogIndex = raftStorage.getLastIndexedTerm().getIndex();
-            long nextIdx = lastLogIndex + 1;
-            nextIndex.put(sender.getNodeId(), nextIdx);
+            long senderNextIndex = senderNextIndex(raftStorage);
+            nextIndex.put(sender.getNodeId(), senderNextIndex);
             matchIndex.put(sender.getNodeId(), 0L);
             heartbeats.put(sender.getNodeId(), heartbeats(sender, raftStorage, node).subscribe());
-            logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(nextIdx)));
+            logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(senderNextIndex)));
         } catch (Exception e) {
             LOGGER.error("initHeartbeats", e);
             throw new StorageException(e);
         }
+    }
+
+    private long senderNextIndex(RaftStorage raftStorage) {
+        long lastLogIndex = raftStorage.getLastIndexedTerm().getIndex();
+        return lastLogIndex + 1;
     }
 
     private Flux<AppendEntriesResponse> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node) {
@@ -152,7 +262,7 @@ public class LeaderRole implements RaftServerRole {
                                      // TODO now retry is done in next heartbeat
                                      LOGGER.info("[RaftServer {}] Decrease nextIndex for sender {}", node.nodeId, sender.getNodeId());
                                      long next = nextIndex.get(sender.getNodeId()) - 1;
-                                     nextIndex.put(sender.getNodeId(), Math.min(next, 1));
+                                     nextIndex.put(sender.getNodeId(), Math.max(next, 1));
                                  }
                              })
                             .doOnError(throwable -> LOGGER.error("Error while heartbeat!!", throwable))
@@ -161,17 +271,21 @@ public class LeaderRole implements RaftServerRole {
     }
 
     private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftStorage raftStorage) {
+        long senderNextIndex = nextIndex.get(sender.getNodeId());
         BoundedLogStorageReader logStorageReader = logStorageReaders.get(sender.getNodeId());
-        long senderIdxId = nextIndex.get(sender.getNodeId());
-        long prevLogIndex = senderIdxId - 1;
+        return appendEntriesRequest(senderNextIndex, node, raftStorage, logStorageReader);
+    }
+
+    private AppendEntriesRequest appendEntriesRequest(long senderNextIndex, DefaultRaftServer node, RaftStorage raftStorage, BoundedLogStorageReader logStorageReader) {
+        long prevLogIndex = senderNextIndex - 1;
         int prevLogTerm = raftStorage.getTermByIndex(prevLogIndex);
 
         // If last log index ≥ nextIndex for a follower: send
         // AppendEntries RPC with log entries starting at nextIndex
         AppendEntriesRequest.Builder builder = AppendEntriesRequest.newBuilder();
         long lastIndex = raftStorage.getLastIndexedTerm().getIndex();
-        if (lastIndex >= senderIdxId) {
-            Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderIdxId, lastIndex);
+        if (lastIndex >= senderNextIndex) {
+            Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderNextIndex, lastIndex);
             entries.forEach(rawLogEntry -> builder.addEntries(ByteString.copyFrom(rawLogEntry))); // always copy as ByteString is immutable
         }
 
