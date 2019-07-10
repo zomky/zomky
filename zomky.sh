@@ -1,2 +1,2 @@
 #!/bin/bash
-gradle zomky --args="$@"
+java -jar build/libs/zomky.jar "$@"
