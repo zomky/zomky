@@ -119,14 +119,14 @@ public class Receiver {
 
                         case ADD_SERVER:
                             return Mono.just(payload)
-                                    .map(this::toRemoveServerRequest)
-                                    .flatMap(removeServerRequest -> node.onRemoveServer(removeServerRequest))
+                                    .map(this::toAddServerRequest)
+                                    .flatMap(addServerRequest -> node.onAddServer(addServerRequest))
                                     .map(this::toPayload);
 
                         case REMOVE_SERVER:
                             return Mono.just(payload)
-                                    .map(this::toAddServerRequest)
-                                    .flatMap(addServerRequest -> node.onAddServer(addServerRequest))
+                                    .map(this::toRemoveServerRequest)
+                                    .flatMap(removeServerRequest -> node.onRemoveServer(removeServerRequest))
                                     .map(this::toPayload);
 
                         default:

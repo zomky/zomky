@@ -6,11 +6,15 @@ import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 
 public class PassiveRole implements RaftServerRole {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PassiveRole.class);
 
     @Override
     public NodeState nodeState() {
@@ -19,7 +23,7 @@ public class PassiveRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
-
+        LOGGER.info("[Node {}] Passive", raftServer.nodeId);
     }
 
     @Override

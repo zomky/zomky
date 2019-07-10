@@ -42,6 +42,8 @@ ext {
     reactorExtraVersion = "3.2.2.RELEASE"
     protobufVersion = "3.0.0"
     reactorCoreVersion = "3.2.8.RELEASE"
+    reflectionsVersion = "0.9.11"
+    picocliVersion = "3.9.6"
 
     // Logging
     slf4jVersion = '1.7.25'
@@ -115,6 +117,9 @@ configure(allprojects) { project ->
 
         compile "com.google.protobuf:protobuf-java:$protobufVersion"
 
+        compile "info.picocli:picocli:$picocliVersion"
+        compile "org.reflections:reflections:$reflectionsVersion"
+        
         // Testing
         testCompile "org.junit.jupiter:junit-jupiter-api:$junitVersion"
         testRuntime "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
@@ -128,7 +133,7 @@ configure(allprojects) { project ->
         testCompile "org.assertj:assertj-core:$assertjVersion"
         testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
         implementation "org.slf4j:slf4j-api:$slf4jVersion"
-        testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
+        implementation "ch.qos.logback:logback-classic:$logbackVersion"
 
         testCompile 'io.projectreactor.tools:blockhound:1.0.0.M4'
 
@@ -185,6 +190,12 @@ configure(rootProject) {
         
         check.dependsOn it
         shouldRunAfter test
+    }
+
+    task zomky(type:JavaExec) {
+        // temporary
+        main = 'io.github.pmackowski.rsocket.raft.cli.Zomky'
+        classpath = sourceSets.main.runtimeClasspath
     }
 
     artifacts {
