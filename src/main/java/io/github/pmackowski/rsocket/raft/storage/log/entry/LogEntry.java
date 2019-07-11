@@ -1,5 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.log.entry;
 
+import java.util.Objects;
+
 public class LogEntry {
 
     public static final int SIZE = Integer.BYTES + Long.BYTES;
@@ -22,6 +24,20 @@ public class LogEntry {
 
     public boolean isCommand() {
         return false;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LogEntry logEntry = (LogEntry) o;
+        return term == logEntry.term &&
+                timestamp == logEntry.timestamp;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(term, timestamp);
     }
 
     @Override

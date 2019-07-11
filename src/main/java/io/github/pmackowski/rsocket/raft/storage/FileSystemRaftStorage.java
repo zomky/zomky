@@ -109,7 +109,7 @@ public class FileSystemRaftStorage implements RaftStorage {
     private void initialize(RaftStorageConfiguration configuration) {
         try {
             if (Files.notExists(configuration.getDirectory())) {
-                Files.createDirectory(configuration.getDirectory());
+                Files.createDirectories(configuration.getDirectory());
             }
         } catch (IOException e) {
             throw new StorageException(e);

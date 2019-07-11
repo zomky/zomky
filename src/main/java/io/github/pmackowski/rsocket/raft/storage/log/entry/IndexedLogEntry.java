@@ -1,5 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.log.entry;
 
+import java.util.Objects;
+
 public class IndexedLogEntry {
 
     private LogEntry logEntry;
@@ -22,6 +24,21 @@ public class IndexedLogEntry {
 
     public int getSize() {
         return size;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        IndexedLogEntry that = (IndexedLogEntry) o;
+        return index == that.index &&
+                size == that.size &&
+                logEntry.equals(that.logEntry);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(logEntry, index, size);
     }
 
     @Override

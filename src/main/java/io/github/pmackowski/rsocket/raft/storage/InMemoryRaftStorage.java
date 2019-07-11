@@ -10,10 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
@@ -63,14 +60,14 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public IndexedLogEntry append(LogEntry logEntry) {
-        int size = 0;
+        int size = LogEntry.SIZE +1;
         if (logEntry instanceof CommandEntry) {
             CommandEntry commandEntry = (CommandEntry) logEntry;
-            size = commandEntry.getValue().length + LogEntry.SIZE +1;
+            size = size + commandEntry.getValue().length;
         }
         if (logEntry instanceof ConfigurationEntry) {
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
-            size = configurationEntry.getMembers().size() * Integer.BYTES + 1;
+            size = size + configurationEntry.getMembers().size() * Integer.BYTES;
         }
         last = new IndexedLogEntry(logEntry, entries.size() + 1, size);
         entries.add(last);
@@ -155,7 +152,6 @@ public class InMemoryRaftStorage implements RaftStorage {
     private static class InMemoryLogStorageReader implements LogStorageReader {
 
         private List<IndexedLogEntry> entries;
-        private Iterator<IndexedLogEntry> iterator;
         private long initialIndex;
         private long currentIndex;
         private Supplier<Long> currentMaxIndexSupplier;
@@ -174,13 +170,11 @@ public class InMemoryRaftStorage implements RaftStorage {
 
         @Override
         public void reset() {
-            iterator = entries.listIterator((int) initialIndex - 1);
             currentIndex = initialIndex;
         }
 
         @Override
         public void reset(long index) {
-            iterator = entries.listIterator((int) index - 1);
             currentIndex = index;
         }
 
@@ -196,7 +190,7 @@ public class InMemoryRaftStorage implements RaftStorage {
 
         @Override
         public boolean hasNext() {
-            return iterator.hasNext() && currentMaxIndexSupplier.get() >= currentIndex;
+            return entries.size() >= currentIndex && currentMaxIndexSupplier.get() >= currentIndex;
         }
 
         @Override
@@ -204,8 +198,9 @@ public class InMemoryRaftStorage implements RaftStorage {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
+            IndexedLogEntry indexedLogEntry = entries.get((int) currentIndex - 1);
             currentIndex++;
-            return iterator.next();
+            return indexedLogEntry;
         }
     }
 }
