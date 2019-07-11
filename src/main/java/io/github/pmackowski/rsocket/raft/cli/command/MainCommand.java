@@ -3,7 +3,10 @@ package io.github.pmackowski.rsocket.raft.cli.command;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-@Command(name = "zomky", helpCommand = true, version = "1.0.0")
+@Command(name = "zomky", helpCommand = true, version = "1.0.0", subcommands = {
+    AgentCommand.class,
+    JoinCommand.class
+})
 public class MainCommand {
 
     @Option(names = {"--help", "-h"}, usageHelp = true)

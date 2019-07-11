@@ -6,7 +6,7 @@ import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
 import io.github.pmackowski.rsocket.raft.StateMachine;
 import io.github.pmackowski.rsocket.raft.annotation.ZomkyStateMachine;
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
-import io.github.pmackowski.rsocket.raft.cli.command.AgentConfigureCommand;
+import io.github.pmackowski.rsocket.raft.cli.command.AgentCommand;
 import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
@@ -32,7 +32,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
     @Override
     public void execute(ParseResult parseResult) {
         MainCommand mainCommand = mainCommand(parseResult);
-        AgentConfigureCommand.AgentCommand agentCommand = command(parseResult, AgentConfigureCommand.AgentCommand.class);
+        AgentCommand agentCommand = command(parseResult, AgentCommand.class);
 
         Mono<RaftServer> raftServerMono = new RaftServerBuilder()
                 .storage(raftStorage(agentCommand))
@@ -70,7 +70,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
         return stateMachine;
     }
 
-    private RaftStorage raftStorage(AgentConfigureCommand.AgentCommand agentCommand) {
+    private RaftStorage raftStorage(AgentCommand agentCommand) {
         if (agentCommand.isDev()) {
             return new InMemoryRaftStorage();
         } else {

@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.external.cli.runner;
 
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
 import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
-import io.github.pmackowski.rsocket.raft.external.cli.command.KeyValueConfigureCommand.KeyValueAddMultipleCommand;
+import io.github.pmackowski.rsocket.raft.external.cli.command.KeyValueAddMultipleCommand;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KeyValue;
 import org.slf4j.Logger;
@@ -12,16 +12,13 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 
-import static io.github.pmackowski.rsocket.raft.external.cli.command.KeyValueConfigureCommand.KEY_VALUE_ADD_MULTIPLE_COMMAND_NAME;
-import static io.github.pmackowski.rsocket.raft.external.cli.command.KeyValueConfigureCommand.KEY_VALUE_COMMAND_NAME;
-
 public class KeyValueAddMultipleCommandRunner implements ZomkyCommandRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeyValueAddMultipleCommandRunner.class);
 
     @Override
     public boolean support(ParseResult parseResult) {
-        return support(KEY_VALUE_COMMAND_NAME, KEY_VALUE_ADD_MULTIPLE_COMMAND_NAME, parseResult);
+        return support("kv", "add-multiple", parseResult);
     }
 
     @Override
