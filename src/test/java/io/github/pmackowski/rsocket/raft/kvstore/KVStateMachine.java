@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.kvstore;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.StateMachine;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
+import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import org.slf4j.Logger;

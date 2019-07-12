@@ -12,6 +12,8 @@ public enum RpcType {
     ADD_SERVER(4),
     REMOVE_SERVER(5),
 
+    INFO(10),
+
     COMMAND(50);
 
     private final byte code;
@@ -33,6 +35,8 @@ public enum RpcType {
             case 3: return PRE_REQUEST_VOTE;
             case 4: return ADD_SERVER;
             case 5: return REMOVE_SERVER;
+
+            case 10: return INFO;
 
             case 50: return COMMAND;
             default: throw new RuntimeException("Unknown type !");

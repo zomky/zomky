@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.integration;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
+import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;

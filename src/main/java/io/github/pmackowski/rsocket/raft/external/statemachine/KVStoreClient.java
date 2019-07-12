@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.external.statemachine;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
+import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;

@@ -4,6 +4,7 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InternalRaftServer;
 import io.github.pmackowski.rsocket.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.*;
@@ -129,6 +130,12 @@ public class Receiver {
                                     .flatMap(removeServerRequest -> node.onRemoveServer(removeServerRequest))
                                     .map(this::toPayload);
 
+                        case INFO:
+                            return Mono.just(payload)
+                                    .map(this::toInfoRequest)
+                                    .flatMap(infoRequest -> node.onInfoRequest(infoRequest))
+                                    .map(this::toPayload);
+
                         default:
                             return Mono.error(new RaftException("??"));
                     }
@@ -171,6 +178,14 @@ public class Receiver {
                         return RemoveServerRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid remove server request!", e);
+                    }
+                }
+
+                private InfoRequest toInfoRequest(Payload payload) {
+                    try {
+                        return InfoRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid info request!", e);
                     }
                 }
 

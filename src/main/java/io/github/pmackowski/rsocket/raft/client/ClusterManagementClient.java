@@ -1,8 +1,13 @@
 package io.github.pmackowski.rsocket.raft.client;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.transport.RpcType;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.RemoveServerRequest;
+import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -41,5 +46,17 @@ public class ClusterManagementClient {
         }).map(payload -> true);
     }
 
-
+    public Mono<InfoResponse> clusterInfo() {
+        return leaderMono.flatMap(leader -> {
+            InfoRequest infoRequest = InfoRequest.newBuilder().build();
+            Payload payload = ByteBufPayload.create(infoRequest.toByteArray(), new byte[] {RpcType.INFO.getCode()});
+            return leader.requestResponse(payload);
+        }).map(payload1 -> {
+            try {
+                return InfoResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+            } catch (InvalidProtocolBufferException e) {
+                throw new RaftException("Invalid info response!", e);
+            }
+        });
+    }
 }

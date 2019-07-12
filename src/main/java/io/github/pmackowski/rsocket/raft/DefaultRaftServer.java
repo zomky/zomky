@@ -1,5 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.listener.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
@@ -173,6 +175,11 @@ class DefaultRaftServer implements InternalRaftServer {
 
     Mono<Sender> createSender(AddServerRequest addServerRequest) {
         return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache().subscribeOn(Schedulers.elastic());
+    }
+
+    @Override
+    public Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest) {
+        return Mono.just(InfoResponse.newBuilder().addAllMembers(currentConfiguration.getMembers()).build());
     }
 
     @Override

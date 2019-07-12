@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "io.github.pmackowski.rsocket.raft.external.protobuf";
+option java_multiple_files = true;
+
+message CommandRequest {
+    string key = 1;
+    string value = 2;
+    bool set_operation = 3;
+}

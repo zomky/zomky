@@ -1,6 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.transport.protobuf.CommandRequest;
+import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
@@ -88,6 +88,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
+                // TODO hardcoded - how to customize ??
                 final CommandRequest commandRequest = CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                 CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), commandRequest.toByteArray());
                 IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);

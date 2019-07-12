@@ -71,9 +71,3 @@ message InstallSnapshotRequest {
 message InstallSnapshotResponse {
     int32 term = 1; // currentTerm, for leader to update itself
 }
-
-message CommandRequest {
-    string key = 1;
-    string value = 2;
-    bool set_operation = 3;
-}

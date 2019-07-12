@@ -5,6 +5,7 @@ import picocli.CommandLine.Option;
 
 @Command(name = "zomky", helpCommand = true, version = "1.0.0", subcommands = {
     AgentCommand.class,
+    InfoCommand.class,
     JoinCommand.class
 })
 public class MainCommand {

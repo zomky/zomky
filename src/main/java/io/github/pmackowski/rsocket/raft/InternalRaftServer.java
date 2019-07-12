@@ -1,5 +1,7 @@
 package io.github.pmackowski.rsocket.raft;
 
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
@@ -26,4 +28,5 @@ public interface InternalRaftServer extends RaftServer {
 
     void senderUnavailable(Sender sender);
 
+    Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest);
 }
