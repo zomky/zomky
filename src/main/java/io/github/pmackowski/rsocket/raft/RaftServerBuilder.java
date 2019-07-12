@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 public class RaftServerBuilder {
 
     private StateMachine stateMachine;
+    private StateMachineEntryConverter stateMachineEntryConverter;
     private ElectionTimeout electionTimeout;
     private RaftStorage raftStorage;
     private int nodeId;
@@ -22,6 +23,11 @@ public class RaftServerBuilder {
 
     public RaftServerBuilder stateMachine(StateMachine stateMachine) {
         this.stateMachine = stateMachine;
+        return this;
+    }
+
+    public RaftServerBuilder stateMachineEntryConverter(StateMachineEntryConverter stateMachineEntryConverter) {
+        this.stateMachineEntryConverter = stateMachineEntryConverter;
         return this;
     }
 
@@ -57,7 +63,7 @@ public class RaftServerBuilder {
 
     public Mono<RaftServer> start() {
         return Mono.defer(() -> {
-           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, configuration, stateMachine, electionTimeout, preVote, leaderStickiness, passive);
+           DefaultRaftServer kvStoreServer = new DefaultRaftServer(nodeId, raftStorage, configuration, stateMachine, stateMachineEntryConverter, electionTimeout, preVote, leaderStickiness, passive);
            return Mono.just(kvStoreServer).doOnNext(DefaultRaftServer::start);
         });
     }

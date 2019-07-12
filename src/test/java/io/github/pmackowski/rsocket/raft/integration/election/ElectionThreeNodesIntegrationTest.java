@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.RaftServer;
 import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
@@ -183,6 +184,7 @@ class ElectionThreeNodesIntegrationTest {
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout)
                 .initialConfiguration(new Configuration(7000, 7001, 7002))
                 .preVote(preVote)

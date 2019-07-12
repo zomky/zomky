@@ -1,11 +1,11 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.StorageException;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.BoundedLogStorageReader;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;

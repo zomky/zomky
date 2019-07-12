@@ -1,10 +1,8 @@
 package io.github.pmackowski.rsocket.raft.cli.runner;
 
-import io.github.pmackowski.rsocket.raft.ElectionTimeout;
-import io.github.pmackowski.rsocket.raft.RaftServer;
-import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
-import io.github.pmackowski.rsocket.raft.StateMachine;
+import io.github.pmackowski.rsocket.raft.*;
 import io.github.pmackowski.rsocket.raft.annotation.ZomkyStateMachine;
+import io.github.pmackowski.rsocket.raft.annotation.ZomkyStateMachineEntryConventer;
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
 import io.github.pmackowski.rsocket.raft.cli.command.AgentCommand;
 import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
@@ -43,6 +41,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
                 .electionTimeout(new ElectionTimeout())
                 .initialConfiguration(new Configuration(mainCommand.getPort()))
                 .stateMachine(stateMachine(mainCommand.getPort(), agentCommand.getStateMachine()))
+                .stateMachineEntryConverter(stateMachineEntryConverter(agentCommand.getStateMachine()))
                 .start();
         raftServerMono.block();
 
@@ -54,20 +53,35 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
         Class<? extends StateMachine> stateMachineType = stateMachineTypes.stream()
                 .filter(type -> {
                     ZomkyStateMachine annotation = type.getAnnotation(ZomkyStateMachine.class);
-                    return annotation != null &&
-                           annotation.name().equals(stateMachineName);
+                    return annotation != null && annotation.name().equals(stateMachineName);
                 })
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException(String.format("no state machine %s", stateMachineName)));
 
-        StateMachine stateMachine;
         try {
             Constructor constructor = stateMachineType.getConstructor(Integer.class);
-            stateMachine = (StateMachine) constructor.newInstance(port);
+            return (StateMachine) constructor.newInstance(port);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-        return stateMachine;
+    }
+
+    private StateMachineEntryConverter stateMachineEntryConverter(String stateMachineName) {
+        Reflections reflections = new Reflections("io.github.pmackowski"); // TODO
+        Set<Class<? extends StateMachineEntryConverter>> converterTypes = reflections.getSubTypesOf(StateMachineEntryConverter.class);
+        Class<? extends StateMachineEntryConverter> converter = converterTypes.stream()
+                .filter(type -> {
+                    ZomkyStateMachineEntryConventer annotation = type.getAnnotation(ZomkyStateMachineEntryConventer.class);
+                    return annotation != null && annotation.name().equals(stateMachineName);
+                })
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException(String.format("no state machine %s", stateMachineName)));
+
+        try {
+            return converter.newInstance();
+        } catch (InstantiationException | IllegalAccessException  e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private RaftStorage raftStorage(AgentCommand agentCommand) {

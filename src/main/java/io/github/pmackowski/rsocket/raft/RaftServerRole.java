@@ -1,11 +1,11 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedTerm;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;

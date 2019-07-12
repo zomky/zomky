@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.RaftServer;
 import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
@@ -56,6 +57,7 @@ class ClusterConfigurationIntegrationTest {
                 .nodeId(7000)
                 .storage(raftStorage1)
                 .stateMachine(new KVStateMachine(7000))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout)
                 .initialConfiguration(new Configuration(7000))
                 .start();
@@ -64,6 +66,7 @@ class ClusterConfigurationIntegrationTest {
                 .nodeId(7001)
                 .storage(raftStorage2)
                 .stateMachine(new KVStateMachine(7001))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout)
                 .passive(true)
                 .start();

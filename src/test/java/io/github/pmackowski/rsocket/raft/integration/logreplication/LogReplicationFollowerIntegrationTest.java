@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.integration.logreplication;
 
 import io.github.pmackowski.rsocket.raft.*;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
@@ -91,6 +92,7 @@ class LogReplicationFollowerIntegrationTest {
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout)
                 .initialConfiguration(new Configuration(7000, 7001))
                 .start();

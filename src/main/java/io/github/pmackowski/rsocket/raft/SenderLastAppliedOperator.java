@@ -1,10 +1,8 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
-import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
@@ -88,9 +86,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                // TODO hardcoded - how to customize ??
-                final CommandRequest commandRequest = CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
-                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), commandRequest.toByteArray());
+                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), node.getStateMachineEntryConverter().convert(payload));
                 IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
                 if (node.quorum() == 1) {
                     node.setCommitIndex(logEntryInfo.getIndex());

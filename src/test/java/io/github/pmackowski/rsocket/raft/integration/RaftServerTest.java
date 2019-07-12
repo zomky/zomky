@@ -4,6 +4,7 @@ import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.RaftServer;
 import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
@@ -79,6 +80,7 @@ class RaftServerTest {
                 .nodeId(7000)
                 .storage(raftStorage1)
                 .stateMachine(new KVStateMachine(7000))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout1)
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
@@ -87,6 +89,7 @@ class RaftServerTest {
                 .nodeId(7001)
                 .storage(raftStorage2)
                 .stateMachine(new KVStateMachine(7001))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout2)
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
@@ -95,6 +98,7 @@ class RaftServerTest {
                 .nodeId(7002)
                 .storage(raftStorage3)
                 .stateMachine(new KVStateMachine(7002))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout3)
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
@@ -222,6 +226,7 @@ class RaftServerTest {
                 .nodeId(7003)
                 .storage(raftStorage4)
                 .stateMachine(new KVStateMachine(7003))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
                 .electionTimeout(electionTimeout4)
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)

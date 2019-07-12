@@ -79,6 +79,8 @@ class DefaultRaftServer implements InternalRaftServer {
     }
 
     StateMachine<ByteBuffer> stateMachine;
+    StateMachineEntryConverter stateMachineEntryConverter;
+
     private ScheduledExecutorService stateMachineExecutor;
 
     volatile RaftServerRole nodeState = new FollowerRole();
@@ -121,6 +123,7 @@ class DefaultRaftServer implements InternalRaftServer {
                       RaftStorage raftStorage,
                       Configuration initialConfiguration,
                       StateMachine<ByteBuffer> stateMachine,
+                      StateMachineEntryConverter stateMachineEntryConverter,
                       ElectionTimeout electionTimeout,
                       boolean preVote,
                       boolean leaderStickiness,
@@ -128,6 +131,7 @@ class DefaultRaftServer implements InternalRaftServer {
         this.nodeId = port;
         this.raftStorage = raftStorage;
         this.stateMachine = stateMachine;
+        this.stateMachineEntryConverter = stateMachineEntryConverter;
         this.electionTimeout = electionTimeout;
         this.preVote = preVote;
         this.leaderStickiness = leaderStickiness;
@@ -167,6 +171,10 @@ class DefaultRaftServer implements InternalRaftServer {
                 LOGGER.error("Main loop failure", e);
             }
         }, 0, 10, TimeUnit.MILLISECONDS);
+    }
+
+    public StateMachineEntryConverter getStateMachineEntryConverter() {
+        return stateMachineEntryConverter;
     }
 
     Flux<Sender> availableSenders() {
