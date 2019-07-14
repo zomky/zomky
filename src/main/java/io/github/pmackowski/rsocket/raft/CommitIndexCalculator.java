@@ -12,16 +12,16 @@ class CommitIndexCalculator {
      * set commitIndex = N
      *
      * @param raftStorage
-     * @param node
+     * @param raftGroup
      * @param matchIndex
      * @param lastIndex
      * @return
      */
-    long calculate(RaftStorage raftStorage, DefaultRaftServer node, Map<Integer, Long> matchIndex, long lastIndex) {
-        int noCommittedRequired = node.quorum() - 1;
+    long calculate(RaftStorage raftStorage, RaftGroup raftGroup, Map<Integer, Long> matchIndex, long lastIndex) {
+        int noCommittedRequired = raftGroup.quorum() - 1;
         long n = lastIndex;
 
-        while (n > node.getCommitIndex()) {
+        while (n > raftGroup.getCommitIndex()) {
             long committed = committed(matchIndex, n);
             if (committed >= noCommittedRequired && raftStorage.getTermByIndex(n) == raftStorage.getTerm()) {
                 break;

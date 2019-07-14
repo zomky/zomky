@@ -29,7 +29,7 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class ElectionThreeNodesIntegrationTest {
-
+/*
     @TempDir
     Path directory;
 
@@ -190,5 +190,5 @@ class ElectionThreeNodesIntegrationTest {
                 .preVote(preVote)
                 .start();
     }
-
+*/
 }

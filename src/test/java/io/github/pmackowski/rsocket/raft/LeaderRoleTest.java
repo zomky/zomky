@@ -35,7 +35,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderRoleTest {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRoleTest.class);
 
     private static final Repeat<Object> NO_REPEAT = Repeat.onlyIf(objectRepeatContext -> false);
@@ -48,13 +47,16 @@ public class LeaderRoleTest {
     @Mock
     DefaultRaftServer node;
 
+    @Mock
+    RaftGroup raftGroup;
+
     RaftStorage raftStorage = new InMemoryRaftStorage();
 
     @BeforeEach
     void setUp() {
         Mockito.lenient().when(sender1.getNodeId()).thenReturn(1);
         Mockito.lenient().when(sender2.getNodeId()).thenReturn(2);
-        Mockito.lenient().when(node.quorum()).thenReturn(2);
+        Mockito.lenient().when(raftGroup.quorum()).thenReturn(2);
     }
 
     @Test
@@ -62,15 +64,15 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.times(0));
         raftStorage.update(1, 0);
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
-        given(sender1.appendEntries(any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
-        leaderRole.onInit(node, raftStorage);
+        leaderRole.onInit(node, raftGroup, raftStorage);
 
         // then
         ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1).appendEntries(argument.capture());
+        verify(sender1).appendEntries(eq(raftGroup), argument.capture());
         AppendEntriesRequest actualAppendEntriesRequest = argument.getValue();
         assertThat(actualAppendEntriesRequest.getTerm()).isEqualTo(1);
         assertThat(actualAppendEntriesRequest.getPrevLogIndex()).isEqualTo(0);
@@ -84,11 +86,11 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
-        given(sender1.appendEntries(any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
-        leaderRole.onInit(node, raftStorage);
+        leaderRole.onInit(node, raftGroup, raftStorage);
 
         // then
         List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(1));
@@ -100,9 +102,9 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.once().fixedBackoff(Duration.ofMillis(20)));
         raftStorage.update(1, 0);
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
-        given(sender1.appendEntries(any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
-        leaderRole.onInit(node, raftStorage);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
+        leaderRole.onInit(node, raftGroup, raftStorage);
 
         // when
         raftStorage.append(commandEntry(1,  "val1"));
@@ -131,9 +133,9 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
-        given(sender1.appendEntries(any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
-        leaderRole.onInit(node, raftStorage);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
+        leaderRole.onInit(node, raftGroup, raftStorage);
 
         // when
         raftStorage.append(commandEntry(1,  "val3"));
@@ -159,7 +161,7 @@ public class LeaderRoleTest {
     void onAddServers() {
         // given
         given(node.createSender(any())).willReturn(Mono.just(sender1));
-        when(sender1.appendEntries(any(AppendEntriesRequest.class)))
+        when(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class)))
                 .thenReturn(appendEntriesResponse(false, 0, Duration.ofMillis(100)))  // not counted as round
                 .thenReturn(appendEntriesResponse(true, 0, Duration.ofMillis(100)))   // round 1
                 .thenReturn(appendEntriesResponse(true, 0, Duration.ofMillis(100)));  // round 2
@@ -172,7 +174,7 @@ public class LeaderRoleTest {
         raftStorage.append(commandEntry(1,  "val2"));
 
         // when
-        StepVerifier.create(leaderRole.onAddServer(node, raftStorage, addServerRequest()))
+        StepVerifier.create(leaderRole.onAddServer(node, raftGroup, raftStorage, addServerRequest()))
                 .thenAwait(Duration.ofMillis(200))
                 .then(() -> {
                     raftStorage.append(commandEntry(2,  "val3"));
@@ -204,7 +206,7 @@ public class LeaderRoleTest {
 
     private List<AppendEntriesRequest> appendEntriesHistory(VerificationMode verificationMode) {
         ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
-        verify(sender1, verificationMode).appendEntries(argument.capture());
+        verify(sender1, verificationMode).appendEntries(eq(raftGroup), argument.capture());
         return argument.getAllValues();
     }
 
@@ -260,5 +262,4 @@ public class LeaderRoleTest {
     private CommandEntry commandEntry(int term, String value) {
         return new CommandEntry(term, System.currentTimeMillis(), value.getBytes());
     }
-
 }

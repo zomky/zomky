@@ -23,9 +23,9 @@ public class KVStoreClient {
                 .start();
     }
 
-    public Flux<KeyValue> put(Publisher<KeyValue> keyValueFlux) {
+    public Flux<KeyValue> put(String group, Publisher<KeyValue> keyValueFlux) {
         Flux<Payload> payloads = Flux.from(keyValueFlux).map(kv -> CommandRequest.newBuilder().setKey(kv.getKey()).setValue(kv.getValue()).setSetOperation(true).buildPartial())
-                .map(commandRequest -> ByteBufPayload.create(commandRequest.toByteArray()));
+                .map(commandRequest -> ByteBufPayload.create(commandRequest.toByteArray(), group.getBytes()));
 
         return leaderMono.flatMapMany(leader -> leader.requestChannel(payloads))
                          .map(payload -> {

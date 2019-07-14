@@ -27,7 +27,7 @@ import static org.awaitility.Awaitility.await;
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class ElectionOneNodeIntegrationTest {
-
+/*
     @TempDir
     Path directory;
 
@@ -99,5 +99,5 @@ class ElectionOneNodeIntegrationTest {
                 .preVote(preVote)
                 .start();
     }
-
+*/
 }

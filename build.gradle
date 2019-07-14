@@ -39,10 +39,11 @@ plugins {
 ext {
     gradleScriptDir = "${rootProject.projectDir}/gradle"
 
-    rsocketVersion = "0.12.1-RC3-SNAPSHOT"
+//    rsocketVersion = "0.12.1-RC3-SNAPSHOT"
+    rsocketVersion = "1.0.0-RC1"
     reactorExtraVersion = "3.2.2.RELEASE"
     protobufVersion = "3.0.0"
-    reactorCoreVersion = "3.2.8.RELEASE"
+    reactorCoreVersion = "3.2.10.RELEASE"
     reflectionsVersion = "0.9.11"
     picocliVersion = "3.9.6"
 

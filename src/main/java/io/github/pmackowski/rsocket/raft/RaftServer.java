@@ -11,17 +11,7 @@ public interface RaftServer extends Closeable {
 
     ElectionTimeout getElectionTimeout();
 
-    int getCurrentLeaderId();
+    Mono<AddServerResponse> onAddServer(String groupName, AddServerRequest addServerRequest);
 
-    boolean isLeader();
-
-    boolean isCandidate();
-
-    boolean isFollower();
-
-    boolean isPassive();
-
-    Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest);
-
-    Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest);
+    Mono<RemoveServerResponse> onRemoveServer(String groupName, RemoveServerRequest removeServerRequest);
 }

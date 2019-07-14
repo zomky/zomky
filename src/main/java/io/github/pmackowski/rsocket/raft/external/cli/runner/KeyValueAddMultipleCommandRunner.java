@@ -30,8 +30,9 @@ public class KeyValueAddMultipleCommandRunner implements ZomkyCommandRunner {
         KVStoreClient kvStoreClient = new KVStoreClient(mainCommand.getPort());
 
         int nbEntries = command.getNumberOfEntries();
+        String groupName = command.getGroupName();
 
-        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
+        kvStoreClient.put(groupName, Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))

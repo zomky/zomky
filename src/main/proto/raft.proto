@@ -71,3 +71,8 @@ message InstallSnapshotRequest {
 message InstallSnapshotResponse {
     int32 term = 1; // currentTerm, for leader to update itself
 }
+
+message MetadataRequest {
+    int32 message_type = 1;
+    string group_name = 2;
+}

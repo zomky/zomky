@@ -74,6 +74,11 @@ public final class Raft {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_InstallSnapshotResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_MetadataRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_MetadataRequest_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -106,9 +111,10 @@ public final class Raft {
       "r_id\030\002 \001(\005\022\033\n\023last_included_index\030\003 \001(\003\022" +
       "\032\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
       "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
-      "se\022\014\n\004term\030\001 \001(\005B8\n4io.github.pmackowski" +
-      ".rsocket.raft.transport.protobufP\001b\006prot" +
-      "o3"
+      "se\022\014\n\004term\030\001 \001(\005\";\n\017MetadataRequest\022\024\n\014m" +
+      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\tB8\n" +
+      "4io.github.pmackowski.rsocket.raft.trans" +
+      "port.protobufP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -194,6 +200,12 @@ public final class Raft {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotResponse_descriptor,
         new java.lang.String[] { "Term", });
+    internal_static_MetadataRequest_descriptor =
+      getDescriptor().getMessageTypes().get(12);
+    internal_static_MetadataRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_MetadataRequest_descriptor,
+        new java.lang.String[] { "MessageType", "GroupName", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

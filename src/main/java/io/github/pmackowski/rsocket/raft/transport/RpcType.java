@@ -26,10 +26,8 @@ public enum RpcType {
         return code;
     }
 
-    public static RpcType fromPayload(Payload payload) {
-        ByteBuffer metadata = payload.getMetadata();
-        byte rpcType = metadata.get();
-        switch (rpcType) {
+    public static RpcType fromCode(int code) {
+        switch (code) {
             case 1: return APPEND_ENTRIES;
             case 2: return REQUEST_VOTE;
             case 3: return PRE_REQUEST_VOTE;

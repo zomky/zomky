@@ -1,15 +1,15 @@
 package io.github.pmackowski.rsocket.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteResponse;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.VoteRequest;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteResponse;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.VoteRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -30,11 +30,13 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class FollowerRoleTest {
-
     FollowerRole followerRole = new FollowerRole();
 
     @Mock
     DefaultRaftServer node;
+
+    @Mock
+    RaftGroup raftGroup;
 
     @Mock
     Sender sender1, sender2;
@@ -46,85 +48,85 @@ class FollowerRoleTest {
     @Test
     void electionTimeout() {
         Duration electionTimeout = Duration.ofMillis(50);
-        given(node.nextElectionTimeout()).willReturn(electionTimeout);
+        given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(false);
-        followerRole.onInit(node, raftStorage);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
-        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(node).convertToCandidate());
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(raftGroup).convertToCandidate());
     }
 
     @Test
     void electionTimeoutWithPreVoteEnabled() {
         Duration electionTimeout = Duration.ofMillis(50);
-        given(node.nextElectionTimeout()).willReturn(electionTimeout);
+        given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
-        given(node.quorum()).willReturn(2);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
                 .newBuilder()
                 .setTerm(0)
                 .setVoteGranted(true)
                 .build();
-        given(sender1.requestPreVote(any(PreVoteRequest.class)))
+        given(sender1.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestPreVote(any(PreVoteRequest.class)))
+        given(sender2.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse));
 
-        followerRole.onInit(node, raftStorage);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
-        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(node).convertToCandidate());
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(raftGroup).convertToCandidate());
     }
 
     @Test
     void electionTimeoutWithPreVoteEnabledAndVoteNotGranted() throws InterruptedException {
         Duration electionTimeout = Duration.ofMillis(10);
-        given(node.nextElectionTimeout()).willReturn(electionTimeout);
+        given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
-        given(node.quorum()).willReturn(2);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
                 .newBuilder()
                 .setTerm(0)
                 .setVoteGranted(false)
                 .build();
-        given(sender1.requestPreVote(any(PreVoteRequest.class)))
+        given(sender1.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestPreVote(any(PreVoteRequest.class)))
+        given(sender2.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse));
 
-        followerRole.onInit(node, raftStorage);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
         int lag = 50;
         Thread.sleep(electionTimeout.toMillis() + lag);
-        verify(node).refreshFollower();
+        verify(raftGroup).refreshFollower();
     }
 
     @Test
     void noElectionTimeout() throws InterruptedException {
         Duration electionTimeout = Duration.ofMillis(50);
-        given(node.nextElectionTimeout()).willReturn(electionTimeout);
-        followerRole.onInit(node, raftStorage);
+        given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
         long lessThanElectionTimeout = electionTimeout.toMillis() - 20;
         Thread.sleep(lessThanElectionTimeout);
-        verify(node, never()).convertToCandidate();
+        verify(raftGroup, never()).convertToCandidate();
     }
 
     @Test
     void onExitCallResetElectionTimeout() throws InterruptedException {
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
-        followerRole.onInit(node, raftStorage);
-        followerRole.onExit(node, raftStorage);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
+        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onExit(node, raftGroup, raftStorage);
 
         Thread.sleep(100);
-        verify(node, never()).convertToCandidate();
+        verify(raftGroup, never()).convertToCandidate();
     }
 
     @Test
     void voteGrantedResetElectionTimeout() throws InterruptedException {
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
 
         VoteRequest voteRequest = VoteRequest.newBuilder()
                 .setCandidateId(1)
@@ -133,19 +135,19 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        followerRole.onInit(node, raftStorage);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
-        followerRole.onRequestVote(node, raftStorage, voteRequest)
+        followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest)
                 .delaySubscription(Duration.ofMillis(50))
                 .subscribe();
 
         Thread.sleep(150);
-        verify(node, never()).convertToCandidate();
+        verify(raftGroup, never()).convertToCandidate();
     }
 
     @Test
     void validAppendEntriesResetElectionTimeout() throws InterruptedException {
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
 
         AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
                 .setPrevLogIndex(0)
@@ -154,15 +156,15 @@ class FollowerRoleTest {
                 .setLeaderCommit(1)
                 .build();
 
-        followerRole.onInit(node, raftStorage);
+        followerRole.onInit(node, raftGroup, raftStorage);
 
-        followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest)
+        followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest)
                 .delaySubscription(Duration.ofMillis(50))
                 .subscribe();
 
         Thread.sleep(150);
-        verify(node, never()).convertToCandidate();
-        verify(node).appendEntriesCall();
+        verify(raftGroup, never()).convertToCandidate();
+        verify(raftGroup).appendEntriesCall();
     }
 
     //// REQUEST VOTE ////
@@ -178,7 +180,7 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(0);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
@@ -196,13 +198,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(0);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(100);
-                    verify(node, times(2)).convertToFollower(2); // TODO should it be 1 invocation?
+                    verify(raftGroup, times(2)).convertToFollower(2); // TODO should it be 1 invocation?
 
                 }).verifyComplete();
     }
@@ -220,13 +222,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
                     assertThat(raftStorage.getTerm()).isEqualTo(1);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node).convertToFollower(2);
+                    verify(raftGroup).convertToFollower(2);
 
                 }).verifyComplete();
     }
@@ -245,13 +247,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
 
                 }).verifyComplete();
     }
@@ -270,13 +272,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(100);
-                    verify(node).convertToFollower(2);
+                    verify(raftGroup).convertToFollower(2);
 
                 }).verifyComplete();
     }
@@ -295,13 +297,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(200);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -317,7 +319,7 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
@@ -336,13 +338,13 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(100);
-                    verify(node, times(2)).convertToFollower(anyInt());
+                    verify(raftGroup, times(2)).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -352,7 +354,7 @@ class FollowerRoleTest {
     void requestPreVoteLeaderStickiness() {
         initFollower();
         given(node.leaderStickiness()).willReturn(true);
-        given(node.lastAppendEntriesWithinElectionTimeout()).willReturn(true);
+        given(raftGroup.lastAppendEntriesWithinElectionTimeout()).willReturn(true);
         raftStorage.update(1, 0);
 
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
@@ -362,13 +364,13 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(1);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(false);
                     assertThat(raftStorage.getTerm()).isEqualTo(1);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -376,7 +378,7 @@ class FollowerRoleTest {
     void requestPreVoteLeaderStickinessButNoAppendEntriesCall() {
         initFollower();
         given(node.leaderStickiness()).willReturn(true);
-        given(node.lastAppendEntriesWithinElectionTimeout()).willReturn(false);
+        given(raftGroup.lastAppendEntriesWithinElectionTimeout()).willReturn(false);
         raftStorage.update(1, 0);
 
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
@@ -386,13 +388,13 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(1);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(true);
                     assertThat(raftStorage.getTerm()).isEqualTo(1);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -409,13 +411,13 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(3);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(false);
                     assertThat(raftStorage.getTerm()).isEqualTo(3);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -433,13 +435,13 @@ class FollowerRoleTest {
                 .setNextTerm(3)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(2);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(true);
                     assertThat(raftStorage.getTerm()).isEqualTo(2);
                     assertThat(raftStorage.getVotedFor()).isEqualTo(0);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -458,15 +460,15 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val1"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(0);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(1);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val1".getBytes());
-                    verify(node).appendEntriesCall();
-                    verify(node).setCommitIndex(1);
-                    verify(node).convertToFollower(1);
+                    verify(raftGroup).appendEntriesCall();
+                    verify(raftGroup).setCommitIndex(1);
+                    verify(raftGroup).convertToFollower(1);
                 }).verifyComplete();
     }
 
@@ -485,15 +487,15 @@ class FollowerRoleTest {
                 .addEntries(entry(2, "val3"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(3);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
-                    verify(node).appendEntriesCall();
-                    verify(node).setCommitIndex(3);
-                    verify(node).convertToFollower(2);
+                    verify(raftGroup).appendEntriesCall();
+                    verify(raftGroup).setCommitIndex(3);
+                    verify(raftGroup).convertToFollower(2);
                 }).verifyComplete();
     }
 
@@ -511,15 +513,15 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val2")) // leader sends only one entry despite it could send more entries
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
-                    verify(node).appendEntriesCall();
+                    verify(raftGroup).appendEntriesCall();
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
-                    verify(node).setCommitIndex(2); // not 20
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup).setCommitIndex(2); // not 20
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -539,15 +541,15 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val2"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
-                    verify(node).appendEntriesCall();
+                    verify(raftGroup).appendEntriesCall();
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
-                    verify(node).setCommitIndex(2);
-                    verify(node, never()).convertToFollower(anyInt());
+                    verify(raftGroup).setCommitIndex(2);
+                    verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
 
@@ -566,21 +568,21 @@ class FollowerRoleTest {
                 .addEntries(entry(2, "val3"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(false);
-                    verify(node).appendEntriesCall();
+                    verify(raftGroup).appendEntriesCall();
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
-                    verify(node, never()).setCommitIndex(3);
-                    verify(node).convertToFollower(2);
+                    verify(raftGroup, never()).setCommitIndex(3);
+                    verify(raftGroup).convertToFollower(2);
                 }).verifyComplete();
     }
 
     private void initFollower() {
-        given(node.nextElectionTimeout()).willReturn(Duration.ofSeconds(100));
-        followerRole.onInit(node, raftStorage);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofSeconds(100));
+        followerRole.onInit(node, raftGroup, raftStorage);
     }
 
     private CommandEntry commandEntry(int term, String value) {
@@ -595,4 +597,5 @@ class FollowerRoleTest {
 
         return ByteString.copyFrom(byteBuffer);
     }
+
 }

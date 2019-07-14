@@ -20,17 +20,19 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
     private DefaultRaftServer raftServer;
+    private RaftGroup raftGroup;
     private RaftStorage raftStorage;
 
-    SenderConfirmOperator(Publisher<? extends Payload> source, DefaultRaftServer raftServer, RaftStorage raftStorage) {
+    SenderConfirmOperator(Publisher<? extends Payload> source, DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage) {
         super(Flux.from(source));
         this.raftServer = raftServer;
+        this.raftGroup = raftGroup;
         this.raftStorage = raftStorage;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super Payload> actual) {
-        source.subscribe(new PublishConfirmSubscriber(actual, raftServer, raftStorage));
+        source.subscribe(new PublishConfirmSubscriber(actual, raftServer, raftGroup, raftStorage));
     }
 
     private static class PublishConfirmSubscriber implements CoreSubscriber<Payload> , Subscription {
@@ -47,20 +49,22 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         private Subscriber<? super Payload> subscriber;
         private DefaultRaftServer node;
+        private RaftGroup raftGroup;
         private RaftStorage raftStorage;
         private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
         private Subscription subscription;
 
-        public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, DefaultRaftServer node, RaftStorage raftStorage) {
+        public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
             this.subscriber = subscriber;
             this.node = node;
+            this.raftGroup = raftGroup;
             this.raftStorage = raftStorage;
         }
 
         @Override
         public void onSubscribe(Subscription subscription) {
             if (Operators.validate(this.subscription, subscription)) {
-                node.addConfirmListener(index -> {
+                raftGroup.addConfirmListener(index -> {
                     try {
                         ConcurrentNavigableMap<Long, Payload> unconfirmedToSend = unconfirmed.headMap(index, true);
                         Iterator<Map.Entry<Long, Payload>> iterator = unconfirmedToSend.entrySet().iterator();
@@ -90,8 +94,8 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
             try {
                 IndexedLogEntry logEntryInfo = raftStorage.append(payload.getData());
-                if (node.quorum() == 1) {
-                    node.setCommitIndex(logEntryInfo.getIndex());
+                if (raftGroup.quorum() == 1) {
+                    raftGroup.setCommitIndex(logEntryInfo.getIndex());
                 }
                 unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {

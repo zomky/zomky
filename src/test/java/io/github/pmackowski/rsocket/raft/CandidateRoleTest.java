@@ -20,11 +20,13 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class CandidateRoleTest {
-
     CandidateRole candidateRole = new CandidateRole();
 
     @Mock
     DefaultRaftServer node;
+
+    @Mock
+    RaftGroup raftGroup;
 
     @Mock
     Sender sender1, sender2;
@@ -33,59 +35,59 @@ public class CandidateRoleTest {
 
     @Test
     void leaderElected() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
         VoteResponse voteResponse = voteGranted();
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(150);
-        verify(node).convertToLeader();
+        verify(raftGroup).convertToLeader();
     }
 
     @Test
     void leaderElectedOneNode() {
-        given(node.quorum()).willReturn(1);
+        given(raftGroup.quorum()).willReturn(1);
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
-        verify(node).voteForMyself();
-        verify(node).convertToLeader();
+        verify(raftGroup).voteForMyself();
+        verify(raftGroup).convertToLeader();
     }
 
     @Test
     void leaderElectedQuorumReached() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteGranted()).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(150);
-        verify(node).convertToLeader();
+        verify(raftGroup).convertToLeader();
     }
 
     @Test
     void leaderElectedInSecondRound() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
 
-        given(node.availableSenders()).willReturn(
+        given(raftGroup.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -93,50 +95,50 @@ public class CandidateRoleTest {
                         }
                 ));
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()))
                 .willReturn(Mono.just(voteGranted()).delayElement(Duration.ofMillis(70)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()))
                 .willReturn(Mono.just(voteGranted()).delayElement(Duration.ofMillis(70)));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(50);
-        verify(node, times(1)).voteForMyself();
+        verify(raftGroup, times(1)).voteForMyself();
         Thread.sleep(100);
-        verify(node, never()).convertToLeader();
+        verify(raftGroup, never()).convertToLeader();
         Thread.sleep(50);
-        verify(node).convertToLeader();
-        verify(node, times(2)).voteForMyself();
+        verify(raftGroup).convertToLeader();
+        verify(raftGroup, times(2)).voteForMyself();
     }
 
     @Test
     void leaderElectedOneSenderGrantedVoteOtherIsHanging() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
         VoteResponse voteResponse = voteGranted();
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofSeconds(100)));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(150);
-        verify(node).convertToLeader();
+        verify(raftGroup).convertToLeader();
     }
 
     @Test
     void leaderNotElected() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                     emitter.next(sender1);
                     emitter.next(sender2);
@@ -146,23 +148,23 @@ public class CandidateRoleTest {
 
         VoteResponse voteResponse = voteNotGranted();
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(150);
-        verify(node, never()).convertToLeader();
+        verify(raftGroup, never()).convertToLeader();
     }
 
     @Test
     void leaderNotElectedConvertToFollowerIfGreaterTerm() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -170,37 +172,37 @@ public class CandidateRoleTest {
                         }
                 ));
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGrantedGraterTerm()).delayElement(Duration.ofMillis(20)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(50);
-        verify(node, never()).convertToLeader();
-        verify(node).convertToFollower(1);
+        verify(raftGroup, never()).convertToLeader();
+        verify(raftGroup).convertToFollower(1);
     }
 
     @Test
     void leaderNotElectedNoAvailableSenders() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(10));
-        given(node.availableSenders()).willReturn(Flux.create(emitter -> {}));
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(10));
+        given(raftGroup.availableSenders()).willReturn(Flux.create(emitter -> {}));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(50);
-        verify(node, never()).convertToLeader();
-        verify(node, atLeast(2)).voteForMyself();
+        verify(raftGroup, never()).convertToLeader();
+        verify(raftGroup, atLeast(2)).voteForMyself();
     }
 
     @Test
     void leaderNotElectedAllSendersHanging() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -210,24 +212,24 @@ public class CandidateRoleTest {
 
         VoteResponse voteResponse = voteGranted();
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofSeconds(100)));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofSeconds(100)));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(120);
-        verify(node, never()).convertToLeader();
-        verify(node, atLeast(2)).voteForMyself();
+        verify(raftGroup, never()).convertToLeader();
+        verify(raftGroup, atLeast(2)).voteForMyself();
     }
 
     @Test
     void leaderNotElectedAllSendersAreBroken() throws InterruptedException {
-        given(node.quorum()).willReturn(2);
-        given(node.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
-        given(node.isCandidate()).willReturn(true);
-        given(node.availableSenders()).willReturn(
+        given(raftGroup.quorum()).willReturn(2);
+        given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
+        given(raftGroup.isCandidate()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -235,16 +237,16 @@ public class CandidateRoleTest {
                         }
                 ));
 
-        given(sender1.requestVote(any(VoteRequest.class)))
+        given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.error(new RuntimeException("sender 1 error")).delayElement(Duration.ofSeconds(100)).cast(VoteResponse.class));
-        given(sender2.requestVote(any(VoteRequest.class)))
+        given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.error(new RuntimeException("sender 2 error")).delayElement(Duration.ofSeconds(100)).cast(VoteResponse.class));
 
-        candidateRole.onInit(node, raftStorage);
+        candidateRole.onInit(node, raftGroup, raftStorage);
 
         Thread.sleep(120);
-        verify(node, never()).convertToLeader();
-        verify(node, atLeast(2)).voteForMyself();
+        verify(raftGroup, never()).convertToLeader();
+        verify(raftGroup, atLeast(2)).voteForMyself();
     }
 
     private VoteResponse voteGranted() {
@@ -270,4 +272,5 @@ public class CandidateRoleTest {
                 .setVoteGranted(false)
                 .build();
     }
+
 }

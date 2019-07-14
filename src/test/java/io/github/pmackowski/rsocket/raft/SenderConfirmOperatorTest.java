@@ -28,11 +28,13 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class SenderConfirmOperatorTest {
-
     private static final int TEN_MESSAGES = 10;
 
     @Spy
     private DefaultRaftServer node;
+
+    @Spy
+    private RaftGroup raftGroup;
 
     @Mock
     private RaftStorage raftStorage;
@@ -42,8 +44,8 @@ public class SenderConfirmOperatorTest {
     @BeforeEach
     public void setUp() {
         index = new AtomicLong();
-        node.raftStorage = raftStorage;
-        Mockito.lenient().doReturn(2).when(node).quorum();
+        raftGroup.raftStorage = raftStorage;
+        Mockito.lenient().doReturn(2).when(raftGroup).quorum();
         Mockito.lenient().when(raftStorage.append(any(ByteBuffer.class))).thenAnswer(invocation -> {
             long idx = index.incrementAndGet();
             ByteBuffer logEntry = (ByteBuffer) invocation.getArguments()[0];
@@ -55,11 +57,11 @@ public class SenderConfirmOperatorTest {
     public void emptyStream() {
         Flux<Payload> payloads = Flux.empty();
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftGroup, raftStorage))
                 .expectSubscription()
                 .verifyComplete();
 
-        verify(node).addConfirmListener(any());
+        verify(raftGroup).addConfirmListener(any());
 
     }
 
@@ -69,11 +71,11 @@ public class SenderConfirmOperatorTest {
 
         when(raftStorage.append(any(ByteBuffer.class))).thenThrow(new RuntimeException("append log failed"));
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftGroup, raftStorage))
                 .expectSubscription()
                 .verifyErrorMessage("append log failed");
 
-        verify(node).addConfirmListener(any());
+        verify(raftGroup).addConfirmListener(any());
 
     }
 
@@ -81,31 +83,31 @@ public class SenderConfirmOperatorTest {
     public void requestAndCancel() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftGroup, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
                 verify(raftStorage, Mockito.times(2)).append(any(ByteBuffer.class));
-                node.setCommitIndex(2);
+                raftGroup.setCommitIndex(2);
             })
             .expectNextCount(2)
             .thenCancel()
             .verify();
 
-        verify(node).addConfirmListener(any());
+        verify(raftGroup).addConfirmListener(any());
     }
 
     @Test
     public void requestInBatches() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftGroup, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
                 verify(raftStorage, Mockito.times(2))
                         .append( any(ByteBuffer.class));
-                node.setCommitIndex(2);
+                raftGroup.setCommitIndex(2);
             })
             .expectNextCount(2)
             .thenRequest(8)
@@ -113,12 +115,12 @@ public class SenderConfirmOperatorTest {
             .then(() -> {
                 verify(raftStorage, Mockito.times(10))
                         .append(any(ByteBuffer.class));
-                node.setCommitIndex(10);
+                raftGroup.setCommitIndex(10);
             })
             .expectNextCount(8)
             .verifyComplete();
 
-        verify(node).addConfirmListener(any());
+        verify(raftGroup).addConfirmListener(any());
 
     }
 
@@ -131,4 +133,5 @@ public class SenderConfirmOperatorTest {
             return DefaultPayload.create(buffer);
         });
     }
+
 }

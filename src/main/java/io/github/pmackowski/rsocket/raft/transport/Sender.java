@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft.transport;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;
@@ -40,8 +41,17 @@ public class Sender {
         this.available = available;
     }
 
-    public Mono<PreVoteResponse> requestPreVote(PreVoteRequest preVoteRequest) {
-        Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), new byte[] {RpcType.PRE_REQUEST_VOTE.getCode()});
+    private byte[] metadataRequest(String groupName, RpcType rpcType) {
+        MetadataRequest metadataRequest = MetadataRequest.newBuilder()
+                .setGroupName(groupName)
+                .setMessageType(rpcType.getCode())
+                .build();
+        return metadataRequest.toByteArray();
+
+    }
+
+    public Mono<PreVoteResponse> requestPreVote(RaftGroup raftGroup, PreVoteRequest preVoteRequest) {
+        Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.PRE_REQUEST_VOTE));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {
@@ -52,8 +62,8 @@ public class Sender {
                 });
     }
 
-    public Mono<VoteResponse> requestVote(VoteRequest voteRequest) {
-        Payload payload = ByteBufPayload.create(voteRequest.toByteArray(), new byte[] {RpcType.REQUEST_VOTE.getCode()});
+    public Mono<VoteResponse> requestVote(RaftGroup raftGroup, VoteRequest voteRequest) {
+        Payload payload = ByteBufPayload.create(voteRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.REQUEST_VOTE));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {
@@ -64,8 +74,8 @@ public class Sender {
                 });
     }
 
-    public Mono<AppendEntriesResponse> appendEntries(AppendEntriesRequest appendEntriesRequest) {
-        Payload payload = ByteBufPayload.create(appendEntriesRequest.toByteArray(), new byte[] {RpcType.APPEND_ENTRIES.getCode()});
+    public Mono<AppendEntriesResponse> appendEntries(RaftGroup raftGroup, AppendEntriesRequest appendEntriesRequest) {
+        Payload payload = ByteBufPayload.create(appendEntriesRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.APPEND_ENTRIES));
         return raftSocket.requestResponse(payload)
                 .map(appendEntriesResponsePayload -> {
                     try {
@@ -78,8 +88,8 @@ public class Sender {
                 });
     }
 
-    public Mono<AddServerResponse> addServer(AddServerRequest addServerRequest) {
-        Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), new byte[] {RpcType.ADD_SERVER.getCode()});
+    public Mono<AddServerResponse> addServer(RaftGroup raftGroup, AddServerRequest addServerRequest) {
+        Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.ADD_SERVER));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {
@@ -90,8 +100,8 @@ public class Sender {
                 });
     }
 
-    public Mono<RemoveServerResponse> removeServer(RemoveServerRequest removeServerRequest) {
-        Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), new byte[] {RpcType.REMOVE_SERVER.getCode()});
+    public Mono<RemoveServerResponse> removeServer(RaftGroup raftGroup, RemoveServerRequest removeServerRequest) {
+        Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.REMOVE_SERVER));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {

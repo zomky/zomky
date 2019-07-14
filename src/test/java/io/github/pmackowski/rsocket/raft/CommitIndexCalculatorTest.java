@@ -15,12 +15,11 @@ import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class CommitIndexCalculatorTest {
-
     @Mock
     RaftStorage raftStorage;
 
     @Mock
-    DefaultRaftServer node;
+    RaftGroup raftGroup;
 
     CommitIndexCalculator commitIndexCalculator = new CommitIndexCalculator();
 
@@ -29,7 +28,7 @@ class CommitIndexCalculatorTest {
         // given
         given(raftStorage.getTerm()).willReturn(1);
         given(raftStorage.getTermByIndex(anyLong())).willReturn(1);
-        given(node.quorum()).willReturn(2);
+        given(raftGroup.quorum()).willReturn(2);
 
         Map<Integer, Long> matchIndex = new HashMap<>();
         long lastIndex = 6;
@@ -37,7 +36,7 @@ class CommitIndexCalculatorTest {
         matchIndex.put(7002, 4L);
 
         // when
-        long actual = commitIndexCalculator.calculate(raftStorage, node, matchIndex, lastIndex);
+        long actual = commitIndexCalculator.calculate(raftStorage, raftGroup, matchIndex, lastIndex);
 
         // then
         assertThat(actual).isEqualTo(5);
@@ -51,7 +50,7 @@ class CommitIndexCalculatorTest {
             final long index = arg.getArgument(0);
             return (index >= 4) ? 3 : 2;
         });
-        given(node.quorum()).willReturn(2);
+        given(raftGroup.quorum()).willReturn(2);
 
         Map<Integer, Long> matchIndex = new HashMap<>();
         long lastIndex = 6;
@@ -59,10 +58,9 @@ class CommitIndexCalculatorTest {
         matchIndex.put(7002, 4L);
 
         // when
-        long actual = commitIndexCalculator.calculate(raftStorage, node, matchIndex, lastIndex);
+        long actual = commitIndexCalculator.calculate(raftStorage, raftGroup, matchIndex, lastIndex);
 
         // then
         assertThat(actual).isEqualTo(3);
     }
-
 }

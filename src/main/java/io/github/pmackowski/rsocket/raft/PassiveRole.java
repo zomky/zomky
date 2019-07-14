@@ -1,11 +1,11 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -22,17 +22,17 @@ public class PassiveRole implements RaftServerRole {
     }
 
     @Override
-    public void onInit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
+    public void onInit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage) {
         LOGGER.info("[Node {}] Passive", raftServer.nodeId);
     }
 
     @Override
-    public void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
+    public void onExit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage) {
 
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer node, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {
                     int currentTerm = raftStorage.getTerm();
@@ -64,7 +64,7 @@ public class PassiveRole implements RaftServerRole {
                         ByteBuffer byteBuffer = entry.asReadOnlyByteBuffer();
                         LogEntry logEntry = LogEntrySerializer.deserialize(byteBuffer);
                         IndexedLogEntry indexedLogEntry = raftStorage.append(logEntry);
-                        node.applyPassive(indexedLogEntry);
+                        raftGroup.applyPassive(indexedLogEntry);
                     });
 
                     return replyTrue(currentTerm);

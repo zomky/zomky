@@ -17,16 +17,16 @@ public interface RaftServerRole {
 
     NodeState nodeState();
 
-    void onInit(DefaultRaftServer raftServer, RaftStorage raftStorage);
+    void onInit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage);
 
-    void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage);
+    void onExit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage);
 
-    default Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer node, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    default Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {
                     int currentTerm = raftStorage.getTerm();
                     if (appendEntriesRequest.getTerm() > currentTerm) {
-                        node.convertToFollower(appendEntriesRequest.getTerm());
+                        raftGroup.convertToFollower(appendEntriesRequest.getTerm());
                     }
 
                     // 1. Reply false if term < currentTerm
@@ -34,7 +34,7 @@ public interface RaftServerRole {
                         return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(false).build();
                     }
 
-                    node.appendEntriesCall();
+                    raftGroup.appendEntriesCall();
 
                     // 2.  Reply false if log doesn’t contain an entry at prevLogIndex
                     //     whose term matches prevLogTerm
@@ -55,25 +55,25 @@ public interface RaftServerRole {
                         ByteBuffer byteBuffer = entry.asReadOnlyByteBuffer();
                         LogEntry logEntry = LogEntrySerializer.deserialize(byteBuffer);
                         IndexedLogEntry indexedLogEntry = raftStorage.append(logEntry);
-                        node.apply(indexedLogEntry);
+                        raftGroup.apply(indexedLogEntry);
                     });
 
                     //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-                    if (appendEntriesRequest.getLeaderCommit() > node.getCommitIndex()) {
-                        node.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), raftStorage.getLastIndexedTerm().getIndex()));
+                    if (appendEntriesRequest.getLeaderCommit() > raftGroup.getCommitIndex()) {
+                        raftGroup.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), raftStorage.getLastIndexedTerm().getIndex()));
                     }
 
                     return AppendEntriesResponse.newBuilder().setTerm(currentTerm).setSuccess(true).build();
                 });
     }
 
-    default Mono<PreVoteResponse> onPreRequestVote(DefaultRaftServer node, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
+    default Mono<PreVoteResponse> onPreRequestVote(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
         return Mono.just(preRequestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
-                    if (node.leaderStickiness() && node.lastAppendEntriesWithinElectionTimeout()) {
+                    if (node.leaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
@@ -95,19 +95,19 @@ public interface RaftServerRole {
                 });
     }
 
-    default Mono<VoteResponse> onRequestVote(DefaultRaftServer node, RaftStorage raftStorage, VoteRequest requestVote) {
+    default Mono<VoteResponse> onRequestVote(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
         return Mono.just(requestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
 
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
-                    if (node.leaderStickiness() && node.lastAppendEntriesWithinElectionTimeout()) {
+                    if (node.leaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
                     if (requestVote.getTerm() > currentTerm) {
-                        node.convertToFollower(requestVote.getTerm());
+                        raftGroup.convertToFollower(requestVote.getTerm());
                     }
 
                     if (requestVote.getTerm() < currentTerm) {
@@ -133,7 +133,7 @@ public interface RaftServerRole {
 
                     if (voteGranted) {
                         raftStorage.update(requestVote.getTerm(), requestVote.getCandidateId());
-                        node.convertToFollower(requestVote.getTerm());
+                        raftGroup.convertToFollower(requestVote.getTerm());
                     }
                     return VoteResponse.newBuilder()
                             .setVoteGranted(voteGranted)
@@ -142,19 +142,19 @@ public interface RaftServerRole {
                 });
     }
 
-    default Mono<AddServerResponse> onAddServer(DefaultRaftServer raftServer, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+    default Mono<AddServerResponse> onAddServer(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, AddServerRequest addServerRequest) {
         return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
-    default Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
+    default Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
         return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
-    default Mono<Payload> onClientRequest(DefaultRaftServer raftServer, RaftStorage raftStorage, Payload payload) {
+    default Mono<Payload> onClientRequest(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, Payload payload) {
         return Mono.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 
-    default Flux<Payload> onClientRequests(DefaultRaftServer raftServer, RaftStorage raftStorage, Publisher<Payload> payloads) {
+    default Flux<Payload> onClientRequests(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
         return Flux.error(new RaftException(String.format("[RaftServer %s] I am not a leader!", raftServer.nodeId)));
     }
 

@@ -98,36 +98,38 @@ public class Receiver {
             return Mono.just(new AbstractRSocket() {
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    RpcType rpcType = RpcType.fromPayload(payload);
+                    MetadataRequest metadataRequest = toMetadataRequest(payload);
+                    RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
+                    String groupName = metadataRequest.getGroupName();
                     switch (rpcType) {
                         case APPEND_ENTRIES:
                             return Mono.just(payload)
-                                .map(this::toAppendEntriesRequest)
-                                .flatMap(appendEntriesRequest -> node.onAppendEntries(appendEntriesRequest))
-                                .map(this::toPayload);
+                                    .map(this::toAppendEntriesRequest)
+                                    .flatMap(appendEntriesRequest -> node.onAppendEntries(groupName, appendEntriesRequest))
+                                    .map(this::toPayload);
 
                         case PRE_REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toPreVoteRequest)
-                                    .flatMap(preVoteRequest -> node.onPreRequestVote(preVoteRequest))
+                                    .flatMap(preVoteRequest -> node.onPreRequestVote(groupName, preVoteRequest))
                                     .map(this::toPayload);
 
                         case REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toVoteRequest)
-                                    .flatMap(voteRequest -> node.onRequestVote(voteRequest))
+                                    .flatMap(voteRequest -> node.onRequestVote(groupName, voteRequest))
                                     .map(this::toPayload);
 
                         case ADD_SERVER:
                             return Mono.just(payload)
                                     .map(this::toAddServerRequest)
-                                    .flatMap(addServerRequest -> node.onAddServer(addServerRequest))
+                                    .flatMap(addServerRequest -> node.onAddServer(groupName, addServerRequest))
                                     .map(this::toPayload);
 
                         case REMOVE_SERVER:
                             return Mono.just(payload)
                                     .map(this::toRemoveServerRequest)
-                                    .flatMap(removeServerRequest -> node.onRemoveServer(removeServerRequest))
+                                    .flatMap(removeServerRequest -> node.onRemoveServer(groupName, removeServerRequest))
                                     .map(this::toPayload);
 
                         case INFO:
@@ -138,6 +140,14 @@ public class Receiver {
 
                         default:
                             return Mono.error(new RaftException("??"));
+                    }
+                }
+
+                private MetadataRequest toMetadataRequest(Payload payload) {
+                    try {
+                        return MetadataRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid metadata!", e);
                     }
                 }
 
