@@ -14,4 +14,6 @@ public interface RaftServer extends Closeable {
     Mono<AddServerResponse> onAddServer(String groupName, AddServerRequest addServerRequest);
 
     Mono<RemoveServerResponse> onRemoveServer(String groupName, RemoveServerRequest removeServerRequest);
+
+    void addGroup(RaftGroup raftGroup);
 }

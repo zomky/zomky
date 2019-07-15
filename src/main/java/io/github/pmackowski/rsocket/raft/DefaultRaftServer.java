@@ -82,7 +82,10 @@ class DefaultRaftServer implements InternalRaftServer {
     public void start() {
         receiver.start();
         raftGroups.start(this, raftStorage);
+    }
 
+    public void startGroups() {
+        raftGroups.start(this, raftStorage);
     }
 
     public Configuration getInitialConfiguration() {
@@ -160,4 +163,8 @@ class DefaultRaftServer implements InternalRaftServer {
         return raftGroups.onRemoveServer(this, groupName, raftStorage, removeServerRequest);
     }
 
+    @Override
+    public void addGroup(RaftGroup raftGroup) {
+        raftGroups.addGroup(raftGroup);
+    }
 }

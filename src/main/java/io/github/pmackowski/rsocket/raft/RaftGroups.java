@@ -1,6 +1,5 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
@@ -18,6 +17,7 @@ public class RaftGroups {
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroups.class);
 
     private RaftStorage raftStorage;
+    private DefaultRaftServer node;
     int nodeId;
 
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
@@ -25,13 +25,19 @@ public class RaftGroups {
     public RaftGroups(RaftStorage raftStorage, DefaultRaftServer node) {
 //        this.raftStorage = raftStorage;
         this.nodeId = node.nodeId;
+        this.node = node;
         // initialize from storage, suppose there are two raft groups
-        raftGroups.put("group1", new RaftGroup(new InMemoryRaftStorage(), node, "group1"));
-        raftGroups.put("group2", new RaftGroup(new InMemoryRaftStorage(), node, "group2"));
+//        raftGroups.put("group1", new RaftGroup(new InMemoryRaftStorage(), node, "group1"));
+//        raftGroups.put("group2", new RaftGroup(new InMemoryRaftStorage(), node, "group2"));
     }
 
     void start(DefaultRaftServer raftServer, RaftStorage raftStorage) {
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit(raftServer));
+    }
+
+    public void addGroup(RaftGroup raftGroup) {
+        raftGroups.put(raftGroup.getGroupName(), raftGroup);
+        //raftGroup.onInit(node);
     }
 
     void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
@@ -90,7 +96,6 @@ public class RaftGroups {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onRemoveServer(defaultRaftServer, raftStorage, removeServerRequest)
                 .doOnNext(removeServerResponse -> LOGGER.info("[RaftServer {}] Remove server \n{} \n-> \n{}", nodeId, removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
-
     }
 
     public void convertToFollower(int term) {
