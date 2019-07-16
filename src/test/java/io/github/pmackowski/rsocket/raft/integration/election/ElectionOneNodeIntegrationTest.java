@@ -72,7 +72,7 @@ class ElectionOneNodeIntegrationTest {
     }
 
     private Mono<Node> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout, boolean preVote) {
-        return new NodeBuilder()
+        return new NodeFactory()
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))

@@ -88,7 +88,7 @@ class LogReplicationFollowerIntegrationTest {
     }
 
     private Mono<Node> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout) {
-        return new NodeBuilder()
+        return new NodeFactory()
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))

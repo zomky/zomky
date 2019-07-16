@@ -29,7 +29,7 @@ class ClusterConfigurationIntegrationTest {
         raftStorage1 = IntegrationTestsUtils.raftStorage(directory, "1");
         raftStorage2 = IntegrationTestsUtils.raftStorage(directory, "2");
 
-        raftServerMono1 = new NodeBuilder()
+        raftServerMono1 = new NodeFactory()
                 .nodeId(7000)
                 .storage(raftStorage1)
                 .stateMachine(new KVStateMachine(7000))
@@ -38,7 +38,7 @@ class ClusterConfigurationIntegrationTest {
                 .initialConfiguration(new Configuration(7000))
                 .start();
 
-        raftServerMono2 = new NodeBuilder()
+        raftServerMono2 = new NodeFactory()
                 .nodeId(7001)
                 .storage(raftStorage2)
                 .stateMachine(new KVStateMachine(7001))

@@ -32,7 +32,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
 /*        MainCommand mainCommand = mainCommand(parseResult);
         AgentCommand agentCommand = command(parseResult, AgentCommand.class);
 
-        Mono<Node> raftServerMono = new NodeBuilder()
+        Mono<Node> raftServerMono = new NodeFactory()
                 .storage(raftStorage(agentCommand))
                 .leaderStickiness(agentCommand.isLeaderStickiness())
                 .preVote(agentCommand.isPreVote())

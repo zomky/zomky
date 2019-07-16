@@ -36,7 +36,7 @@ class RaftGroupTest {
     ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3, electionTimeout4;
 
     Mono<Node> raftServerMono1, raftServerMono2, raftServerMono3, raftServerMono4;
-    Node raftServer1, raftServer2, raftServer3, raftServer4;
+    Node node1, node2, node3, raftServer4;
 
     @BeforeEach
     public void setUp() {
@@ -44,7 +44,7 @@ class RaftGroupTest {
                 .allowBlockingCallsInside("java.io.FileInputStream", "readBytes")
                 .install();
 
-        raftServerMono1 = new NodeBuilder()
+        raftServerMono1 = new NodeFactory()
                 .nodeId(7000)
                 .storage(new InMemoryRaftStorage())
                 .stateMachine(new KVStateMachine(7000))
@@ -53,7 +53,7 @@ class RaftGroupTest {
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
                 .start();
-        raftServerMono2 = new NodeBuilder()
+        raftServerMono2 = new NodeFactory()
                 .nodeId(7001)
                 .storage(new InMemoryRaftStorage())
                 .stateMachine(new KVStateMachine(7001))
@@ -62,7 +62,7 @@ class RaftGroupTest {
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
                 .start();
-        raftServerMono3 = new NodeBuilder()
+        raftServerMono3 = new NodeFactory()
                 .nodeId(7002)
                 .storage(new InMemoryRaftStorage())
                 .stateMachine(new KVStateMachine(7002))
@@ -75,9 +75,9 @@ class RaftGroupTest {
 
     @AfterEach
     void tearDown() {
-        raftServer1.dispose();
-        raftServer2.dispose();
-        raftServer3.dispose();
+        node1.dispose();
+        node2.dispose();
+        node3.dispose();
         if (raftServer4 != null) {
             raftServer4.dispose();
         }
@@ -89,20 +89,20 @@ class RaftGroupTest {
         given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(10));
         given(electionTimeout3.nextRandom()).willReturn(Duration.ofSeconds(10));
 
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
-        raftServer3 = raftServerMono3.block();
+        node1 = raftServerMono1.block();
+        node2 = raftServerMono2.block();
+        node3 = raftServerMono3.block();
 
-        final RaftGroup raftServer1Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer1, "group1", Arrays.asList(7000, 7001));
-        raftServer1.addGroup(raftServer1Group1);
-        final RaftGroup raftServer2Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer2, "group1", Arrays.asList(7000, 7001));
-        raftServer2.addGroup(raftServer2Group1);
-        final RaftGroup raftServer3Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer3, "group1", Arrays.asList(7000, 7001));
-        raftServer3.addGroup(raftServer3Group1);
+        final RaftGroup raftServer1Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) node1, "group1", Arrays.asList(7000, 7001));
+        node1.addGroup(raftServer1Group1);
+        final RaftGroup raftServer2Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) node2, "group1", Arrays.asList(7000, 7001));
+        node2.addGroup(raftServer2Group1);
+        final RaftGroup raftServer3Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) node3, "group1", Arrays.asList(7000, 7001));
+        node3.addGroup(raftServer3Group1);
 
-        ((DefaultNode) raftServer1).startGroups();
-        ((DefaultNode) raftServer2).startGroups();
-        ((DefaultNode) raftServer3).startGroups();
+        ((DefaultNode) node1).startGroups();
+        ((DefaultNode) node2).startGroups();
+        ((DefaultNode) node3).startGroups();
 
         await().atMost(5, TimeUnit.SECONDS).until(() -> raftServer1Group1.getCurrentLeaderId() == 7000);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2Group1.getCurrentLeaderId() == 7000);

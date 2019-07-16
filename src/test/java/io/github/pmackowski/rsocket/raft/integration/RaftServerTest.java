@@ -46,7 +46,7 @@ class RaftServerTest {
         raftStorage3 = raftStorage("3");
         raftStorage4 = raftStorage("4");
 
-        raftServerMono1 = new NodeBuilder()
+        raftServerMono1 = new NodeFactory()
                 .nodeId(7000)
                 .storage(raftStorage1)
                 .stateMachine(new KVStateMachine(7000))
@@ -55,7 +55,7 @@ class RaftServerTest {
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
                 .start();
-        raftServerMono2 = new NodeBuilder()
+        raftServerMono2 = new NodeFactory()
                 .nodeId(7001)
                 .storage(raftStorage2)
                 .stateMachine(new KVStateMachine(7001))
@@ -64,7 +64,7 @@ class RaftServerTest {
                 .preVote(PRE_VOTE)
                 .leaderStickiness(LEADER_STICKINESS)
                 .start();
-        raftServerMono3 = new NodeBuilder()
+        raftServerMono3 = new NodeFactory()
                 .nodeId(7002)
                 .storage(raftStorage3)
                 .stateMachine(new KVStateMachine(7002))
@@ -192,7 +192,7 @@ class RaftServerTest {
 
 
         given(electionTimeout4.nextRandom()).willReturn(Duration.ofSeconds(10));
-        raftServerMono4 = new NodeBuilder()
+        raftServerMono4 = new NodeFactory()
                 .nodeId(7003)
                 .storage(raftStorage4)
                 .stateMachine(new KVStateMachine(7003))
