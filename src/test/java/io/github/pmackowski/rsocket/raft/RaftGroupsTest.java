@@ -73,38 +73,49 @@ class RaftGroupsTest {
         raftServer2 = raftServerMono2.block();
         raftServer3 = raftServerMono3.block();
 
-        raftServer1.getRaftGroups();
+        RaftConfiguration.Builder templateRaftConfiguration = RaftConfiguration.builder()
+            .preVote(PRE_VOTE)
+            .leaderStickiness(LEADER_STICKINESS)
+            .stateMachineEntryConverter(new KVStateMachineEntryConverter());
 
-
-        RaftConfiguration raftConfiguration1 = RaftConfiguration.builder()
-                .preVote(PRE_VOTE)
-                .leaderStickiness(LEADER_STICKINESS)
-                .electionTimeout(electionTimeout1)
+        RaftGroup raftServer1Group1 = RaftGroup.builder()
+            .groupName("group1")
+            .inMemoryRaftStorage()
+            .raftConfiguration(templateRaftConfiguration, raftConfiguration -> raftConfiguration
                 .stateMachine(new KVStateMachine1(7000))
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
-                .build();
-        final RaftGroup raftServer1Group1 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration1, (InnerNode) raftServer1, "group1", new Configuration(7000,7001));
+                .electionTimeout(electionTimeout1)
+            )
+            .node(raftServer1)
+            .configuration(new Configuration(7000,7001))
+            .build();
+
         raftServer1.getRaftGroups().addGroup(raftServer1Group1);
 
-        RaftConfiguration raftConfiguration2 = RaftConfiguration.builder()
-                .preVote(PRE_VOTE)
-                .leaderStickiness(LEADER_STICKINESS)
-                .electionTimeout(electionTimeout2)
-                .stateMachine(new KVStateMachine1(7001))
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+        RaftGroup raftServer2Group1 = RaftGroup.builder()
+                .groupName("group1")
+                .inMemoryRaftStorage()
+                .raftConfiguration(templateRaftConfiguration, raftConfiguration -> raftConfiguration
+                        .stateMachine(new KVStateMachine1(7001))
+                        .electionTimeout(electionTimeout2)
+                )
+                .node(raftServer2)
+                .configuration(new Configuration(7000,7001))
                 .build();
-        final RaftGroup raftServer2Group1 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration2, (DefaultNode) raftServer2, "group1", new Configuration(7000,7001));
+
         raftServer2.getRaftGroups().addGroup(raftServer2Group1);
 
 
-        RaftConfiguration raftConfiguration3 = RaftConfiguration.builder()
-                .preVote(PRE_VOTE)
-                .leaderStickiness(LEADER_STICKINESS)
-                .electionTimeout(electionTimeout3)
-                .stateMachine(new KVStateMachine1(7002))
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+        RaftGroup raftServer3Group2 = RaftGroup.builder()
+                .groupName("group2")
+                .inMemoryRaftStorage()
+                .raftConfiguration(templateRaftConfiguration, raftConfiguration -> raftConfiguration
+                        .stateMachine(new KVStateMachine1(7002))
+                        .electionTimeout(electionTimeout3)
+                )
+                .node(raftServer3)
+                .configuration(new Configuration(7002))
                 .build();
-        final RaftGroup raftServer3Group2 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration3, (DefaultNode) raftServer3, "group2", new Configuration(7002) );
+
         raftServer3.getRaftGroups().addGroup(raftServer3Group2);
 
         await().atMost(5, TimeUnit.SECONDS).until(() -> raftServer1Group1.getCurrentLeaderId() == 7000);

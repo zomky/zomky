@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft;
 import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
 import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 public class RaftGroup {
 
@@ -55,30 +57,10 @@ public class RaftGroup {
 
     Lock configurationLock = new ReentrantLock();
 
-    public RaftGroup() {
-    }
-
-    public RaftGroup(RaftStorage raftStorage, RaftConfiguration raftConfiguration, InnerNode node, String groupName, Configuration configuration) {
-        this.raftStorage = raftStorage;
-        this.logStorageReader = raftStorage.openCommittedEntriesReader();
-        this.node = node;
-        this.raftConfiguration = raftConfiguration;
-        this.groupName = groupName;
-        this.currentConfiguration = raftStorage.getConfiguration();
-        if (currentConfiguration == null) {
-            this.currentConfiguration = configuration;
-            this.raftStorage.updateConfiguration(currentConfiguration);
-        }
-//        if (defaultRaftServer.isPassive()) {
-//            this.nodeState = new PassiveRole();
-//        }
-    }
-
     public RaftConfiguration getRaftConfiguration() {
         return raftConfiguration;
     }
 
-    //    void onInit(DefaultNode raftServer, RaftStorage raftStorage) {
     void onInit() {
         nodeState.onInit(node, this, raftStorage);
     }
@@ -350,5 +332,75 @@ public class RaftGroup {
 
     public Mono<Sender> getSenderById(int newServer) {
         return node.getSenders().getSenderById(newServer);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+
+    private RaftGroup() {}
+
+    public static class Builder {
+        private RaftStorage raftStorage;
+        private RaftConfiguration raftConfiguration;
+        private InnerNode node;
+        private String groupName;
+        private Configuration configuration;
+
+        private Builder() {
+        }
+
+        public Builder raftStorage(RaftStorage raftStorage) {
+            this.raftStorage = raftStorage;
+            return this;
+        }
+
+        public Builder inMemoryRaftStorage() {
+            this.raftStorage = new InMemoryRaftStorage();
+            return this;
+        }
+
+        public Builder raftConfiguration(RaftConfiguration raftConfiguration) {
+            this.raftConfiguration = raftConfiguration;
+            return this;
+        }
+
+
+        public Builder raftConfiguration(RaftConfiguration.Builder defaultBuilder, Function<RaftConfiguration.Builder,RaftConfiguration.Builder> builderFunction) {
+            this.raftConfiguration = builderFunction.apply(defaultBuilder).build();
+            return this;
+        }
+
+        public Builder node(Node node) {
+            this.node = (InnerNode) node;
+            return this;
+        }
+
+        public Builder groupName(String groupName) {
+            this.groupName = groupName;
+            return this;
+        }
+
+        public Builder configuration(Configuration configuration) {
+            this.configuration = configuration;
+            return this;
+        }
+
+        public RaftGroup build() {
+            RaftGroup raftGroup = new RaftGroup();
+            raftGroup.raftStorage = raftStorage;
+            raftGroup.logStorageReader = raftStorage.openCommittedEntriesReader();
+            raftGroup.raftConfiguration = raftConfiguration;
+            raftGroup.node = node;
+            raftGroup.groupName = groupName;
+            raftGroup.currentConfiguration = raftStorage.getConfiguration();
+            if (raftGroup.currentConfiguration == null) {
+                raftGroup.currentConfiguration = configuration;
+                this.raftStorage.updateConfiguration(configuration);
+            }
+            return raftGroup;
+        }
+
     }
 }
