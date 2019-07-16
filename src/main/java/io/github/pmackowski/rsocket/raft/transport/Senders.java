@@ -1,7 +1,6 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
 import io.github.pmackowski.rsocket.raft.InternalRaftServer;
-import io.github.pmackowski.rsocket.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -20,19 +19,21 @@ public class Senders {
 
     private InternalRaftServer raftServer;
     private int nodeId;
-    private RaftGroup raftGroup;
 
     private ScheduledExecutorService executorService;
 
     private ConcurrentMap<Integer, Sender> senders = new ConcurrentHashMap<>();
 
-    public Senders(InternalRaftServer raftServer, RaftGroup raftGroup, int nodeId) {
+    public Senders(InternalRaftServer raftServer, int nodeId) {
         this.raftServer = raftServer;
-        this.raftGroup = raftGroup;
         this.nodeId = nodeId;
-        raftGroup.getCurrentConfiguration().allMembersExcept(nodeId).forEach(clientPort -> {
+        allMembersExcept(nodeId).forEach(clientPort -> {
             senders.put(clientPort, Sender.unavailableSender(clientPort));
         });
+    }
+
+    public Set<Integer> allMembersExcept(int memberId) {
+        return raftServer.nodes().stream().filter(member -> !member.equals(memberId)).collect(Collectors.toSet());
     }
 
     public void addServer(int newMember) {
@@ -45,7 +46,7 @@ public class Senders {
         final Sender sender = senders.remove(oldMember);
         if (sender != null) {
             sender.stop();
-            raftGroup.senderUnavailable(sender);
+            raftServer.senderUnavailable(sender);
         }
     }
 
@@ -103,18 +104,18 @@ public class Senders {
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
         LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", nodeId, nodeId);
-        if (raftGroup.getCurrentConfiguration().contains(nodeId)) {
+        if (allMembersExcept(this.nodeId).contains(nodeId)) {
             senders.put(nodeId, sender);
         }
-        raftGroup.senderUnavailable(sender);
+        raftServer.senderUnavailable(sender);
     }
 
     private void doAvailableSender(int nodeId, RSocket raftRsocket) {
         LOGGER.info("[RaftServer {} -> RaftServer {}] connection available", nodeId, nodeId);
         Sender sender = Sender.availableSender(nodeId, raftRsocket);
-        if (raftGroup.getCurrentConfiguration().contains(nodeId)) {
+        if (allMembersExcept(this.nodeId).contains(nodeId)) {
             senders.put(nodeId, sender);
         }
-        raftGroup.senderAvailable(sender);
+        raftServer.senderAvailable(sender);
     }
 }

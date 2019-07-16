@@ -91,10 +91,10 @@ public class LeaderRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
-        raftGroup.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
-        raftGroup.onSenderAvailable(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        node.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        node.onSenderAvailable(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
 
-        raftGroup.onSenderUnavailable(sender -> {
+        node.onSenderUnavailable(sender -> {
             LOGGER.info("[RaftServer {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
             Disposable disposable = heartbeats.remove(sender.getNodeId());
             if (disposable != null) {

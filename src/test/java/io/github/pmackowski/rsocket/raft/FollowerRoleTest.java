@@ -60,7 +60,7 @@ class FollowerRoleTest {
         Duration electionTimeout = Duration.ofMillis(50);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
         given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
@@ -83,7 +83,7 @@ class FollowerRoleTest {
         Duration electionTimeout = Duration.ofMillis(10);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(node.preVote()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
         given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse

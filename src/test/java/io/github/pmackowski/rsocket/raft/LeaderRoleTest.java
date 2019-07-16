@@ -64,7 +64,7 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.times(0));
         raftStorage.update(1, 0);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(node.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
@@ -86,7 +86,7 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(node.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
@@ -102,7 +102,7 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.once().fixedBackoff(Duration.ofMillis(20)));
         raftStorage.update(1, 0);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(node.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
         leaderRole.onInit(node, raftGroup, raftStorage);
 
@@ -133,7 +133,7 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
+        given(node.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
         leaderRole.onInit(node, raftGroup, raftStorage);
 

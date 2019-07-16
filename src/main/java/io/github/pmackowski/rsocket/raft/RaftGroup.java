@@ -1,6 +1,8 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.listener.*;
+import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
+import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
+import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.ConfigurationEntry;
@@ -8,8 +10,6 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
-import io.github.pmackowski.rsocket.raft.transport.Sender;
-import io.github.pmackowski.rsocket.raft.transport.Senders;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
@@ -22,9 +22,7 @@ import reactor.core.publisher.Mono;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,9 +40,6 @@ public class RaftGroup {
     int nodeId;
     String groupName;
     private ScheduledExecutorService stateMachineExecutor;
-    private Senders senders;
-    private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
-    private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
     public RaftGroup() {
     }
@@ -62,7 +57,6 @@ public class RaftGroup {
         if (defaultRaftServer.isPassive()) {
             this.nodeState = new PassiveRole();
         }
-        this.senders = new Senders(defaultRaftServer, this, this.defaultRaftServer.nodeId);
     }
 
     private RaftServerRole nodeState = new FollowerRole();
@@ -83,7 +77,6 @@ public class RaftGroup {
 
 //    void onInit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
     void onInit(DefaultRaftServer raftServer) {
-        senders.start();
 
         nodeState.onInit(raftServer, this, raftStorage);
         final LogStorageReader logStorageReader = raftStorage.openCommittedEntriesReader();
@@ -181,7 +174,6 @@ public class RaftGroup {
     }
 
     public void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
-        senders.stop();
         stateMachineExecutor.shutdownNow();
     }
 
@@ -265,7 +257,7 @@ public class RaftGroup {
             Configuration oldConfiguration = currentConfiguration;
             Configuration newConfiguration = oldConfiguration.addMember(addServerRequest.getNewServer());
             updateConfiguration(newConfiguration);
-            senders.addServer(addServerRequest.getNewServer());
+            //senders.addServer(addServerRequest.getNewServer()); // no longer valid with gossip
             configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
         });
     }
@@ -278,7 +270,7 @@ public class RaftGroup {
             Configuration oldConfiguration = currentConfiguration;
             Configuration newConfiguration = oldConfiguration.removeMember(oldMember);
             updateConfiguration(newConfiguration);
-            senders.removeServer(oldMember);
+            //senders.removeServer(oldMember); // no longer valid with gossip
             configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
 
             // If this server was removed, step down.
@@ -324,10 +316,10 @@ public class RaftGroup {
             LOGGER.info("[RaftServer {}] New configuration {}", nodeId, configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
-            senders.replaceWith(currentConfiguration);
-//            if (!currentConfiguration.getMembers().contains(nodeId)) {
-//                convertToPassive();
-//            }
+//            senders.replaceWith(currentConfiguration);
+            if (!currentConfiguration.getMembers().contains(nodeId)) {
+                convertToPassive();
+            }
         }
     }
 
@@ -339,34 +331,11 @@ public class RaftGroup {
             LOGGER.info("[RaftServer {}] New configuration {}", nodeId, configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
-            senders.replaceWith(currentConfiguration);
+//            senders.replaceWith(currentConfiguration);
             if (currentConfiguration.getMembers().contains(nodeId)) {
                 this.convertToFollower(raftStorage.getTerm());
             }
         }
-    }
-
-    Flux<Sender> availableSenders() {
-        return senders.availableSenders();
-    }
-
-
-    void onSenderAvailable(SenderAvailableListener senderAvailableListener) {
-        senderAvailableListeners.add(senderAvailableListener);
-    }
-
-    void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener) {
-        senderUnavailableListeners.add(senderUnavailableListener);
-    }
-
-//    @Override
-    public void senderAvailable(Sender sender) {
-        senderAvailableListeners.forEach(senderAvailableListener -> senderAvailableListener.handle(sender));
-    }
-
-//    @Override
-    public void senderUnavailable(Sender sender) {
-        senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
     }
 
 }

@@ -101,7 +101,7 @@ public class FollowerRole implements RaftServerRole {
 
     private Mono<Boolean> sendPreVotes(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
         Duration timeout = raftGroup.nextElectionTimeout();
-        return raftGroup.availableSenders()
+        return node.availableSenders()
                     .flatMap(sender -> sendPreVoteRequest(node, raftGroup, raftStorage, sender, timeout))
                     .filter(PreVoteResponse::getVoteGranted)
                     .buffer(raftGroup.quorum() - 1)

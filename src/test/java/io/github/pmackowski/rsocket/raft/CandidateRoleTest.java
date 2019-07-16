@@ -38,7 +38,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
         VoteResponse voteResponse = voteGranted();
 
@@ -68,7 +68,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
         given(sender1.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteGranted()).delayElement(Duration.ofMillis(20)));
@@ -87,7 +87,7 @@ public class CandidateRoleTest {
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
 
-        given(raftGroup.availableSenders()).willReturn(
+        given(node.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -118,7 +118,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
 
         VoteResponse voteResponse = voteGranted();
 
@@ -138,7 +138,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(
+        given(node.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                     emitter.next(sender1);
                     emitter.next(sender2);
@@ -164,7 +164,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(100));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(
+        given(node.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -188,7 +188,7 @@ public class CandidateRoleTest {
     void leaderNotElectedNoAvailableSenders() throws InterruptedException {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(10));
-        given(raftGroup.availableSenders()).willReturn(Flux.create(emitter -> {}));
+        given(node.availableSenders()).willReturn(Flux.create(emitter -> {}));
 
         candidateRole.onInit(node, raftGroup, raftStorage);
 
@@ -202,7 +202,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(
+        given(node.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);
@@ -229,7 +229,7 @@ public class CandidateRoleTest {
         given(raftGroup.quorum()).willReturn(2);
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
         given(raftGroup.isCandidate()).willReturn(true);
-        given(raftGroup.availableSenders()).willReturn(
+        given(node.availableSenders()).willReturn(
                 Flux.create(emitter -> {
                             emitter.next(sender1);
                             emitter.next(sender2);

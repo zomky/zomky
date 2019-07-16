@@ -2,10 +2,13 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
+import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
+import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.transport.Receiver;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.Senders;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -16,8 +19,12 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-class DefaultRaftServer implements InternalRaftServer {
+public class DefaultRaftServer implements InternalRaftServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRaftServer.class);
 
@@ -34,12 +41,16 @@ class DefaultRaftServer implements InternalRaftServer {
         raftGroups.onExit(this, raftStorage);
 
         receiver.stop();
-//        senders.stop();
+        senders.stop();
     }
 
     StateMachine<ByteBuffer> stateMachine;
     StateMachineEntryConverter stateMachineEntryConverter;
 
+    private Senders senders;
+    private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
+    private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
+    private List<Integer> nodes = new ArrayList<>();
 
     int nodeId;
 
@@ -71,17 +82,27 @@ class DefaultRaftServer implements InternalRaftServer {
         this.preVote = preVote;
         this.leaderStickiness = leaderStickiness;
         this.initialConfiguration = initialConfiguration;
+        nodes.addAll(initialConfiguration.getMembers());
         this.passive = passive;
 
         raftGroups = new RaftGroups(raftStorage, this);
 
         this.receiver = new Receiver(this, this.nodeId);
+        this.senders = new Senders(this, this.nodeId);
+
         LOGGER.info("[RaftServer {}] has been initialized", nodeId);
     }
 
     public void start() {
         receiver.start();
+        senders.start();
+
         raftGroups.start(this, raftStorage);
+    }
+
+    @Override
+    public List<Integer> nodes() {
+        return nodes;
     }
 
     public void startGroups() {
@@ -166,5 +187,29 @@ class DefaultRaftServer implements InternalRaftServer {
     @Override
     public void addGroup(RaftGroup raftGroup) {
         raftGroups.addGroup(raftGroup);
+    }
+
+
+    Flux<Sender> availableSenders() {
+        return senders.availableSenders();
+    }
+
+
+    void onSenderAvailable(SenderAvailableListener senderAvailableListener) {
+        senderAvailableListeners.add(senderAvailableListener);
+    }
+
+    void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener) {
+        senderUnavailableListeners.add(senderUnavailableListener);
+    }
+
+    //    @Override
+    public void senderAvailable(Sender sender) {
+        senderAvailableListeners.forEach(senderAvailableListener -> senderAvailableListener.handle(sender));
+    }
+
+    //    @Override
+    public void senderUnavailable(Sender sender) {
+        senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
     }
 }

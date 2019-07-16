@@ -7,6 +7,8 @@ import io.github.pmackowski.rsocket.raft.transport.protobuf.RemoveServerResponse
 import io.rsocket.Closeable;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 public interface RaftServer extends Closeable {
 
     ElectionTimeout getElectionTimeout();
@@ -16,4 +18,6 @@ public interface RaftServer extends Closeable {
     Mono<RemoveServerResponse> onRemoveServer(String groupName, RemoveServerRequest removeServerRequest);
 
     void addGroup(RaftGroup raftGroup);
+
+    List<Integer> nodes();
 }
