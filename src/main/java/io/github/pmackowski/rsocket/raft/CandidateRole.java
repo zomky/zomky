@@ -50,7 +50,7 @@ public class CandidateRole implements RaftServerRole {
 
 
     private Mono<Void> sendVotes(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
-        return node.availableSenders()
+        return node.availableSenders(raftGroup)
                 .flatMap(sender -> sendVoteRequest(node, raftGroup, raftStorage, sender))
                 .doOnNext(voteResponse -> {
                     if (voteResponse.getTerm() > raftStorage.getTerm()) {

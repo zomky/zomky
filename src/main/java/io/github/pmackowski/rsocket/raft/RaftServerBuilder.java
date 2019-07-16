@@ -8,12 +8,12 @@ public class RaftServerBuilder {
 
     private StateMachine stateMachine;
     private StateMachineEntryConverter stateMachineEntryConverter;
-    private ElectionTimeout electionTimeout;
+    private ElectionTimeout electionTimeout = new ElectionTimeout();
     private RaftStorage raftStorage;
     private int nodeId;
-    private boolean preVote;
-    private boolean leaderStickiness;
-    private Configuration configuration = Configuration.DEFAULT_CONFIGURATION;
+    private boolean preVote = true;
+    private boolean leaderStickiness = true;
+    private Configuration configuration;
     private boolean passive;
 
     public RaftServerBuilder nodeId(int nodeId) {

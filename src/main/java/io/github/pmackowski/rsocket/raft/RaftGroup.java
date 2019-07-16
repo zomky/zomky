@@ -40,23 +40,29 @@ public class RaftGroup {
     int nodeId;
     String groupName;
     private ScheduledExecutorService stateMachineExecutor;
+    LogStorageReader logStorageReader;
 
     public RaftGroup() {
     }
 
-    public RaftGroup(RaftStorage raftStorage, DefaultRaftServer defaultRaftServer, String groupName) {
+    public RaftGroup(RaftStorage raftStorage, String groupName, List<Integer> nodes) {
+
+    }
+
+    public RaftGroup(RaftStorage raftStorage, DefaultRaftServer defaultRaftServer, String groupName, List<Integer> nodes) {
         this.raftStorage = raftStorage;
+        this.logStorageReader = raftStorage.openCommittedEntriesReader();
         this.defaultRaftServer = defaultRaftServer;
         this.nodeId = defaultRaftServer.nodeId;
         this.groupName = groupName;
         this.currentConfiguration = raftStorage.getConfiguration();
         if (currentConfiguration == null) {
-            this.raftStorage.updateConfiguration(defaultRaftServer.getInitialConfiguration());
-            this.currentConfiguration = defaultRaftServer.getInitialConfiguration();
+            this.currentConfiguration = new Configuration(nodes);
+            this.raftStorage.updateConfiguration(currentConfiguration);
         }
-        if (defaultRaftServer.isPassive()) {
-            this.nodeState = new PassiveRole();
-        }
+//        if (defaultRaftServer.isPassive()) {
+//            this.nodeState = new PassiveRole();
+//        }
     }
 
     private RaftServerRole nodeState = new FollowerRole();
@@ -77,26 +83,7 @@ public class RaftGroup {
 
 //    void onInit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
     void onInit(DefaultRaftServer raftServer) {
-
         nodeState.onInit(raftServer, this, raftStorage);
-        final LogStorageReader logStorageReader = raftStorage.openCommittedEntriesReader();
-        stateMachineExecutor = Executors.newScheduledThreadPool(1);
-        stateMachineExecutor.scheduleWithFixedDelay(() -> {
-            try {
-                while (logStorageReader.hasNext()) {
-                    final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-                    LOGGER.info("next {}", indexedLogEntry);
-                    if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
-                        ByteBuffer response = raftServer.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
-                        lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                        LOGGER.info("[RaftServer {}, group {}] index {} has been applied to state machine", nodeId, groupName, indexedLogEntry.getIndex());
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.error("Main loop failure", e);
-            }
-        }, 0, 10, TimeUnit.MILLISECONDS);
-
     }
 
     void voteForMyself() {
@@ -174,7 +161,7 @@ public class RaftGroup {
     }
 
     public void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
-        stateMachineExecutor.shutdownNow();
+
     }
 
     public Mono<Payload> onClientRequest(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, Payload payload) {
@@ -226,25 +213,24 @@ public class RaftGroup {
     }
 
     public Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
-        return nodeState.onAppendEntries(defaultRaftServer, this, raftStorage, appendEntries);
+        return nodeState.onAppendEntries(defaultRaftServer, this, this.raftStorage, appendEntries);
     }
 
     public Mono<PreVoteResponse> onPreRequestVote(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
-        return nodeState.onPreRequestVote(defaultRaftServer, this, raftStorage, preRequestVote);
+        return nodeState.onPreRequestVote(defaultRaftServer, this, this.raftStorage, preRequestVote);
     }
 
     public Mono<VoteResponse> onRequestVote(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, VoteRequest requestVote) {
-        return nodeState.onRequestVote(defaultRaftServer, this, raftStorage, requestVote);
+        return nodeState.onRequestVote(defaultRaftServer, this, this.raftStorage, requestVote);
     }
 
     public Mono<AddServerResponse> onAddServer(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, AddServerRequest addServerRequest) {
-        return nodeState.onAddServer(defaultRaftServer, this, raftStorage, addServerRequest);
+        return nodeState.onAddServer(defaultRaftServer, this, this.raftStorage, addServerRequest);
     }
 
     public Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
-        return nodeState.onRemoveServer(defaultRaftServer, this, raftStorage, removeServerRequest);
+        return nodeState.onRemoveServer(defaultRaftServer, this, this.raftStorage, removeServerRequest);
     }
-
 
     public void addConfigurationChangeListener(ConfigurationChangeListener configurationChangeListener) {
         configurationChangeListeners.add(configurationChangeListener);
@@ -338,4 +324,18 @@ public class RaftGroup {
         }
     }
 
+    public void advanceStateMachine(DefaultRaftServer defaultRaftServer) {
+
+        // very inefficient
+        while (logStorageReader.hasNext()) {
+            final IndexedLogEntry indexedLogEntry = logStorageReader.next();
+            LOGGER.info("[Server {}] advance state machine for group {}, next {}", defaultRaftServer.nodeId, groupName, indexedLogEntry);
+            if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
+                ByteBuffer response = defaultRaftServer.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
+                lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
+                LOGGER.info("[RaftServer {}, group {}] index {} has been applied to state machine", nodeId, groupName, indexedLogEntry.getIndex());
+            }
+        }
+        logStorageReader.close();
+    }
 }

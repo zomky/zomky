@@ -11,6 +11,9 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class RaftGroups {
 
@@ -19,6 +22,7 @@ public class RaftGroups {
     private RaftStorage raftStorage;
     private DefaultRaftServer node;
     int nodeId;
+    private ScheduledExecutorService stateMachineExecutor;
 
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
 
@@ -27,12 +31,20 @@ public class RaftGroups {
         this.nodeId = node.nodeId;
         this.node = node;
         // initialize from storage, suppose there are two raft groups
-//        raftGroups.put("group1", new RaftGroup(new InMemoryRaftStorage(), node, "group1"));
-//        raftGroups.put("group2", new RaftGroup(new InMemoryRaftStorage(), node, "group2"));
     }
 
     void start(DefaultRaftServer raftServer, RaftStorage raftStorage) {
+        LOGGER.info("[Server {}] start groups", raftServer.nodeId);
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit(raftServer));
+        stateMachineExecutor = Executors.newScheduledThreadPool(1);
+        stateMachineExecutor.scheduleWithFixedDelay(() -> {
+            try {
+                raftGroups.values().forEach(raftGroup -> raftGroup.advanceStateMachine(node));
+            } catch (Exception e) {
+                LOGGER.error("Main loop failure", e);
+            }
+        }, 0, 10, TimeUnit.MILLISECONDS);
+
     }
 
     public void addGroup(RaftGroup raftGroup) {
@@ -42,6 +54,7 @@ public class RaftGroups {
 
     void onExit(DefaultRaftServer raftServer, RaftStorage raftStorage) {
         raftGroups.values().forEach(raftGroup -> raftGroup.onExit(raftServer, raftStorage));
+        stateMachineExecutor.shutdownNow();
     }
 
     public Mono<Payload> onClientRequest(DefaultRaftServer defaultRaftServer, RaftStorage raftStorage, Payload payload) {

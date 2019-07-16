@@ -194,6 +194,13 @@ public class DefaultRaftServer implements InternalRaftServer {
         return senders.availableSenders();
     }
 
+    public Flux<Sender> availableSenders(RaftGroup raftGroup) {
+        return senders.availableSenders(raftGroup.getCurrentConfiguration().allMembersExcept(nodeId));
+    }
+
+    public Flux<Sender> availableSenders(Set<Integer> members) {
+        return senders.availableSenders(members);
+    }
 
     void onSenderAvailable(SenderAvailableListener senderAvailableListener) {
         senderAvailableListeners.add(senderAvailableListener);
@@ -212,4 +219,5 @@ public class DefaultRaftServer implements InternalRaftServer {
     public void senderUnavailable(Sender sender) {
         senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
     }
+
 }

@@ -145,7 +145,7 @@ public class Receiver {
 
                 private MetadataRequest toMetadataRequest(Payload payload) {
                     try {
-                        return MetadataRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                        return MetadataRequest.parseFrom(NettyUtils.toByteArray(payload.sliceMetadata()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid metadata!", e);
                     }

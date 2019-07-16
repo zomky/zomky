@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.storage.meta;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,6 +13,10 @@ public class Configuration {
     private Set<Integer> members = new HashSet<>();
 
     public Configuration(Set<Integer> members) {
+        this.members.addAll(members);
+    }
+
+    public Configuration(List<Integer> members) {
         this.members.addAll(members);
     }
 

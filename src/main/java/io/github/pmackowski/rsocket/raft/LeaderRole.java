@@ -23,6 +23,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
+// TODO heartbeats groups coalescing, current solution is inefficient
 public class LeaderRole implements RaftServerRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRole.class);
@@ -91,18 +92,24 @@ public class LeaderRole implements RaftServerRole {
 
     @Override
     public void onInit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
-        node.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
-        node.onSenderAvailable(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        node.availableSenders(raftGroup).subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        node.onSenderAvailable(sender -> {
+            if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
+                initHeartbeats(node, raftGroup, raftStorage, sender);
+            }
+        });
 
         node.onSenderUnavailable(sender -> {
-            LOGGER.info("[RaftServer {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
-            Disposable disposable = heartbeats.remove(sender.getNodeId());
-            if (disposable != null) {
-                disposable.dispose();
-            }
-            BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
-            if (logStorageReader != null) {
-                logStorageReader.close();
+            if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
+                LOGGER.info("[RaftServer {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
+                Disposable disposable = heartbeats.remove(sender.getNodeId());
+                if (disposable != null) {
+                    disposable.dispose();
+                }
+                BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
+                if (logStorageReader != null) {
+                    logStorageReader.close();
+                }
             }
         });
     }

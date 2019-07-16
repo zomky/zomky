@@ -62,7 +62,7 @@ public class Senders {
     public void start() {
         executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleAtFixedRate(() -> {
-            senders.values().stream().filter(Sender::isNotAvailable).forEach(sender -> {
+            senders.values().stream().filter(sender -> sender.getNodeId() != nodeId).filter(Sender::isNotAvailable).forEach(sender -> {
                 int nodeId = sender.getNodeId();
                 try {
                     RSocket raftRsocket = RSocketFactory.connect()
@@ -92,7 +92,19 @@ public class Senders {
 
     public Flux<Sender> availableSenders() {
         return Flux.create(emitter -> {
+            // TODO emitter.requestedFromDownstream()
             senders.values().stream().filter(Sender::isAvailable).forEach(emitter::next);
+            // lack of emitter.complete() is intentional
+        });
+    }
+
+    public Flux<Sender> availableSenders(Set<Integer> nodesSubset) {
+        return Flux.create(emitter -> {
+            // TODO emitter.requestedFromDownstream()
+            senders.values().stream()
+                    .filter(sender -> nodesSubset.contains(sender.getNodeId()))
+                    .filter(Sender::isAvailable)
+                    .forEach(emitter::next);
             // lack of emitter.complete() is intentional
         });
     }
@@ -103,7 +115,7 @@ public class Senders {
 
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
-        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", nodeId, nodeId);
+        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", this.nodeId, nodeId);
         if (allMembersExcept(this.nodeId).contains(nodeId)) {
             senders.put(nodeId, sender);
         }
