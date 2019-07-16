@@ -28,12 +28,12 @@ public class RaftGroups {
     }
 
     void start() {
-        LOGGER.info("[Server {}] start groups", node.nodeId);
-        raftGroups.values().forEach(raftGroup -> raftGroup.onInit(raftServer));
+        LOGGER.info("[Node {}] start groups", node.getNodeId());
+        raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
         stateMachineExecutor.scheduleWithFixedDelay(() -> {
             try {
-                raftGroups.values().forEach(raftGroup -> raftGroup.advanceStateMachine(node));
+                raftGroups.values().forEach(raftGroup -> raftGroup.advanceStateMachine());
             } catch (Exception e) {
                 LOGGER.error("Main loop failure", e);
             }
@@ -43,18 +43,18 @@ public class RaftGroups {
 
     public void addGroup(RaftGroup raftGroup) {
         raftGroups.put(raftGroup.getGroupName(), raftGroup);
-        //raftGroup.onInit(node);
+        raftGroup.onInit();
     }
 
-    void dispose(DefaultNode raftServer) {
-        raftGroups.values().forEach(raftGroup -> raftGroup.onExit(raftServer, raftStorage));
+    void dispose() {
+        raftGroups.values().forEach(raftGroup -> raftGroup.onExit());
         stateMachineExecutor.shutdownNow();
     }
 
     public Mono<Payload> onClientRequest(Payload payload) {
         String groupName = payload.getMetadataUtf8();
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onClientRequest(node, payload);
+        return raftGroup.onClientRequest(payload);
     }
 
     public Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
@@ -63,18 +63,18 @@ public class RaftGroups {
                        Payload firstPayload = signal.get();
                        String groupName = firstPayload.getMetadataUtf8();
                        RaftGroup raftGroup = raftGroups.get(groupName);
-                       return raftGroup.onClientRequests(node,raftStorage, payloadFlux);
+                       return raftGroup.onClientRequests(payloadFlux);
                    }));
     }
 
     public Mono<AppendEntriesResponse> onAppendEntries(String groupName, AppendEntriesRequest appendEntries) {
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onAppendEntries(defaultRaftServer, raftStorage, appendEntries)
+        return raftGroup.onAppendEntries(appendEntries)
                 .doOnNext(response -> {
                     if (response.getSuccess()) {
                         raftGroup.setCurrentLeader(appendEntries.getLeaderId());
                         if (appendEntries.getEntriesCount() > 0) {
-                            LOGGER.info("[Node {} -> Node {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), nodeId, appendEntries, response);
+                            LOGGER.info("[Node {} -> Node {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), node.getNodeId(), appendEntries, response);
                         }
                     }
                 });
@@ -82,27 +82,27 @@ public class RaftGroups {
 
     public Mono<PreVoteResponse> onPreRequestVote(String groupName, PreVoteRequest preRequestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onPreRequestVote(defaultRaftServer, raftStorage, preRequestVote)
-                .doOnNext(preVoteResponse -> LOGGER.info("[Node {} -> Node {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), nodeId, preRequestVote, preVoteResponse));
+        return raftGroup.onPreRequestVote(preRequestVote)
+                .doOnNext(preVoteResponse -> LOGGER.info("[Node {} -> Node {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), node.getNodeId(), preRequestVote, preVoteResponse));
 
     }
 
     public Mono<VoteResponse> onRequestVote(String groupName, VoteRequest requestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onRequestVote(defaultRaftServer, raftStorage, requestVote)
-                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), nodeId, requestVote, voteResponse));
+        return raftGroup.onRequestVote(requestVote)
+                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), node.getNodeId(), requestVote, voteResponse));
     }
 
     public Mono<AddServerResponse> onAddServer(String groupName, AddServerRequest addServerRequest) {
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onAddServer(defaultRaftServer, raftStorage, addServerRequest)
-                .doOnNext(addServerResponse -> LOGGER.info("[Node {}] Add server \n{} \n-> \n{}", nodeId, addServerRequest.getNewServer(), addServerResponse.getStatus()));
+        return raftGroup.onAddServer(addServerRequest)
+                .doOnNext(addServerResponse -> LOGGER.info("[Node {}] Add server \n{} \n-> \n{}", node.getNodeId(), addServerRequest.getNewServer(), addServerResponse.getStatus()));
     }
 
     public Mono<RemoveServerResponse> onRemoveServer(String groupName, RemoveServerRequest removeServerRequest) {
         RaftGroup raftGroup = raftGroups.get(groupName);
-        return raftGroup.onRemoveServer(defaultRaftServer, raftStorage, removeServerRequest)
-                .doOnNext(removeServerResponse -> LOGGER.info("[Node {}] Remove server \n{} \n-> \n{}", nodeId, removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
+        return raftGroup.onRemoveServer(removeServerRequest)
+                .doOnNext(removeServerResponse -> LOGGER.info("[Node {}] Remove server \n{} \n-> \n{}", node.getNodeId(), removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
     }
 
     public void convertToFollower(int term) {

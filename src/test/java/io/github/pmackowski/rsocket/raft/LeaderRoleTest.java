@@ -1,12 +1,12 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,7 +64,7 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.times(0));
         raftStorage.update(1, 0);
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
@@ -86,7 +86,7 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
@@ -102,7 +102,7 @@ public class LeaderRoleTest {
         // given
         leaderRole = new LeaderRole(Repeat.once().fixedBackoff(Duration.ofMillis(20)));
         raftStorage.update(1, 0);
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
         leaderRole.onInit(node, raftGroup, raftStorage);
 
@@ -133,7 +133,7 @@ public class LeaderRoleTest {
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
-        given(node.availableSenders()).willReturn(Flux.just(sender1));
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
         leaderRole.onInit(node, raftGroup, raftStorage);
 
@@ -160,7 +160,7 @@ public class LeaderRoleTest {
     @DisplayName("Joining server log is empty")
     void onAddServers() {
         // given
-        given(node.createSender(any())).willReturn(Mono.just(sender1));
+        given(raftGroup.getSenderById(7003)).willReturn(Mono.just(sender1));
         when(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class)))
                 .thenReturn(appendEntriesResponse(false, 0, Duration.ofMillis(100)))  // not counted as round
                 .thenReturn(appendEntriesResponse(true, 0, Duration.ofMillis(100)))   // round 1

@@ -5,7 +5,7 @@ import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEnt
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static io.github.pmackowski.rsocket.raft.gossip.Cluster.DEFAULT_THREE_NODE_CLUSTER;
@@ -33,15 +32,14 @@ class RaftGroupsTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroupsTest.class);
 
-    private static final boolean PRE_VOTE = true; // TODO add new tests for pre vote
-    private static final boolean LEADER_STICKINESS = true; // TODO add new tests for leader stickiness
+    private static final boolean PRE_VOTE = true;
+    private static final boolean LEADER_STICKINESS = true;
 
     @Mock
-    ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3, electionTimeout4;
+    ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3;
 
-    Mono<Node> raftServerMono1, raftServerMono2, raftServerMono3, raftServerMono4;
+    Mono<Node> raftServerMono1, raftServerMono2, raftServerMono3;
     Node raftServer1, raftServer2, raftServer3, raftServer4;
-    RaftStorage raftStorage1, raftStorage2, raftStorage3, raftStorage4;
 
     @BeforeEach
     public void setUp() {
@@ -49,26 +47,18 @@ class RaftGroupsTest {
                 .allowBlockingCallsInside("java.io.FileInputStream", "readBytes")
                 .install();
 
-        RaftConfiguration.Builder defaultBuilder = RaftConfiguration.builder()
-                .leaderStickiness(LEADER_STICKINESS)
-                .preVote(PRE_VOTE)
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter());
-
         raftServerMono1 = new NodeBuilder()
                 .nodeId(7000)
-                .raftConfiguration(defaultBuilder, builder -> builder.stateMachine(new KVStateMachine1(7000)).electionTimeout(electionTimeout1))
                 .cluster(DEFAULT_THREE_NODE_CLUSTER)
                 .start();
 
         raftServerMono2 = new NodeBuilder()
                 .nodeId(7001)
-                .raftConfiguration(defaultBuilder, builder -> builder.stateMachine(new KVStateMachine1(7001)).electionTimeout(electionTimeout2))
                 .cluster(DEFAULT_THREE_NODE_CLUSTER)
                 .start();
 
         raftServerMono3 = new NodeBuilder()
                 .nodeId(7002)
-                .raftConfiguration(defaultBuilder, builder -> builder.stateMachine(new KVStateMachine1(7002)).electionTimeout(electionTimeout3))
                 .cluster(DEFAULT_THREE_NODE_CLUSTER)
                 .start();
     }
@@ -83,24 +73,47 @@ class RaftGroupsTest {
         raftServer2 = raftServerMono2.block();
         raftServer3 = raftServerMono3.block();
 
-        final RaftGroup raftServer1Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer1, "group1", Arrays.asList(7000, 7001));
-        raftServer1.addGroup(raftServer1Group1);
-        final RaftGroup raftServer2Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer2, "group1", Arrays.asList(7000, 7001));
-        raftServer2.addGroup(raftServer2Group1);
-        final RaftGroup raftServer3Group1 = new RaftGroup(new InMemoryRaftStorage(), (DefaultNode) raftServer3, "group2", Arrays.asList(7002) );
-        raftServer3.addGroup(raftServer3Group1);
+        raftServer1.getRaftGroups();
 
-        ((DefaultNode) raftServer1).startGroups();
-        ((DefaultNode) raftServer2).startGroups();
-        ((DefaultNode) raftServer3).startGroups();
+
+        RaftConfiguration raftConfiguration1 = RaftConfiguration.builder()
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .electionTimeout(electionTimeout1)
+                .stateMachine(new KVStateMachine1(7000))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+                .build();
+        final RaftGroup raftServer1Group1 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration1, (InnerNode) raftServer1, "group1", new Configuration(7000,7001));
+        raftServer1.getRaftGroups().addGroup(raftServer1Group1);
+
+        RaftConfiguration raftConfiguration2 = RaftConfiguration.builder()
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .electionTimeout(electionTimeout2)
+                .stateMachine(new KVStateMachine1(7001))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+                .build();
+        final RaftGroup raftServer2Group1 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration2, (DefaultNode) raftServer2, "group1", new Configuration(7000,7001));
+        raftServer2.getRaftGroups().addGroup(raftServer2Group1);
+
+
+        RaftConfiguration raftConfiguration3 = RaftConfiguration.builder()
+                .preVote(PRE_VOTE)
+                .leaderStickiness(LEADER_STICKINESS)
+                .electionTimeout(electionTimeout3)
+                .stateMachine(new KVStateMachine1(7002))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+                .build();
+        final RaftGroup raftServer3Group2 = new RaftGroup(new InMemoryRaftStorage(), raftConfiguration3, (DefaultNode) raftServer3, "group2", new Configuration(7002) );
+        raftServer3.getRaftGroups().addGroup(raftServer3Group2);
 
         await().atMost(5, TimeUnit.SECONDS).until(() -> raftServer1Group1.getCurrentLeaderId() == 7000);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2Group1.getCurrentLeaderId() == 7000);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer3Group1.getCurrentLeaderId() == 7002);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer3Group2.getCurrentLeaderId() == 7002);
 
         assertThat(raftServer1Group1.isLeader()).isTrue();
         assertThat(raftServer2Group1.isFollower()).isTrue();
-        assertThat(raftServer3Group1.isLeader()).isTrue();
+        assertThat(raftServer3Group2.isLeader()).isTrue();
     }
 
     @Test
@@ -111,7 +124,7 @@ class RaftGroupsTest {
 
         int nbEntries = 10;
 
-        kvStoreClient.put("group1", Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
+        kvStoreClient.put("group1", Flux.range(1, nbEntries).delayElements(Duration.ofMillis(200)).map(i -> new KeyValue("key" + i, "val" + i)))
                 .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))

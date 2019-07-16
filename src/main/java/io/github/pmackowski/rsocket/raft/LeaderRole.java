@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 // TODO heartbeats groups coalescing, current solution is inefficient
-public class LeaderRole implements RaftServerRole {
+public class LeaderRole implements RaftRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRole.class);
 
@@ -92,14 +92,20 @@ public class LeaderRole implements RaftServerRole {
 
     @Override
     public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
-        node.getSenders().availableSenders(raftGroup).subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        raftGroup.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
         node.onSenderAvailable(sender -> {
+            if (sender.getNodeId() == node.getNodeId()) {
+                return;
+            }
             if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
                 initHeartbeats(node, raftGroup, raftStorage, sender);
             }
         });
 
         node.onSenderUnavailable(sender -> {
+            if (sender.getNodeId() == node.getNodeId()) {
+                return;
+            }
             if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
                 LOGGER.info("[Node {}] Sender unavailable {}", node.getNodeId(), sender.getNodeId());
                 Disposable disposable = heartbeats.remove(sender.getNodeId());
@@ -127,8 +133,8 @@ public class LeaderRole implements RaftServerRole {
     @Override
     public Flux<Payload> onClientRequests(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
         // TODO it has nothing to do with state machine, should depend on the client
-        return (node.getRaftConfiguration().getStateMachine() != null) ?
-            new SenderLastAppliedOperator(payloads, node, raftGroup, raftStorage) :
+        return (raftGroup.getRaftConfiguration().getStateMachine() != null) ?
+            new SenderLastAppliedOperator(payloads, raftGroup, raftStorage) :
             new SenderConfirmOperator(payloads, raftGroup, raftStorage);
     }
 
@@ -149,7 +155,7 @@ public class LeaderRole implements RaftServerRole {
 
         final BoundedLogStorageReader logStorageReader = new BoundedLogStorageReader(raftStorage.openReader());
         CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
-        return node.getSenders().getSenderById(addServerRequest.getNewServer()).flatMap(sender -> {
+        return raftGroup.getSenderById(addServerRequest.getNewServer()).flatMap(sender -> {
                 final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftGroup, raftStorage, logStorageReader);
                 return sender.appendEntries(raftGroup, appendEntriesRequest)
                         .doOnNext(appendEntriesResponse -> {

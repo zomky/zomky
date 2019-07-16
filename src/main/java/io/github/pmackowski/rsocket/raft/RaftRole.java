@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 
-public interface RaftServerRole {
+public interface RaftRole {
 
     NodeState nodeState();
 
@@ -73,7 +73,7 @@ public interface RaftServerRole {
                     int currentTerm = raftStorage.getTerm();
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
-                    if (node.getRaftConfiguration().isLeaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
+                    if (raftGroup.isLeaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
                         return PreVoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 
@@ -102,7 +102,7 @@ public interface RaftServerRole {
 
                     // 1. Reply false if last AppendEntries call was received
                     //    less than election timeout ago (leader stickiness)
-                    if (node.getRaftConfiguration().isLeaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
+                    if (raftGroup.isLeaderStickiness() && raftGroup.lastAppendEntriesWithinElectionTimeout()) {
                         return VoteResponse.newBuilder().setTerm(currentTerm).setVoteGranted(false).build();
                     }
 

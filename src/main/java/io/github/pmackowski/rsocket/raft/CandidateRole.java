@@ -11,7 +11,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.retry.Repeat;
 
-public class CandidateRole implements RaftServerRole {
+public class CandidateRole implements RaftRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CandidateRole.class);
 
@@ -50,7 +50,7 @@ public class CandidateRole implements RaftServerRole {
 
 
     private Mono<Void> sendVotes(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
-        return node.getSenders().availableSenders(raftGroup)
+        return raftGroup.availableSenders()
                 .flatMap(sender -> sendVoteRequest(node, raftGroup, raftStorage, sender))
                 .doOnNext(voteResponse -> {
                     if (voteResponse.getTerm() > raftStorage.getTerm()) {

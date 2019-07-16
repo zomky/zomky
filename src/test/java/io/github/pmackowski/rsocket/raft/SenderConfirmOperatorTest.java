@@ -31,9 +31,6 @@ public class SenderConfirmOperatorTest {
     private static final int TEN_MESSAGES = 10;
 
     @Spy
-    private DefaultNode node;
-
-    @Spy
     private RaftGroup raftGroup;
 
     @Mock
@@ -57,7 +54,7 @@ public class SenderConfirmOperatorTest {
     public void emptyStream() {
         Flux<Payload> payloads = Flux.empty();
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftGroup, raftStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, raftGroup, raftStorage))
                 .expectSubscription()
                 .verifyComplete();
 
@@ -71,7 +68,7 @@ public class SenderConfirmOperatorTest {
 
         when(raftStorage.append(any(ByteBuffer.class))).thenThrow(new RuntimeException("append log failed"));
 
-        StepVerifier.create(new SenderConfirmOperator(payloads, node, raftGroup, raftStorage))
+        StepVerifier.create(new SenderConfirmOperator(payloads, raftGroup, raftStorage))
                 .expectSubscription()
                 .verifyErrorMessage("append log failed");
 
@@ -83,7 +80,7 @@ public class SenderConfirmOperatorTest {
     public void requestAndCancel() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftGroup, raftStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, raftGroup, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
@@ -101,7 +98,7 @@ public class SenderConfirmOperatorTest {
     public void requestInBatches() {
         Flux<Payload> payloads = payloads(TEN_MESSAGES);
 
-        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, node, raftGroup, raftStorage), 2)
+        StepVerifier.withVirtualTime(() -> new SenderConfirmOperator(payloads, raftGroup, raftStorage), 2)
             .expectSubscription()
             .expectNoEvent(Duration.ofSeconds(10))
             .then(() -> {
@@ -133,5 +130,4 @@ public class SenderConfirmOperatorTest {
             return DefaultPayload.create(buffer);
         });
     }
-
 }

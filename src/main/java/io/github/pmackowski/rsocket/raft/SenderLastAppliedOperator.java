@@ -19,20 +19,18 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
-    private InnerNode node;
     private RaftGroup raftGroup;
     private RaftStorage raftStorage;
 
-    SenderLastAppliedOperator(Publisher<? extends Payload> source, InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    SenderLastAppliedOperator(Publisher<? extends Payload> source, RaftGroup raftGroup, RaftStorage raftStorage) {
         super(Flux.from(source));
-        this.node = node;
         this.raftGroup = raftGroup;
         this.raftStorage = raftStorage;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super Payload> actual) {
-        source.subscribe(new PublishLastAppliedSubscriber(actual, node, raftGroup, raftStorage));
+        source.subscribe(new PublishLastAppliedSubscriber(actual, raftGroup, raftStorage));
     }
 
     private static class PublishLastAppliedSubscriber implements CoreSubscriber<Payload>, Subscription {
@@ -48,15 +46,13 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         private final AtomicReference<Throwable> firstException = new AtomicReference<Throwable>();
 
         private Subscriber<? super Payload> subscriber;
-        private InnerNode node;
         private RaftGroup raftGroup;
         private RaftStorage raftStorage;
         private final ConcurrentMap<Long, Payload> unconfirmed = new ConcurrentHashMap<>();
         private Subscription subscription;
 
-        public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+        public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, RaftGroup raftGroup, RaftStorage raftStorage) {
             this.subscriber = subscriber;
-            this.node = node;
             this.raftGroup = raftGroup;
             this.raftStorage = raftStorage;
         }
@@ -90,7 +86,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), node.getRaftConfiguration().getStateMachineEntryConverter().convert(payload));
+                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), raftGroup.getRaftConfiguration().getStateMachineEntryConverter().convert(payload));
                 IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
                 if (raftGroup.quorum() == 1) {
                     raftGroup.setCommitIndex(logEntryInfo.getIndex());

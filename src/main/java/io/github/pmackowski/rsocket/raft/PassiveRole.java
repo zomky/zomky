@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 
-public class PassiveRole implements RaftServerRole {
+public class PassiveRole implements RaftRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PassiveRole.class);
 

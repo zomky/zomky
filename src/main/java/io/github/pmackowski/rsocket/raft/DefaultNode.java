@@ -23,30 +23,22 @@ class DefaultNode implements InnerNode {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultNode.class);
 
-    int nodeId;
-    private RaftConfiguration raftConfiguration;
-    private RaftStorageConfiguration raftStorageConfiguration;
+    private int nodeId;
     private Cluster cluster;
 
     private Receiver receiver;
     private Senders senders;
+    private RaftGroups raftGroups;
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
-    private RaftGroups raftGroups;
-
-    DefaultNode(int nodeId,
-                RaftConfiguration raftConfiguration,
-                RaftStorageConfiguration raftStorageConfiguration,
-                Cluster cluster) {
+    DefaultNode(int nodeId, Cluster cluster) {
         this.nodeId = nodeId;
-        this.raftConfiguration = raftConfiguration;
-        this.raftStorageConfiguration = raftStorageConfiguration;
         this.cluster = cluster;
 
-        this.raftGroups = new RaftGroups(this);
         this.receiver = new Receiver(this);
-        this.senders = new Senders(this, this.nodeId);
+        this.senders = new Senders(this);
+        this.raftGroups = new RaftGroups(this);
 
         LOGGER.info("[Node {}] has been initialized", nodeId);
     }
@@ -54,8 +46,7 @@ class DefaultNode implements InnerNode {
     public void start() {
         receiver.start();
         senders.start();
-
-        raftGroups.start(this, raftStorage);
+        raftGroups.start();
     }
 
     @Override
@@ -69,41 +60,24 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
-    public RaftConfiguration getRaftConfiguration() {
-        return raftConfiguration;
+    public Cluster getCluster() {
+        return cluster;
     }
 
     @Override
     public int getNodeId() {
-        return 0;
+        return nodeId;
     }
 
     @Override
-    public void dispose() {
-        LOGGER.info("[Node {}] Stopping ...", nodeId);
-        raftGroups.dispose(this, raftStorage);
-
-        receiver.stop();
-        senders.stop();
-    }
-
-    public void startGroups() {
-        raftGroups.start(this, raftStorage);
-    }
-
-    Mono<Sender> createSender(AddServerRequest addServerRequest) {
-        return Mono.fromCallable(() -> Sender.createSender(addServerRequest.getNewServer())).cache().subscribeOn(Schedulers.elastic());
+    public boolean isDisposed() {
+        return false;
     }
 
     @Override
     public Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest) {
 //        return Mono.just(InfoResponse.newBuilder().addAllMembers(currentConfiguration.getMembers()).build());
         return Mono.empty();
-    }
-
-    @Override
-    public void addGroup(RaftGroup raftGroup) {
-        raftGroups.addGroup(raftGroup);
     }
 
     @Override
@@ -124,6 +98,15 @@ class DefaultNode implements InnerNode {
     @Override
     public void senderUnavailable(Sender sender) {
         senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
+    }
+
+    @Override
+    public void dispose() {
+        LOGGER.info("[Node {}] Stopping ...", nodeId);
+        raftGroups.dispose();
+
+        receiver.stop();
+        senders.stop();
     }
 
     @Override

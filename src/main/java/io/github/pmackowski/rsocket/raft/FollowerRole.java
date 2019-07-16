@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
-public class FollowerRole implements RaftServerRole {
+public class FollowerRole implements RaftRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerRole.class);
 
@@ -41,7 +41,7 @@ public class FollowerRole implements RaftServerRole {
             subscription = processor.timeout(raftGroup.nextElectionTimeout())
                     .onErrorResume(throwable -> {
                         LOGGER.info("[Node {}] Election timeout ({})", node.getNodeId(), throwable.getMessage());
-                        if (node.getRaftConfiguration().isPreVote() && raftGroup.quorum() - 1 > 0) {
+                        if (raftGroup.isPreVote() && raftGroup.quorum() - 1 > 0) {
                             return sendPreVotes(node, raftGroup, raftStorage)
                                     .doOnNext(preVotes -> {
                                         if (preVotes) {
@@ -69,7 +69,7 @@ public class FollowerRole implements RaftServerRole {
 
     @Override
     public Mono<VoteResponse> onRequestVote(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
-        Mono<VoteResponse> voteResponse = RaftServerRole.super.onRequestVote(node, raftGroup, raftStorage, requestVote);
+        Mono<VoteResponse> voteResponse = RaftRole.super.onRequestVote(node, raftGroup, raftStorage, requestVote);
         return voteResponse.doOnNext(r -> {
             if (r.getVoteGranted()) {
                 restartElectionTimer(node);
@@ -85,7 +85,7 @@ public class FollowerRole implements RaftServerRole {
                        if (appendEntriesRequest.getTerm() >= currentTerm) {
                            restartElectionTimer(node);
                        }
-                   }).then(RaftServerRole.super.onAppendEntries(node, raftGroup, raftStorage, appendEntries));
+                   }).then(RaftRole.super.onAppendEntries(node, raftGroup, raftStorage, appendEntries));
     }
 
     private void restartElectionTimer(InnerNode node) {
@@ -101,7 +101,7 @@ public class FollowerRole implements RaftServerRole {
 
     private Mono<Boolean> sendPreVotes(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         Duration timeout = raftGroup.nextElectionTimeout();
-        return node.getSenders().availableSenders(raftGroup)
+        return raftGroup.availableSenders()
                     .flatMap(sender -> sendPreVoteRequest(node, raftGroup, raftStorage, sender, timeout))
                     .filter(PreVoteResponse::getVoteGranted)
                     .buffer(raftGroup.quorum() - 1)

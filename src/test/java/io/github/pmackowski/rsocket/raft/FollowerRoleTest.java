@@ -49,7 +49,7 @@ class FollowerRoleTest {
     void electionTimeout() {
         Duration electionTimeout = Duration.ofMillis(50);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
-        given(node.preVote()).willReturn(false);
+        given(raftGroup.isPreVote()).willReturn(false);
         followerRole.onInit(node, raftGroup, raftStorage);
 
         await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(raftGroup).convertToCandidate());
@@ -59,8 +59,8 @@ class FollowerRoleTest {
     void electionTimeoutWithPreVoteEnabled() {
         Duration electionTimeout = Duration.ofMillis(50);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
-        given(node.preVote()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.isPreVote()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
         given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
@@ -82,8 +82,8 @@ class FollowerRoleTest {
     void electionTimeoutWithPreVoteEnabledAndVoteNotGranted() throws InterruptedException {
         Duration electionTimeout = Duration.ofMillis(10);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
-        given(node.preVote()).willReturn(true);
-        given(node.availableSenders()).willReturn(Flux.just(sender1, sender2));
+        given(raftGroup.isPreVote()).willReturn(true);
+        given(raftGroup.availableSenders()).willReturn(Flux.just(sender1, sender2));
         given(raftGroup.quorum()).willReturn(2);
 
         PreVoteResponse preVoteResponse = PreVoteResponse
@@ -353,7 +353,7 @@ class FollowerRoleTest {
     @Test
     void requestPreVoteLeaderStickiness() {
         initFollower();
-        given(node.leaderStickiness()).willReturn(true);
+        given(raftGroup.isLeaderStickiness()).willReturn(true);
         given(raftGroup.lastAppendEntriesWithinElectionTimeout()).willReturn(true);
         raftStorage.update(1, 0);
 
@@ -377,7 +377,7 @@ class FollowerRoleTest {
     @Test
     void requestPreVoteLeaderStickinessButNoAppendEntriesCall() {
         initFollower();
-        given(node.leaderStickiness()).willReturn(true);
+        given(raftGroup.isLeaderStickiness()).willReturn(true);
         given(raftGroup.lastAppendEntriesWithinElectionTimeout()).willReturn(false);
         raftStorage.update(1, 0);
 
@@ -401,7 +401,7 @@ class FollowerRoleTest {
     @Test
     void requestPreVoteNoLeaderStickinessCandidateNextTermSmallerThanFollowerCurrentTerm() {
         initFollower();
-        given(node.leaderStickiness()).willReturn(false);
+        given(raftGroup.isLeaderStickiness()).willReturn(false);
         raftStorage.update(3, 0);
 
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()

@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
 
 public class KVStateMachine implements StateMachine<ByteBuffer> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KVStateMachine1.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KVStateMachine.class);
 
     private int nodeId;
     private int number;

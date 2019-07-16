@@ -29,7 +29,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
 
     @Override
     public void execute(ParseResult parseResult) {
-        MainCommand mainCommand = mainCommand(parseResult);
+/*        MainCommand mainCommand = mainCommand(parseResult);
         AgentCommand agentCommand = command(parseResult, AgentCommand.class);
 
         Mono<Node> raftServerMono = new NodeBuilder()
@@ -43,7 +43,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
                 .stateMachine(stateMachine(mainCommand.getPort(), agentCommand.getStateMachine()))
                 .stateMachineEntryConverter(stateMachineEntryConverter(agentCommand.getStateMachine()))
                 .start();
-        raftServerMono.block();
+        raftServerMono.block();*/
 
     }
 

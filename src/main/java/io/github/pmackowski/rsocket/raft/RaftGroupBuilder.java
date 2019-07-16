@@ -46,6 +46,7 @@ public class RaftGroupBuilder {
     }
 
     public RaftGroup build() {
-        return new RaftGroup(raftStorage, name, nodes);
+//        return new RaftGroup(raftStorage, name, nodes);
+        return null;
     }
 }

@@ -40,7 +40,7 @@ public class NodeBuilder {
 
     public Mono<Node> start() {
         return Mono.defer(() -> {
-           DefaultNode kvStoreServer = new DefaultNode(nodeId, raftConfiguration, raftStorageConfiguration, cluster);
+           DefaultNode kvStoreServer = new DefaultNode(nodeId, cluster);
            return Mono.just(kvStoreServer).doOnNext(DefaultNode::start);
         });
     }

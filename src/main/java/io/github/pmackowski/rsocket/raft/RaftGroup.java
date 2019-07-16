@@ -10,6 +10,7 @@ import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.reader.LogStorageReader;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
@@ -33,35 +34,12 @@ public class RaftGroup {
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroup.class);
 
     RaftStorage raftStorage;
-    DefaultNode defaultRaftServer;
-    int nodeId;
-    String groupName;
-    LogStorageReader logStorageReader;
+    private InnerNode node;
+    private String groupName;
+    private RaftConfiguration raftConfiguration;
+    private LogStorageReader logStorageReader;
 
-    public RaftGroup() {
-    }
-
-    public RaftGroup(RaftStorage raftStorage, String groupName, List<Integer> nodes) {
-
-    }
-
-    public RaftGroup(RaftStorage raftStorage, DefaultNode defaultRaftServer, String groupName, List<Integer> nodes) {
-        this.raftStorage = raftStorage;
-        this.logStorageReader = raftStorage.openCommittedEntriesReader();
-        this.defaultRaftServer = defaultRaftServer;
-        this.nodeId = defaultRaftServer.nodeId;
-        this.groupName = groupName;
-        this.currentConfiguration = raftStorage.getConfiguration();
-        if (currentConfiguration == null) {
-            this.currentConfiguration = new Configuration(nodes);
-            this.raftStorage.updateConfiguration(currentConfiguration);
-        }
-//        if (defaultRaftServer.isPassive()) {
-//            this.nodeState = new PassiveRole();
-//        }
-    }
-
-    private RaftServerRole nodeState = new FollowerRole();
+    private RaftRole nodeState = new FollowerRole();
     private AtomicInteger currentLeaderId = new AtomicInteger(0);
     private AtomicLong lastApplied = new AtomicLong(0);
     private AtomicLong lastAppendEntriesCall = new AtomicLong(0); // maybe globally for all groups ?
@@ -77,14 +55,49 @@ public class RaftGroup {
 
     Lock configurationLock = new ReentrantLock();
 
-//    void onInit(DefaultNode raftServer, RaftStorage raftStorage) {
-    void onInit(DefaultNode raftServer) {
-        nodeState.onInit(raftServer, this, raftStorage);
+    public RaftGroup() {
+    }
+
+    public RaftGroup(RaftStorage raftStorage, RaftConfiguration raftConfiguration, InnerNode node, String groupName, Configuration configuration) {
+        this.raftStorage = raftStorage;
+        this.logStorageReader = raftStorage.openCommittedEntriesReader();
+        this.node = node;
+        this.raftConfiguration = raftConfiguration;
+        this.groupName = groupName;
+        this.currentConfiguration = raftStorage.getConfiguration();
+        if (currentConfiguration == null) {
+            this.currentConfiguration = configuration;
+            this.raftStorage.updateConfiguration(currentConfiguration);
+        }
+//        if (defaultRaftServer.isPassive()) {
+//            this.nodeState = new PassiveRole();
+//        }
+    }
+
+    public RaftConfiguration getRaftConfiguration() {
+        return raftConfiguration;
+    }
+
+    //    void onInit(DefaultNode raftServer, RaftStorage raftStorage) {
+    void onInit() {
+        nodeState.onInit(node, this, raftStorage);
+    }
+
+    public boolean isPreVote() {
+        return raftConfiguration.isPreVote();
+    }
+
+    public boolean isLeaderStickiness() {
+        return raftConfiguration.isLeaderStickiness();
     }
 
     void voteForMyself() {
         int term = raftStorage.getTerm();
-        raftStorage.update(term + 1, nodeId);
+        raftStorage.update(term + 1, node.getNodeId());
+    }
+
+    public Flux<Sender> availableSenders() {
+        return node.getSenders().availableSenders(this);
     }
 
     public String getGroupName() {
@@ -117,7 +130,7 @@ public class RaftGroup {
 
     void convertToFollower(int term) {
         if (term < raftStorage.getTerm()) {
-            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", nodeId, nodeState, raftStorage.getTerm(), term));
+            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", node.getNodeId(), nodeState, raftStorage.getTerm(), term));
         }
         if (term > raftStorage.getTerm()) {
             raftStorage.update(term, 0);
@@ -139,33 +152,33 @@ public class RaftGroup {
 
     void convertToLeader() {
         transitionBetweenStates(NodeState.CANDIDATE, new LeaderRole());
-        setCurrentLeader(nodeId);
+        setCurrentLeader(node.getNodeId());
     }
 
-    private void transitionBetweenStates(NodeState stateFrom, RaftServerRole raftServerRole) {
+    private void transitionBetweenStates(NodeState stateFrom, RaftRole raftRole) {
         if (nodeState.nodeState() != stateFrom) {
-            throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", nodeId, nodeState, stateFrom, raftServerRole.nodeState()));
+            throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", node.getNodeId(), nodeState, stateFrom, raftRole.nodeState()));
         }
-        LOGGER.info("[Node {}] State transition {} -> {}", nodeId, stateFrom, raftServerRole.nodeState());
-        nodeState.onExit(defaultRaftServer, this, raftStorage);
-        nodeState = raftServerRole;
-        nodeState.onInit(defaultRaftServer, this, raftStorage);
+        LOGGER.info("[Node {}] State transition {} -> {}", node.getNodeId(), stateFrom, raftRole.nodeState());
+        nodeState.onExit(node, this, raftStorage);
+        nodeState = raftRole;
+        nodeState.onInit(node, this, raftStorage);
     }
 
     public int getCurrentLeaderId() {
         return currentLeaderId.get();
     }
 
-    public void onExit(DefaultNode raftServer, RaftStorage raftStorage) {
+    public void onExit() {
 
     }
 
-    public Mono<Payload> onClientRequest(InnerNode node, Payload payload) {
-        return nodeState.onClientRequest(defaultRaftServer, this, this.raftStorage, payload);
+    public Mono<Payload> onClientRequest(Payload payload) {
+        return nodeState.onClientRequest(node, this, this.raftStorage, payload);
     }
 
-    public Flux<Payload> onClientRequests(DefaultNode defaultRaftServer, RaftStorage raftStorage, Publisher<Payload> payloads) {
-        return nodeState.onClientRequests(defaultRaftServer, this, this.raftStorage, payloads);
+    public Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
+        return nodeState.onClientRequests(node, this, this.raftStorage, payloads);
     }
 
     public boolean lastAppendEntriesWithinElectionTimeout() {
@@ -195,7 +208,7 @@ public class RaftGroup {
     public void setCommitIndex(long commitIndex) {
         raftStorage.commit(commitIndex);
         if (commitIndex >= currentConfigurationId && currentConfigurationId > previousConfigurationId) {
-            LOGGER.info("[Node {}] Configuration {} committed", nodeId, currentConfiguration);
+            LOGGER.info("[Node {}] Configuration {} committed", node.getNodeId(), currentConfiguration);
             raftStorage.updateConfiguration(currentConfiguration);
             previousConfigurationId = currentConfigurationId;
         }
@@ -203,29 +216,29 @@ public class RaftGroup {
     }
 
     public Duration nextElectionTimeout() {
-        this.currentElectionTimeout = defaultRaftServer.getElectionTimeout().nextRandom();
-        LOGGER.info("[Node {}] Current election timeout {}", nodeId, currentElectionTimeout);
+        this.currentElectionTimeout = raftConfiguration.getElectionTimeout().nextRandom();
+        LOGGER.info("[Node {}] Current election timeout {}", node.getNodeId(), currentElectionTimeout);
         return currentElectionTimeout;
     }
 
-    public Mono<AppendEntriesResponse> onAppendEntries(DefaultNode defaultRaftServer, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
-        return nodeState.onAppendEntries(defaultRaftServer, this, this.raftStorage, appendEntries);
+    public Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
+        return nodeState.onAppendEntries(node, this, this.raftStorage, appendEntries);
     }
 
-    public Mono<PreVoteResponse> onPreRequestVote(DefaultNode defaultRaftServer, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
-        return nodeState.onPreRequestVote(defaultRaftServer, this, this.raftStorage, preRequestVote);
+    public Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
+        return nodeState.onPreRequestVote(node, this, this.raftStorage, preRequestVote);
     }
 
-    public Mono<VoteResponse> onRequestVote(DefaultNode defaultRaftServer, RaftStorage raftStorage, VoteRequest requestVote) {
-        return nodeState.onRequestVote(defaultRaftServer, this, this.raftStorage, requestVote);
+    public Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
+        return nodeState.onRequestVote(node, this, this.raftStorage, requestVote);
     }
 
-    public Mono<AddServerResponse> onAddServer(DefaultNode defaultRaftServer, RaftStorage raftStorage, AddServerRequest addServerRequest) {
-        return nodeState.onAddServer(defaultRaftServer, this, this.raftStorage, addServerRequest);
+    public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
+        return nodeState.onAddServer(node, this, this.raftStorage, addServerRequest);
     }
 
-    public Mono<RemoveServerResponse> onRemoveServer(DefaultNode defaultRaftServer, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
-        return nodeState.onRemoveServer(defaultRaftServer, this, this.raftStorage, removeServerRequest);
+    public Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest) {
+        return nodeState.onRemoveServer(node, this, this.raftStorage, removeServerRequest);
     }
 
     public void addConfigurationChangeListener(ConfigurationChangeListener configurationChangeListener) {
@@ -256,7 +269,7 @@ public class RaftGroup {
             configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
 
             // If this server was removed, step down.
-            if (oldMember == nodeId) {
+            if (oldMember == node.getNodeId()) {
                 this.convertToPassive();
             }
         });
@@ -295,11 +308,11 @@ public class RaftGroup {
         LogEntry logEntry = indexedLogEntry.getLogEntry();
         if (logEntry instanceof ConfigurationEntry) {
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
-            LOGGER.info("[Node {}] New configuration {}", nodeId, configurationEntry.getMembers());
+            LOGGER.info("[Node {}] New configuration {}", node.getNodeId(), configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
 //            senders.replaceWith(currentConfiguration);
-            if (!currentConfiguration.getMembers().contains(nodeId)) {
+            if (!currentConfiguration.getMembers().contains(node.getNodeId())) {
                 convertToPassive();
             }
         }
@@ -310,28 +323,32 @@ public class RaftGroup {
         LogEntry logEntry = indexedLogEntry.getLogEntry();
         if (logEntry instanceof ConfigurationEntry) {
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
-            LOGGER.info("[Node {}] New configuration {}", nodeId, configurationEntry.getMembers());
+            LOGGER.info("[Node {}] New configuration {}", node.getNodeId(), configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
 //            senders.replaceWith(currentConfiguration);
-            if (currentConfiguration.getMembers().contains(nodeId)) {
+            if (currentConfiguration.getMembers().contains(node.getNodeId())) {
                 this.convertToFollower(raftStorage.getTerm());
             }
         }
     }
 
-    public void advanceStateMachine(DefaultNode defaultRaftServer) {
+    public void advanceStateMachine() {
 
         // very inefficient
         while (logStorageReader.hasNext()) {
             final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-            LOGGER.info("[Server {}] advance state machine for group {}, next {}", defaultRaftServer.nodeId, groupName, indexedLogEntry);
+            LOGGER.info("[Server {}] advance state machine for group {}, next {}", node.getNodeId(), groupName, indexedLogEntry);
             if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
-                ByteBuffer response = defaultRaftServer.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
+                ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
                 lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", nodeId, groupName, indexedLogEntry.getIndex());
+                LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", node.getNodeId(), groupName, indexedLogEntry.getIndex());
             }
         }
         logStorageReader.close();
+    }
+
+    public Mono<Sender> getSenderById(int newServer) {
+        return node.getSenders().getSenderById(newServer);
     }
 }
