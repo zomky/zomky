@@ -31,7 +31,7 @@ public class SenderConfirmOperatorTest {
     private static final int TEN_MESSAGES = 10;
 
     @Spy
-    private DefaultRaftServer node;
+    private DefaultNode node;
 
     @Spy
     private RaftGroup raftGroup;

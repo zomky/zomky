@@ -1,32 +1,8 @@
 package io.github.pmackowski.rsocket.raft.integration.clusterconfiguration;
 
-import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
-import io.github.pmackowski.rsocket.raft.RaftServer;
-import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
-import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
-import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
-import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
-import io.github.pmackowski.rsocket.raft.kvstore.KVStoreClient;
-import io.github.pmackowski.rsocket.raft.kvstore.KeyValue;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -42,9 +18,9 @@ class ClusterConfigurationIntegrationTest {
 
     ElectionTimeout electionTimeout = new ElectionTimeout();
 
-    Mono<RaftServer> raftServerMono1, raftServerMono2;
+    Mono<Node> raftServerMono1, raftServerMono2;
     RaftStorage raftStorage1, raftStorage2;
-    RaftServer raftServer1, raftServer2;
+    Node raftServer1, raftServer2;
 
     @BeforeEach
     void setUp() {
@@ -53,7 +29,7 @@ class ClusterConfigurationIntegrationTest {
         raftStorage1 = IntegrationTestsUtils.raftStorage(directory, "1");
         raftStorage2 = IntegrationTestsUtils.raftStorage(directory, "2");
 
-        raftServerMono1 = new RaftServerBuilder()
+        raftServerMono1 = new NodeBuilder()
                 .nodeId(7000)
                 .storage(raftStorage1)
                 .stateMachine(new KVStateMachine(7000))
@@ -62,7 +38,7 @@ class ClusterConfigurationIntegrationTest {
                 .initialConfiguration(new Configuration(7000))
                 .start();
 
-        raftServerMono2 = new RaftServerBuilder()
+        raftServerMono2 = new NodeBuilder()
                 .nodeId(7001)
                 .storage(raftStorage2)
                 .stateMachine(new KVStateMachine(7001))

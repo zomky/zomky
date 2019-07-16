@@ -91,8 +91,8 @@ public class LeaderRole implements RaftServerRole {
     }
 
     @Override
-    public void onInit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
-        node.availableSenders(raftGroup).subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+        node.getSenders().availableSenders(raftGroup).subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
         node.onSenderAvailable(sender -> {
             if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
                 initHeartbeats(node, raftGroup, raftStorage, sender);
@@ -101,7 +101,7 @@ public class LeaderRole implements RaftServerRole {
 
         node.onSenderUnavailable(sender -> {
             if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
-                LOGGER.info("[RaftServer {}] Sender unavailable {}", node.nodeId, sender.getNodeId());
+                LOGGER.info("[Node {}] Sender unavailable {}", node.getNodeId(), sender.getNodeId());
                 Disposable disposable = heartbeats.remove(sender.getNodeId());
                 if (disposable != null) {
                     disposable.dispose();
@@ -115,41 +115,41 @@ public class LeaderRole implements RaftServerRole {
     }
 
     @Override
-    public void onExit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         heartbeats.values().forEach(Disposable::dispose);
     }
 
     @Override
-    public Mono<Payload> onClientRequest(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, Payload payload) {
-        return onClientRequests(raftServer, raftGroup, raftStorage, Mono.just(payload)).next();
+    public Mono<Payload> onClientRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Payload payload) {
+        return onClientRequests(node, raftGroup, raftStorage, Mono.just(payload)).next();
     }
 
     @Override
-    public Flux<Payload> onClientRequests(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
+    public Flux<Payload> onClientRequests(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
         // TODO it has nothing to do with state machine, should depend on the client
-        return (raftServer.stateMachine != null) ?
-            new SenderLastAppliedOperator(payloads, raftServer, raftGroup, raftStorage) :
-            new SenderConfirmOperator(payloads, raftServer, raftGroup, raftStorage);
+        return (node.getRaftConfiguration().getStateMachine() != null) ?
+            new SenderLastAppliedOperator(payloads, node, raftGroup, raftStorage) :
+            new SenderConfirmOperator(payloads, raftGroup, raftStorage);
     }
 
     @Override
-    public Mono<RemoveServerResponse> onRemoveServer(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
+    public Mono<RemoveServerResponse> onRemoveServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
         return Mono.just(removeServerRequest)
                 .doOnNext(i -> raftGroup.removeServer(removeServerRequest))
                 .doOnError(throwable -> LOGGER.error("Remove server has failed!", throwable))
-                .thenReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(true).build())
-                .onErrorReturn(RemoveServerResponse.newBuilder().setLeaderHint(raftServer.nodeId).setStatus(false).build());
+                .thenReturn(RemoveServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(true).build())
+                .onErrorReturn(RemoveServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(false).build());
     }
 
     @Override
-    public Mono<AddServerResponse> onAddServer(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+    public Mono<AddServerResponse> onAddServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AddServerRequest addServerRequest) {
         // Catch up new server for fixed number of rounds. Reply TIMEOUT
         // if new server does not make progress for an election timeout or
         // if the last round takes longer than election timeout
 
         final BoundedLogStorageReader logStorageReader = new BoundedLogStorageReader(raftStorage.openReader());
         CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
-        return node.createSender(addServerRequest).flatMap(sender -> {
+        return node.getSenders().getSenderById(addServerRequest.getNewServer()).flatMap(sender -> {
                 final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftGroup, raftStorage, logStorageReader);
                 return sender.appendEntries(raftGroup, appendEntriesRequest)
                         .doOnNext(appendEntriesResponse -> {
@@ -179,8 +179,8 @@ public class LeaderRole implements RaftServerRole {
             })
             .doOnNext(i -> raftGroup.addServer(addServerRequest))
             .doOnError(throwable -> LOGGER.error("Add server has failed!", throwable))
-            .thenReturn(AddServerResponse.newBuilder().setLeaderHint(node.nodeId).setStatus(true).build())
-            .onErrorReturn(AddServerResponse.newBuilder().setLeaderHint(node.nodeId).setStatus(false).build());
+            .thenReturn(AddServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(true).build())
+            .onErrorReturn(AddServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(false).build());
     }
 
     private Repeat<CatchUpContext> lessThanMaxRounds(CatchUpContext catchUpContext) {
@@ -227,8 +227,8 @@ public class LeaderRole implements RaftServerRole {
         }
     }
 
-    private void initHeartbeats(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
-        LOGGER.info("[RaftServer {}] Sender available {}", node.nodeId, sender.getNodeId());
+    private void initHeartbeats(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
+        LOGGER.info("[Node {}] Sender available {}", node.getNodeId(), sender.getNodeId());
         try {
             long senderNextIndex = senderNextIndex(raftStorage);
             nextIndex.put(sender.getNodeId(), senderNextIndex);
@@ -246,7 +246,7 @@ public class LeaderRole implements RaftServerRole {
         return lastLogIndex + 1;
     }
 
-    private Flux<AppendEntriesResponse> heartbeats(Sender sender, RaftStorage raftStorage, DefaultRaftServer node, RaftGroup raftGroup) {
+    private Flux<AppendEntriesResponse> heartbeats(Sender sender, RaftStorage raftStorage, InnerNode node, RaftGroup raftGroup) {
         return Mono.defer(() -> Mono.just(heartbeatRequest(sender, node, raftGroup, raftStorage)))
                    .flatMap(appendEntriesRequest -> sender.appendEntries(raftGroup, appendEntriesRequest)
                              .doOnNext(appendEntriesResponse -> {
@@ -267,7 +267,7 @@ public class LeaderRole implements RaftServerRole {
                                  } else {
                                      // If AppendEntries fails because of log inconsistency decrement nextIndex and retry
                                      // TODO now retry is done in next heartbeat
-                                     LOGGER.info("[RaftServer {}] Decrease nextIndex for sender {}", node.nodeId, sender.getNodeId());
+                                     LOGGER.info("[Node {}] Decrease nextIndex for sender {}", node.getNodeId(), sender.getNodeId());
                                      long next = nextIndex.get(sender.getNodeId()) - 1;
                                      nextIndex.put(sender.getNodeId(), Math.max(next, 1));
                                  }
@@ -277,13 +277,13 @@ public class LeaderRole implements RaftServerRole {
                    .repeatWhen(repeatFactory);
     }
 
-    private AppendEntriesRequest heartbeatRequest(Sender sender, DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    private AppendEntriesRequest heartbeatRequest(Sender sender, InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         long senderNextIndex = nextIndex.get(sender.getNodeId());
         BoundedLogStorageReader logStorageReader = logStorageReaders.get(sender.getNodeId());
         return appendEntriesRequest(senderNextIndex, node, raftGroup, raftStorage, logStorageReader);
     }
 
-    private AppendEntriesRequest appendEntriesRequest(long senderNextIndex, DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, BoundedLogStorageReader logStorageReader) {
+    private AppendEntriesRequest appendEntriesRequest(long senderNextIndex, InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, BoundedLogStorageReader logStorageReader) {
         long prevLogIndex = senderNextIndex - 1;
         int prevLogTerm = raftStorage.getTermByIndex(prevLogIndex);
 
@@ -298,7 +298,7 @@ public class LeaderRole implements RaftServerRole {
 
         return builder
                 .setTerm(raftStorage.getTerm())
-                .setLeaderId(node.nodeId)
+                .setLeaderId(node.getNodeId())
                 .setPrevLogIndex(prevLogIndex)
                 .setPrevLogTerm(prevLogTerm)
                 .setLeaderCommit(raftGroup.getCommitIndex())

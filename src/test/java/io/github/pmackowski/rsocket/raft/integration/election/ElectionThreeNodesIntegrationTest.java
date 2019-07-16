@@ -1,30 +1,11 @@
 package io.github.pmackowski.rsocket.raft.integration.election;
 
-import io.github.pmackowski.rsocket.raft.ElectionTimeout;
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
-import io.github.pmackowski.rsocket.raft.RaftServer;
-import io.github.pmackowski.rsocket.raft.RaftServerBuilder;
-import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
-import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
-import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
-import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
-import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Mono;
-
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
@@ -36,8 +17,8 @@ class ElectionThreeNodesIntegrationTest {
     @Mock
     ElectionTimeout electionTimeout1, electionTimeout2, electionTimeout3;
 
-    Mono<RaftServer> raftServerMono1, raftServerMono2, raftServerMono3;
-    RaftServer raftServer1, raftServer2, raftServer3;
+    Mono<Node> raftServerMono1, raftServerMono2, raftServerMono3;
+    Node raftServer1, raftServer2, raftServer3;
     RaftStorage raftStorage1, raftStorage2, raftStorage3;
 
     @BeforeEach
@@ -167,20 +148,20 @@ class ElectionThreeNodesIntegrationTest {
     }
 
 
-    private Mono<RaftServer> monoFirstRaftServer(boolean preVote) {
+    private Mono<Node> monoFirstRaftServer(boolean preVote) {
         return monoRaftServer(7000, raftStorage1, electionTimeout1, preVote);
     }
 
-    private Mono<RaftServer> monoSecondRaftServer(boolean preVote) {
+    private Mono<Node> monoSecondRaftServer(boolean preVote) {
         return monoRaftServer(7001, raftStorage2, electionTimeout2, preVote);
     }
 
-    private Mono<RaftServer> monoThirdRaftServer(boolean preVote) {
+    private Mono<Node> monoThirdRaftServer(boolean preVote) {
         return monoRaftServer(7002, raftStorage3, electionTimeout3, preVote);
     }
 
-    private Mono<RaftServer> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout, boolean preVote) {
-        return new RaftServerBuilder()
+    private Mono<Node> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout, boolean preVote) {
+        return new NodeBuilder()
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))

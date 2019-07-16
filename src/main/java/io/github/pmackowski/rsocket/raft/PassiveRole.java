@@ -22,17 +22,17 @@ public class PassiveRole implements RaftServerRole {
     }
 
     @Override
-    public void onInit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage) {
-        LOGGER.info("[Node {}] Passive", raftServer.nodeId);
+    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+        LOGGER.info("[Node {}] Passive", node.getNodeId());
     }
 
     @Override
-    public void onExit(DefaultRaftServer raftServer, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
 
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {
                     int currentTerm = raftStorage.getTerm();

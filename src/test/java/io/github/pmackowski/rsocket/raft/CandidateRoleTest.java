@@ -23,7 +23,7 @@ public class CandidateRoleTest {
     CandidateRole candidateRole = new CandidateRole();
 
     @Mock
-    DefaultRaftServer node;
+    DefaultNode node;
 
     @Mock
     RaftGroup raftGroup;

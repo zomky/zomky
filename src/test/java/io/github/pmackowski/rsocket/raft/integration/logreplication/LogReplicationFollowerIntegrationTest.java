@@ -38,8 +38,8 @@ class LogReplicationFollowerIntegrationTest {
     @Mock
     ElectionTimeout electionTimeout;
 
-    Mono<RaftServer> raftServerMono;
-    InternalRaftServer raftServer;
+    Mono<Node> raftServerMono;
+    InnerNode raftServer;
     RaftStorage raftStorage;
 
     @BeforeEach
@@ -59,7 +59,7 @@ class LogReplicationFollowerIntegrationTest {
         // given
         given(electionTimeout.nextRandom()).willReturn(Duration.ofMinutes(100));
         raftServerMono = monoFirstRaftServer();
-        raftServer = (InternalRaftServer) raftServerMono.block();
+        raftServer = (InnerNode) raftServerMono.block();
         assertThat(raftServer.isFollower()).isTrue();
 
         // when
@@ -83,12 +83,12 @@ class LogReplicationFollowerIntegrationTest {
                 }).verifyComplete();
     }
 
-    private Mono<RaftServer> monoFirstRaftServer() {
+    private Mono<Node> monoFirstRaftServer() {
         return monoRaftServer(7000, raftStorage, electionTimeout);
     }
 
-    private Mono<RaftServer> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout) {
-        return new RaftServerBuilder()
+    private Mono<Node> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout) {
+        return new NodeBuilder()
                 .nodeId(nodeId)
                 .storage(raftStorage)
                 .stateMachine(new KVStateMachine(nodeId))

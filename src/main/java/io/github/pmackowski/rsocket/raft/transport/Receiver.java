@@ -2,8 +2,9 @@ package io.github.pmackowski.rsocket.raft.transport;
 
 import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.InternalRaftServer;
+import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.RaftGroups;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
@@ -21,35 +22,33 @@ public class Receiver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Receiver.class);
 
-    private InternalRaftServer node;
-    private int nodeId;
+    private InnerNode node;
 
     private CloseableChannel raftReceiver, clientReceiver;
 
-    public Receiver(InternalRaftServer node, int nodeId) {
+    public Receiver(InnerNode node) {
         this.node = node;
-        this.nodeId = nodeId;
     }
 
     public void start() {
         raftReceiver = RSocketFactory.receive()
                 .acceptor(new RaftSocketAcceptor(node))
-                .transport(TcpServerTransport.create(nodeId))
+                .transport(TcpServerTransport.create(node.getNodeId()))
                 .start()
                 .block();
 
         raftReceiver.onClose()
-                .doFinally(signalType -> LOGGER.warn("[Node {}] Raft onClose", nodeId))
+                .doFinally(signalType -> LOGGER.warn("[Node {}] Raft onClose", node.getNodeId()))
                 .subscribe();
 
         clientReceiver = RSocketFactory.receive()
                 .acceptor(new ClientSocketAcceptor(node))
-                .transport(TcpServerTransport.create(nodeId + 10000))
+                .transport(TcpServerTransport.create(node.getNodeId() + 10000))
                 .start()
                 .block();
 
         clientReceiver.onClose()
-                .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", nodeId))
+                .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", node.getNodeId()))
                 .subscribe();
 
     }
@@ -61,9 +60,9 @@ public class Receiver {
 
     private static class ClientSocketAcceptor implements SocketAcceptor {
 
-        private InternalRaftServer node;
+        private InnerNode node;
 
-        public ClientSocketAcceptor(InternalRaftServer node) {
+        public ClientSocketAcceptor(InnerNode node) {
             this.node = node;
         }
 
@@ -73,12 +72,14 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    return node.onClientRequest(payload);
+                    RaftGroups raftGroups = node.getRaftGroups();
+                    return raftGroups.onClientRequest(payload);
                 }
 
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    return node.onClientRequests(payloads);
+                    RaftGroups raftGroups = node.getRaftGroups();
+                    return raftGroups.onClientRequests(payloads);
                 }
 
             });
@@ -87,9 +88,9 @@ public class Receiver {
 
     private static class RaftSocketAcceptor implements SocketAcceptor {
 
-        private InternalRaftServer node;
+        private InnerNode node;
 
-        public RaftSocketAcceptor(InternalRaftServer node) {
+        public RaftSocketAcceptor(InnerNode node) {
             this.node = node;
         }
 
@@ -101,35 +102,36 @@ public class Receiver {
                     MetadataRequest metadataRequest = toMetadataRequest(payload);
                     RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
                     String groupName = metadataRequest.getGroupName();
+                    RaftGroups raftGroups = node.getRaftGroups();
                     switch (rpcType) {
                         case APPEND_ENTRIES:
                             return Mono.just(payload)
                                     .map(this::toAppendEntriesRequest)
-                                    .flatMap(appendEntriesRequest -> node.onAppendEntries(groupName, appendEntriesRequest))
+                                    .flatMap(appendEntriesRequest -> raftGroups.onAppendEntries(groupName, appendEntriesRequest))
                                     .map(this::toPayload);
 
                         case PRE_REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toPreVoteRequest)
-                                    .flatMap(preVoteRequest -> node.onPreRequestVote(groupName, preVoteRequest))
+                                    .flatMap(preVoteRequest -> raftGroups.onPreRequestVote(groupName, preVoteRequest))
                                     .map(this::toPayload);
 
                         case REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toVoteRequest)
-                                    .flatMap(voteRequest -> node.onRequestVote(groupName, voteRequest))
+                                    .flatMap(voteRequest -> raftGroups.onRequestVote(groupName, voteRequest))
                                     .map(this::toPayload);
 
                         case ADD_SERVER:
                             return Mono.just(payload)
                                     .map(this::toAddServerRequest)
-                                    .flatMap(addServerRequest -> node.onAddServer(groupName, addServerRequest))
+                                    .flatMap(addServerRequest -> raftGroups.onAddServer(groupName, addServerRequest))
                                     .map(this::toPayload);
 
                         case REMOVE_SERVER:
                             return Mono.just(payload)
                                     .map(this::toRemoveServerRequest)
-                                    .flatMap(removeServerRequest -> node.onRemoveServer(groupName, removeServerRequest))
+                                    .flatMap(removeServerRequest -> raftGroups.onRemoveServer(groupName, removeServerRequest))
                                     .map(this::toPayload);
 
                         case INFO:

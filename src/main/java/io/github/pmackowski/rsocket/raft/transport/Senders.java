@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
-import io.github.pmackowski.rsocket.raft.InternalRaftServer;
+import io.github.pmackowski.rsocket.raft.InnerNode;
+import io.github.pmackowski.rsocket.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -8,6 +9,7 @@ import io.rsocket.transport.netty.client.TcpClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Set;
 import java.util.concurrent.*;
@@ -17,23 +19,27 @@ public class Senders {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Senders.class);
 
-    private InternalRaftServer raftServer;
+    private InnerNode node;
     private int nodeId;
 
     private ScheduledExecutorService executorService;
 
     private ConcurrentMap<Integer, Sender> senders = new ConcurrentHashMap<>();
 
-    public Senders(InternalRaftServer raftServer, int nodeId) {
-        this.raftServer = raftServer;
+    public Senders(InnerNode node, int nodeId) {
+        this.node = node;
         this.nodeId = nodeId;
         allMembersExcept(nodeId).forEach(clientPort -> {
             senders.put(clientPort, Sender.unavailableSender(clientPort));
         });
     }
 
+    public Mono<Sender> getSenderById(int nodeId) {
+        return Mono.justOrEmpty(senders.get(nodeId));
+    }
+
     public Set<Integer> allMembersExcept(int memberId) {
-        return raftServer.nodes().stream().filter(member -> !member.equals(memberId)).collect(Collectors.toSet());
+        return node.nodes().stream().filter(member -> !member.equals(memberId)).collect(Collectors.toSet());
     }
 
     public void addServer(int newMember) {
@@ -46,7 +52,7 @@ public class Senders {
         final Sender sender = senders.remove(oldMember);
         if (sender != null) {
             sender.stop();
-            raftServer.senderUnavailable(sender);
+            node.senderUnavailable(sender);
         }
     }
 
@@ -75,7 +81,7 @@ public class Senders {
                             .subscribe();
                     doAvailableSender(nodeId, raftRsocket);
                 } catch (Exception e) { // TODO more specific exceptions
-                    LOGGER.debug("[RaftServer {}] no access to server {}", nodeId, nodeId, e);
+                    LOGGER.debug("[Node {}] no access to server {}", nodeId, nodeId, e);
                 }
             });
         }, 0, 100, TimeUnit.MILLISECONDS);
@@ -98,6 +104,10 @@ public class Senders {
         });
     }
 
+    public Flux<Sender> availableSenders(RaftGroup raftGroup) {
+        return availableSenders(raftGroup.getCurrentConfiguration().allMembersExcept(nodeId));
+    }
+
     public Flux<Sender> availableSenders(Set<Integer> nodesSubset) {
         return Flux.create(emitter -> {
             // TODO emitter.requestedFromDownstream()
@@ -115,19 +125,19 @@ public class Senders {
 
     private void doUnavailableSender(int nodeId) {
         Sender sender = Sender.unavailableSender(nodeId);
-        LOGGER.warn("[RaftServer {} -> RaftServer {}] connection unavailable", this.nodeId, nodeId);
+        LOGGER.warn("[Node {} -> Node {}] connection unavailable", this.nodeId, nodeId);
         if (allMembersExcept(this.nodeId).contains(nodeId)) {
             senders.put(nodeId, sender);
         }
-        raftServer.senderUnavailable(sender);
+        node.senderUnavailable(sender);
     }
 
     private void doAvailableSender(int nodeId, RSocket raftRsocket) {
-        LOGGER.info("[RaftServer {} -> RaftServer {}] connection available", nodeId, nodeId);
+        LOGGER.info("[Node {} -> Node {}] connection available", nodeId, nodeId);
         Sender sender = Sender.availableSender(nodeId, raftRsocket);
         if (allMembersExcept(this.nodeId).contains(nodeId)) {
             senders.put(nodeId, sender);
         }
-        raftServer.senderAvailable(sender);
+        node.senderAvailable(sender);
     }
 }

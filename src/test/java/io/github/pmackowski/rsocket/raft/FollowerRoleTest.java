@@ -33,7 +33,7 @@ class FollowerRoleTest {
     FollowerRole followerRole = new FollowerRole();
 
     @Mock
-    DefaultRaftServer node;
+    DefaultNode node;
 
     @Mock
     RaftGroup raftGroup;

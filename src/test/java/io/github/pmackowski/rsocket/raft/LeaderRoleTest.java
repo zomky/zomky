@@ -45,7 +45,7 @@ public class LeaderRoleTest {
     Sender sender1, sender2;
 
     @Mock
-    DefaultRaftServer node;
+    DefaultNode node;
 
     @Mock
     RaftGroup raftGroup;

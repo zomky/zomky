@@ -23,7 +23,7 @@ public class CandidateRole implements RaftServerRole {
     }
 
     @Override
-    public void onInit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (raftGroup.quorum() == 1)  {
             raftGroup.voteForMyself();
             raftGroup.convertToLeader();
@@ -36,21 +36,21 @@ public class CandidateRole implements RaftServerRole {
     }
 
     @Override
-    public void onExit(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (subscription != null) {
             subscription.dispose();
         }
     }
 
-    private Mono<Void> startElection(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
+    private Mono<Void> startElection(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
         return Mono.just(raftGroup)
                    .doOnNext(RaftGroup::voteForMyself)
                    .then(sendVotes(node, raftGroup, raftStorage, electionContext));
     }
 
 
-    private Mono<Void> sendVotes(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
-        return node.availableSenders(raftGroup)
+    private Mono<Void> sendVotes(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
+        return node.getSenders().availableSenders(raftGroup)
                 .flatMap(sender -> sendVoteRequest(node, raftGroup, raftStorage, sender))
                 .doOnNext(voteResponse -> {
                     if (voteResponse.getTerm() > raftStorage.getTerm()) {
@@ -71,7 +71,7 @@ public class CandidateRole implements RaftServerRole {
                     // TODO what if subscription is null ??
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
-                        LOGGER.info("[RaftServer {}] Election timeout ({})", node.nodeId, subscription.isDisposed());
+                        LOGGER.info("[Node {}] Election timeout ({})", node.getNodeId(), subscription.isDisposed());
                         electionContext.setRepeatElection(repeatElection);
                     }
                     return Mono.empty();
@@ -79,22 +79,22 @@ public class CandidateRole implements RaftServerRole {
                 .then();
     }
 
-    private Mono<VoteResponse> sendVoteRequest(DefaultRaftServer node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
+    private Mono<VoteResponse> sendVoteRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
         if (!raftGroup.isCandidate()) {
-            LOGGER.info("[RaftServer {} -> RaftServer {}] Vote dropped", node.nodeId, sender.getNodeId());
+            LOGGER.info("[Node {} -> Node {}] Vote dropped", node.getNodeId(), sender.getNodeId());
             return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
         }
 
         IndexedTerm last = raftStorage.getLastIndexedTerm();
         VoteRequest requestVote = VoteRequest.newBuilder()
                 .setTerm(raftStorage.getTerm())
-                .setCandidateId(node.nodeId)
+                .setCandidateId(node.getNodeId())
                 .setLastLogIndex(last.getIndex())
                 .setLastLogTerm(last.getTerm())
                 .build();
         return sender.requestVote(raftGroup, requestVote)
                 .onErrorResume(throwable -> {
-                    LOGGER.error("[RaftServer {} -> RaftServer {}] Vote failure", node.nodeId, requestVote.getCandidateId(), throwable);
+                    LOGGER.error("[Node {} -> Node {}] Vote failure", node.getNodeId(), requestVote.getCandidateId(), throwable);
                     return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
                 });
     }
