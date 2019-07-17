@@ -1,5 +1,7 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.InnerNode;
+import io.github.pmackowski.rsocket.raft.Node;
 import io.github.pmackowski.rsocket.raft.listener.ConfigurationChangeListener;
 import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;

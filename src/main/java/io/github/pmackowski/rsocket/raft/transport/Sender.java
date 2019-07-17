@@ -1,8 +1,8 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.RaftGroup;
+import io.github.pmackowski.rsocket.raft.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.Payload;

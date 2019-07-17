@@ -1,5 +1,6 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.kvstore.KVStateMachine;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;

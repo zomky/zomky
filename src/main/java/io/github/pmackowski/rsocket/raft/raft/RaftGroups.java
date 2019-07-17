@@ -1,5 +1,6 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
@@ -27,7 +28,7 @@ public class RaftGroups {
         // TODO initialize from storage
     }
 
-    void start() {
+    public void start() {
         LOGGER.info("[Node {}] start groups", node.getNodeId());
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
@@ -46,7 +47,7 @@ public class RaftGroups {
         raftGroup.onInit();
     }
 
-    void dispose() {
+    public void dispose() {
         raftGroups.values().forEach(raftGroup -> raftGroup.onExit());
         stateMachineExecutor.shutdownNow();
     }

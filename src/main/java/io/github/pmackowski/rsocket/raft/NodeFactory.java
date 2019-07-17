@@ -12,6 +12,10 @@ public class NodeFactory {
         return new ClientNodeFactory();
     }
 
+    public static ClientNodeFactory connectGroup(String groupName) {
+        return new ClientNodeFactory();
+    }
+
     public static ServerNodeFactory receive() {
         return new ServerNodeFactory();
     }
@@ -30,8 +34,6 @@ public class NodeFactory {
                         .transport(TcpClientTransport.create(port + 10000))
                         .start();
         }
-
-
     }
 
     public static class ServerNodeFactory {

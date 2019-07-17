@@ -1,5 +1,6 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
@@ -45,7 +46,7 @@ public class LeaderRoleTest {
     Sender sender1, sender2;
 
     @Mock
-    DefaultNode node;
+    InnerNode node;
 
     @Mock
     RaftGroup raftGroup;

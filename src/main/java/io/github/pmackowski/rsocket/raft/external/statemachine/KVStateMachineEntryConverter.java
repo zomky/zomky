@@ -1,8 +1,8 @@
 package io.github.pmackowski.rsocket.raft.external.statemachine;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.StateMachineEntryConverter;
+import io.github.pmackowski.rsocket.raft.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.raft.StateMachineEntryConverter;
 import io.github.pmackowski.rsocket.raft.annotation.ZomkyStateMachineEntryConventer;
 import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;

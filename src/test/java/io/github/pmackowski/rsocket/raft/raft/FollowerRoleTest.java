@@ -1,6 +1,7 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
 import com.google.protobuf.ByteString;
+import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
@@ -33,7 +34,7 @@ class FollowerRoleTest {
     FollowerRole followerRole = new FollowerRole();
 
     @Mock
-    DefaultNode node;
+    InnerNode node;
 
     @Mock
     RaftGroup raftGroup;

@@ -1,7 +1,7 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
 import io.github.pmackowski.rsocket.raft.InnerNode;
-import io.github.pmackowski.rsocket.raft.RaftGroup;
+import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;

@@ -1,5 +1,6 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
@@ -23,7 +24,7 @@ public class CandidateRoleTest {
     CandidateRole candidateRole = new CandidateRole();
 
     @Mock
-    DefaultNode node;
+    InnerNode node;
 
     @Mock
     RaftGroup raftGroup;

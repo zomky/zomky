@@ -1,8 +1,10 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.rsocket.Payload;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -11,18 +13,16 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
 import reactor.core.publisher.Operators;
 
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
+public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
     private RaftGroup raftGroup;
     private RaftStorage raftStorage;
 
-    SenderConfirmOperator(Publisher<? extends Payload> source, RaftGroup raftGroup, RaftStorage raftStorage) {
+    SenderLastAppliedOperator(Publisher<? extends Payload> source, RaftGroup raftGroup, RaftStorage raftStorage) {
         super(Flux.from(source));
         this.raftGroup = raftGroup;
         this.raftStorage = raftStorage;
@@ -30,10 +30,10 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
     @Override
     public void subscribe(CoreSubscriber<? super Payload> actual) {
-        source.subscribe(new PublishConfirmSubscriber(actual, raftGroup, raftStorage));
+        source.subscribe(new PublishLastAppliedSubscriber(actual, raftGroup, raftStorage));
     }
 
-    private static class PublishConfirmSubscriber implements CoreSubscriber<Payload> , Subscription {
+    private static class PublishLastAppliedSubscriber implements CoreSubscriber<Payload>, Subscription {
 
         enum SubscriberState {
             INIT,
@@ -48,10 +48,10 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private Subscriber<? super Payload> subscriber;
         private RaftGroup raftGroup;
         private RaftStorage raftStorage;
-        private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
+        private final ConcurrentMap<Long, Payload> unconfirmed = new ConcurrentHashMap<>();
         private Subscription subscription;
 
-        public PublishConfirmSubscriber(Subscriber<? super Payload> subscriber, RaftGroup raftGroup, RaftStorage raftStorage) {
+        public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, RaftGroup raftGroup, RaftStorage raftStorage) {
             this.subscriber = subscriber;
             this.raftGroup = raftGroup;
             this.raftStorage = raftStorage;
@@ -60,14 +60,11 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         @Override
         public void onSubscribe(Subscription subscription) {
             if (Operators.validate(this.subscription, subscription)) {
-                raftGroup.addConfirmListener(index -> {
+                raftGroup.addLastAppliedListener((index, response) -> {
                     try {
-                        ConcurrentNavigableMap<Long, Payload> unconfirmedToSend = unconfirmed.headMap(index, true);
-                        Iterator<Map.Entry<Long, Payload>> iterator = unconfirmedToSend.entrySet().iterator();
-                        // unconfirmed size is not greater than number of requested elements
-                        while (iterator.hasNext()) {
-                            subscriber.onNext(iterator.next().getValue());
-                            iterator.remove();
+                        Payload payload = unconfirmed.remove(index);
+                        if (payload != null) {
+                            subscriber.onNext(ByteBufPayload.create(response, payload.sliceData())); //TODO payload.sliceData() in metadata ???
                         }
                         if (unconfirmed.size() == 0) {
                             maybeComplete();
@@ -89,7 +86,8 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
             }
 
             try {
-                IndexedLogEntry logEntryInfo = raftStorage.append(payload.getData());
+                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), raftGroup.getRaftConfiguration().getStateMachineEntryConverter().convert(payload));
+                IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
                 if (raftGroup.quorum() == 1) {
                     raftGroup.setCommitIndex(logEntryInfo.getIndex());
                 }
@@ -141,13 +139,12 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
             }
         }
 
-        private <T> boolean checkComplete(T t) {
+        private  <T> boolean checkComplete(T t) {
             boolean complete = state.get() == SubscriberState.COMPLETE;
             if (complete && firstException.get() == null) {
                 Operators.onNextDropped(t, currentContext());
             }
             return complete;
         }
-
     }
 }

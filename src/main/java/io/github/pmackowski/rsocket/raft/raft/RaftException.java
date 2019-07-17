@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft;
+package io.github.pmackowski.rsocket.raft.raft;
 
 public class RaftException extends RuntimeException {
 
