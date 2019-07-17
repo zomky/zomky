@@ -88,16 +88,28 @@ public class RaftGroup {
         return groupName;
     }
 
+    public Duration getCurrentElectionTimeout() {
+        return currentElectionTimeout;
+    }
+
     public void appendEntriesCall() {
         this.lastAppendEntriesCall.set(System.currentTimeMillis());
     }
 
-    public void addConfirmListener(ConfirmListener zomkyStorageConfirmListener) {
-        confirmListeners.add(zomkyStorageConfirmListener);
+    public void addConfirmListener(ConfirmListener confirmListener) {
+        confirmListeners.add(confirmListener);
+    }
+
+    public void removeConfirmListener(ConfirmListener confirmListener) {
+        confirmListeners.remove(confirmListener);
     }
 
     public void addLastAppliedListener(LastAppliedListener lastAppliedListener) {
         lastAppliedListeners.add(lastAppliedListener);
+    }
+
+    public void removeLastAppliedListener(LastAppliedListener lastAppliedListener) {
+        lastAppliedListeners.remove(lastAppliedListener);
     }
 
     void setCurrentLeader(int nodeId) {

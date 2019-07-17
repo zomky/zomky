@@ -1,6 +1,6 @@
 package io.github.pmackowski.rsocket.raft.raft;
 
-import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
+import io.github.pmackowski.rsocket.raft.listener.ConfirmListener;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
 import io.rsocket.Payload;
@@ -49,6 +49,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private Subscriber<? super Payload> subscriber;
         private RaftGroup raftGroup;
         private RaftStorage raftStorage;
+        private ConfirmListener confirmListener;
         private final ConcurrentNavigableMap<Long, Payload> unconfirmed = new ConcurrentSkipListMap<>();
         private Subscription subscription;
 
@@ -61,7 +62,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         @Override
         public void onSubscribe(Subscription subscription) {
             if (Operators.validate(this.subscription, subscription)) {
-                raftGroup.addConfirmListener(index -> {
+                this.confirmListener = index -> {
                     try {
                         ConcurrentNavigableMap<Long, Payload> unconfirmedToSend = unconfirmed.headMap(index, true);
                         Iterator<Map.Entry<Long, Payload>> iterator = unconfirmedToSend.entrySet().iterator();
@@ -76,7 +77,8 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
                     } catch (Exception e) {
                         handleError(e);
                     }
-                });
+                };
+                raftGroup.addConfirmListener(confirmListener);
                 this.subscription = subscription;
                 state.set(SubscriberState.ACTIVE);
                 subscriber.onSubscribe(this);
@@ -104,6 +106,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         public void onError(Throwable throwable) {
             if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.COMPLETE) ||
                     state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE)) {
+                raftGroup.removeConfirmListener(confirmListener);
                 subscriber.onError(throwable);
             } else if (firstException.compareAndSet(null, throwable) && state.get() == SubscriberState.COMPLETE) {
                 Operators.onErrorDropped(throwable, currentContext());
@@ -112,7 +115,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onComplete() {
-            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.size() == 0) {
+            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.isEmpty()) {
                 maybeComplete();
             }
         }
@@ -130,6 +133,7 @@ public class SenderConfirmOperator extends FluxOperator<Payload, Payload> {
         private void maybeComplete() {
             boolean done = state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE);
             if (done) {
+                raftGroup.removeConfirmListener(confirmListener);
                 subscriber.onComplete();
             }
         }

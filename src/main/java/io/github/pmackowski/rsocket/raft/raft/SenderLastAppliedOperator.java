@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.listener.LastAppliedListener;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.IndexedLogEntry;
@@ -48,6 +49,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         private Subscriber<? super Payload> subscriber;
         private RaftGroup raftGroup;
         private RaftStorage raftStorage;
+        private LastAppliedListener lastAppliedListener;
         private final ConcurrentMap<Long, Payload> unconfirmed = new ConcurrentHashMap<>();
         private Subscription subscription;
 
@@ -60,7 +62,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         @Override
         public void onSubscribe(Subscription subscription) {
             if (Operators.validate(this.subscription, subscription)) {
-                raftGroup.addLastAppliedListener((index, response) -> {
+                lastAppliedListener = (index, response) -> {
                     try {
                         Payload payload = unconfirmed.remove(index);
                         if (payload != null) {
@@ -72,7 +74,8 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
                     } catch (Exception e) {
                         handleError(e);
                     }
-                });
+                };
+                raftGroup.addLastAppliedListener(lastAppliedListener);
                 this.subscription = subscription;
                 state.set(SubscriberState.ACTIVE);
                 subscriber.onSubscribe(this);
@@ -101,6 +104,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         public void onError(Throwable throwable) {
             if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.COMPLETE) ||
                     state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE)) {
+                raftGroup.removeLastAppliedListener(lastAppliedListener);
                 subscriber.onError(throwable);
             } else if (firstException.compareAndSet(null, throwable) && state.get() == SubscriberState.COMPLETE) {
                 Operators.onErrorDropped(throwable, currentContext());
@@ -109,7 +113,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onComplete() {
-            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.size() == 0) {
+            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.isEmpty()) {
                 maybeComplete();
             }
         }
@@ -127,6 +131,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         private void maybeComplete() {
             boolean done = state.compareAndSet(SubscriberState.OUTBOUND_DONE, SubscriberState.COMPLETE);
             if (done) {
+                raftGroup.removeLastAppliedListener(lastAppliedListener);
                 subscriber.onComplete();
             }
         }

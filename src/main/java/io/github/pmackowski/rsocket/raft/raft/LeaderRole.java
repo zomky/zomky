@@ -180,7 +180,8 @@ public class LeaderRole implements RaftRole {
             .last()
             .doOnNext(tuple -> {
                 long elapsedTime = tuple.getT1();
-                if (elapsedTime > ElectionTimeout.ELECTION_TIMEOUT_MIN_IN_MILLIS) {
+                Duration maxElectionTimeout = raftGroup.getCurrentElectionTimeout();
+                if (elapsedTime > maxElectionTimeout.toMillis()) {
                     throw new RaftException(new TimeoutException());
                 }
             })

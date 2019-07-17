@@ -35,7 +35,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class LeaderRoleTest {
+class LeaderRoleTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRoleTest.class);
 
     private static final Repeat<Object> NO_REPEAT = Repeat.onlyIf(objectRepeatContext -> false);

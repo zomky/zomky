@@ -6,6 +6,7 @@ public class RaftConfiguration {
 
     private static final boolean DEFAULT_PRE_VOTE = true;
     private static final boolean DEFAULT_LEADER_STICKINESS = true;
+    public static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 150;
 
     private boolean preVote;
     private boolean leaderStickiness;
@@ -47,7 +48,7 @@ public class RaftConfiguration {
 
         private boolean preVote = DEFAULT_PRE_VOTE;
         private boolean leaderStickiness = DEFAULT_LEADER_STICKINESS;
-        private ElectionTimeout electionTimeout = new ElectionTimeout();
+        private ElectionTimeout electionTimeout = ElectionTimeout.random(ELECTION_TIMEOUT_MIN_IN_MILLIS);
         private StateMachine<ByteBuffer> stateMachine;
         private StateMachineEntryConverter stateMachineEntryConverter;
 
