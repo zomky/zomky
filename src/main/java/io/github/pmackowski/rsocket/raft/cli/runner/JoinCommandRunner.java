@@ -15,10 +15,13 @@ public class JoinCommandRunner implements ZomkyCommandRunner {
 
     @Override
     public void execute(ParseResult parseResult) {
+        /*
         MainCommand mainCommand = mainCommand(parseResult);
         JoinCommand joinCommand = command(parseResult, JoinCommand.class);
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient(mainCommand.getPort());
         clusterManagementClient.addServer(joinCommand.getJoinNodeId()).block();
+
+         */
     }
 
 }

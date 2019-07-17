@@ -94,6 +94,7 @@ public class LeaderRole implements RaftRole {
     @Override
     public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         raftGroup.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
+        // TODO should be raftGroup
         node.onSenderAvailable(sender -> {
             if (sender.getNodeId() == node.getNodeId()) {
                 return;
@@ -156,7 +157,9 @@ public class LeaderRole implements RaftRole {
 
         final BoundedLogStorageReader logStorageReader = new BoundedLogStorageReader(raftStorage.openReader());
         CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
-        return raftGroup.getSenderById(addServerRequest.getNewServer()).flatMap(sender -> {
+        return raftGroup.getSenderById(addServerRequest.getNewServer())
+                .flatMap(sender -> sender.createGroup(raftGroup.getGroupName(), CreateGroupRequest.newBuilder().build()).then(Mono.just(sender)))
+                .flatMap(sender -> {
                 final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftGroup, raftStorage, logStorageReader);
                 return sender.appendEntries(raftGroup, appendEntriesRequest)
                         .doOnNext(appendEntriesResponse -> {
@@ -275,7 +278,7 @@ public class LeaderRole implements RaftRole {
                                  } else {
                                      // If AppendEntries fails because of log inconsistency decrement nextIndex and retry
                                      // TODO now retry is done in next heartbeat
-                                     LOGGER.info("[Node {}] Decrease nextIndex for sender {}", node.getNodeId(), sender.getNodeId());
+                                     LOGGER.info("[Node {}][group {}] Decrease nextIndex for sender {}", node.getNodeId(), raftGroup.getGroupName(), sender.getNodeId());
                                      long next = nextIndex.get(sender.getNodeId()) - 1;
                                      nextIndex.put(sender.getNodeId(), Math.max(next, 1));
                                  }

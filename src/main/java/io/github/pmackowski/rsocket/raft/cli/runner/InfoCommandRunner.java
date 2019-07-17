@@ -17,12 +17,12 @@ public class InfoCommandRunner implements ZomkyCommandRunner {
 
     @Override
     public void execute(CommandLine.ParseResult parseResult) {
-        MainCommand mainCommand = mainCommand(parseResult);
+        /*MainCommand mainCommand = mainCommand(parseResult);
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient(mainCommand.getPort());
         clusterManagementClient.clusterInfo()
                 .doOnNext(clusterInfo -> {
                     LOGGER.info("Cluster info {}", clusterInfo);
                 })
-                .block();
+                .block();*/
     }
 }

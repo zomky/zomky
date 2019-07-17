@@ -155,7 +155,7 @@ public class RaftGroup {
         if (nodeState.nodeState() != stateFrom) {
             throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", node.getNodeId(), nodeState, stateFrom, raftRole.nodeState()));
         }
-        LOGGER.info("[Node {}] State transition {} -> {}", node.getNodeId(), stateFrom, raftRole.nodeState());
+        LOGGER.info("[Node {}][group {}] State transition {} -> {}", node.getNodeId(), groupName, stateFrom, raftRole.nodeState());
         nodeState.onExit(node, this, raftStorage);
         nodeState = raftRole;
         nodeState.onInit(node, this, raftStorage);
@@ -213,7 +213,7 @@ public class RaftGroup {
 
     public Duration nextElectionTimeout() {
         this.currentElectionTimeout = raftConfiguration.getElectionTimeout().nextRandom();
-        LOGGER.info("[Node {}] Current election timeout {}", node.getNodeId(), currentElectionTimeout);
+        LOGGER.info("[Node {}][Group {}] Current election timeout {}", node.getNodeId(), groupName, currentElectionTimeout);
         return currentElectionTimeout;
     }
 
@@ -360,6 +360,7 @@ public class RaftGroup {
         private InnerNode node;
         private String groupName;
         private Configuration configuration;
+        private RaftRole role;
 
         private Builder() {
         }
@@ -395,6 +396,11 @@ public class RaftGroup {
             return this;
         }
 
+        public Builder raftRole(RaftRole raftRole) {
+            this.role = raftRole;
+            return this;
+        }
+
         public Builder configuration(Configuration configuration) {
             this.configuration = configuration;
             return this;
@@ -406,6 +412,7 @@ public class RaftGroup {
             raftGroup.logStorageReader = raftStorage.openCommittedEntriesReader();
             raftGroup.raftConfiguration = raftConfiguration;
             raftGroup.node = node;
+            raftGroup.nodeState = role;
             raftGroup.groupName = groupName;
             raftGroup.currentConfiguration = raftStorage.getConfiguration();
             if (raftGroup.currentConfiguration == null) {

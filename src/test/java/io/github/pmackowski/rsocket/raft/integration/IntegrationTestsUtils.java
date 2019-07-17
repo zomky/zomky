@@ -2,7 +2,10 @@ package io.github.pmackowski.rsocket.raft.integration;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.Node;
+import io.github.pmackowski.rsocket.raft.NodeFactory;
 import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
+import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
 import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
@@ -14,6 +17,9 @@ import reactor.blockhound.BlockHound;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static io.github.pmackowski.rsocket.raft.storage.log.serializer.LogEntrySerializer.serialize;
 
@@ -62,6 +68,17 @@ public class IntegrationTestsUtils {
                     }
                 })
                 .orElse(null);
+    }
+
+    public static Map<Integer, Node> startNodes(int numberOfNodes, int firstPort) {
+        Cluster cluster = new Cluster(IntStream.range(0, numberOfNodes).map(i -> firstPort +i).toArray());
+        return IntStream.range(0, numberOfNodes)
+                .mapToObj(i -> NodeFactory.receive()
+                        .port(firstPort + i)
+                        .cluster(cluster)
+                        .start()
+                        .block())
+                .collect(Collectors.toMap(Node::getNodeId, n -> n));
     }
 
 }

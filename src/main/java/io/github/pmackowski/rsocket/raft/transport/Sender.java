@@ -112,6 +112,18 @@ public class Sender {
                 });
     }
 
+    public Mono<CreateGroupResponse> createGroup(String groupName, CreateGroupRequest createGroupRequest) {
+        Payload payload = ByteBufPayload.create(createGroupRequest.toByteArray(), metadataRequest(groupName, RpcType.CREATE_GROUP));
+        return raftSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return CreateGroupResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid create group response!", e);
+                    }
+                });
+    }
+
     public int getNodeId() {
         return nodeId;
     }

@@ -72,7 +72,7 @@ public class CandidateRole implements RaftRole {
                     // TODO what if subscription is null ??
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
-                        LOGGER.info("[Node {}] Election timeout ({})", node.getNodeId(), subscription.isDisposed());
+                        LOGGER.info("[Node {}][group {}] Election timeout ({})", node.getNodeId(), raftGroup.getGroupName(), subscription.isDisposed());
                         electionContext.setRepeatElection(repeatElection);
                     }
                     return Mono.empty();
@@ -82,7 +82,7 @@ public class CandidateRole implements RaftRole {
 
     private Mono<VoteResponse> sendVoteRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
         if (!raftGroup.isCandidate()) {
-            LOGGER.info("[Node {} -> Node {}] Vote dropped", node.getNodeId(), sender.getNodeId());
+            LOGGER.info("[Node {} -> Node {}][group {}] Vote dropped", node.getNodeId(), sender.getNodeId(), raftGroup.getGroupName());
             return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
         }
 
@@ -95,7 +95,7 @@ public class CandidateRole implements RaftRole {
                 .build();
         return sender.requestVote(raftGroup, requestVote)
                 .onErrorResume(throwable -> {
-                    LOGGER.error("[Node {} -> Node {}] Vote failure", node.getNodeId(), requestVote.getCandidateId(), throwable);
+                    LOGGER.error(String.format("[Node %s -> Node %s][group %s] Vote failure", node.getNodeId(), requestVote.getCandidateId(), raftGroup.getGroupName()), throwable);
                     return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
                 });
     }

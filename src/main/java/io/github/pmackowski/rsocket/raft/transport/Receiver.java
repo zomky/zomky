@@ -134,6 +134,12 @@ public class Receiver {
                                     .flatMap(removeServerRequest -> raftGroups.onRemoveServer(groupName, removeServerRequest))
                                     .map(this::toPayload);
 
+                        case CREATE_GROUP:
+                            return Mono.just(payload)
+                                    .map(this::toCreateGroupRequest)
+                                    .flatMap(createGroupRequest -> raftGroups.onCreateGroup(groupName, createGroupRequest))
+                                    .map(this::toPayload);
+
                         case INFO:
                             return Mono.just(payload)
                                     .map(this::toInfoRequest)
@@ -190,6 +196,14 @@ public class Receiver {
                         return RemoveServerRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid remove server request!", e);
+                    }
+                }
+
+                private CreateGroupRequest toCreateGroupRequest(Payload payload) {
+                    try {
+                        return CreateGroupRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid create group request!", e);
                     }
                 }
 
