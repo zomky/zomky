@@ -352,7 +352,6 @@ public class RaftGroup {
         return new Builder();
     }
 
-
     private RaftGroup() {}
 
     public static class Builder {

@@ -88,8 +88,8 @@ public class Sender {
                 });
     }
 
-    public Mono<AddServerResponse> addServer(RaftGroup raftGroup, AddServerRequest addServerRequest) {
-        Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.ADD_SERVER));
+    public Mono<AddServerResponse> addServer(String groupName, AddServerRequest addServerRequest) {
+        Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), metadataRequest(groupName, RpcType.ADD_SERVER));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {

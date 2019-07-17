@@ -6,7 +6,7 @@ public class RaftConfiguration {
 
     private static final boolean DEFAULT_PRE_VOTE = true;
     private static final boolean DEFAULT_LEADER_STICKINESS = true;
-    public static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 150;
+    private static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 200;
 
     private boolean preVote;
     private boolean leaderStickiness;
