@@ -5,6 +5,9 @@ import java.util.Random;
 
 public class ElectionTimeout {
 
+    private static final int DEFAULT_ELECTION_TIMEOUT = 200;
+
+
     private static final Random RANDOM = new Random();
 
     private int minMilliseconds;
@@ -39,6 +42,10 @@ public class ElectionTimeout {
     // [ELECTION_TIMEOUT_MIN_IN_MILLIS, 2*ELECTION_TIMEOUT_MIN_IN_MILLIS)
     public static ElectionTimeout random(Duration min) {
         return between((int) min.toMillis(), (int) (2 * min.toMillis()));
+    }
+
+    public static ElectionTimeout defaultTimeout() {
+        return new ElectionTimeout(DEFAULT_ELECTION_TIMEOUT, DEFAULT_ELECTION_TIMEOUT);
     }
 
     public Duration nextRandom() {

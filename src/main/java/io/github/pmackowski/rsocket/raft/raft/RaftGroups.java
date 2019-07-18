@@ -135,4 +135,8 @@ public class RaftGroups {
     public void convertToFollower(int term) {
 
     }
+
+    public RaftGroup getByName(String groupName) {
+        return raftGroups.get(groupName);
+    }
 }

@@ -80,15 +80,15 @@ public final class Raft {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_MetadataRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_CreateGroupRequest_descriptor;
+    internal_static_AddGroupRequest_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_CreateGroupRequest_fieldAccessorTable;
+      internal_static_AddGroupRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_CreateGroupResponse_descriptor;
+    internal_static_AddGroupResponse_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_CreateGroupResponse_fieldAccessorTable;
+      internal_static_AddGroupResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -122,12 +122,11 @@ public final class Raft {
       "\032\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
       "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
       "se\022\014\n\004term\030\001 \001(\005\";\n\017MetadataRequest\022\024\n\014m" +
-      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t\"J\n" +
-      "\022CreateGroupRequest\022\022\n\ngroup_name\030\001 \001(\t\022" +
-      "\021\n\tleader_id\030\002 \001(\005\022\r\n\005nodes\030\003 \003(\005\"%\n\023Cre" +
-      "ateGroupResponse\022\016\n\006status\030\001 \001(\010B8\n4io.g" +
-      "ithub.pmackowski.rsocket.raft.transport." +
-      "protobufP\001b\006proto3"
+      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t\"3\n" +
+      "\017AddGroupRequest\022\021\n\tleader_id\030\002 \001(\005\022\r\n\005n" +
+      "odes\030\003 \003(\005\"\"\n\020AddGroupResponse\022\016\n\006status" +
+      "\030\001 \001(\010B8\n4io.github.pmackowski.rsocket.r" +
+      "aft.transport.protobufP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -219,17 +218,17 @@ public final class Raft {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MetadataRequest_descriptor,
         new java.lang.String[] { "MessageType", "GroupName", });
-    internal_static_CreateGroupRequest_descriptor =
+    internal_static_AddGroupRequest_descriptor =
       getDescriptor().getMessageTypes().get(13);
-    internal_static_CreateGroupRequest_fieldAccessorTable = new
+    internal_static_AddGroupRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_CreateGroupRequest_descriptor,
-        new java.lang.String[] { "GroupName", "LeaderId", "Nodes", });
-    internal_static_CreateGroupResponse_descriptor =
+        internal_static_AddGroupRequest_descriptor,
+        new java.lang.String[] { "LeaderId", "Nodes", });
+    internal_static_AddGroupResponse_descriptor =
       getDescriptor().getMessageTypes().get(14);
-    internal_static_CreateGroupResponse_fieldAccessorTable = new
+    internal_static_AddGroupResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_CreateGroupResponse_descriptor,
+        internal_static_AddGroupResponse_descriptor,
         new java.lang.String[] { "Status", });
   }
 

@@ -31,7 +31,7 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class RaftGroupsTest {
-
+/*
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroupsTest.class);
 
     private static final boolean PRE_VOTE = true;
@@ -157,4 +157,5 @@ class RaftGroupsTest {
             raftServer4.dispose();
         }
     }
+*/
 }

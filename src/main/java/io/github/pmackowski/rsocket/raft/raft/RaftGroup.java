@@ -67,6 +67,10 @@ public class RaftGroup {
         nodeState.onInit(node, this, raftStorage);
     }
 
+    public RaftStorage getRaftStorage() {
+        return raftStorage;
+    }
+
     public boolean isPreVote() {
         return raftConfiguration.isPreVote();
     }
