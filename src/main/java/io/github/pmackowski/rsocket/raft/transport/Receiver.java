@@ -3,9 +3,9 @@ package io.github.pmackowski.rsocket.raft.transport;
 import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.*;
@@ -199,9 +199,9 @@ public class Receiver {
                     }
                 }
 
-                private CreateGroupRequest toCreateGroupRequest(Payload payload) {
+                private AddGroupRequest toCreateGroupRequest(Payload payload) {
                     try {
-                        return CreateGroupRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                        return AddGroupRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid create group request!", e);
                     }

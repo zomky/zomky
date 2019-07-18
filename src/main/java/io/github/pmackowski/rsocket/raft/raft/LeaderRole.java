@@ -94,7 +94,6 @@ public class LeaderRole implements RaftRole {
     @Override
     public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
         raftGroup.availableSenders().subscribe(sender -> initHeartbeats(node, raftGroup, raftStorage, sender));
-        // TODO should be raftGroup
         node.onSenderAvailable(sender -> {
             if (sender.getNodeId() == node.getNodeId()) {
                 return;
@@ -109,15 +108,7 @@ public class LeaderRole implements RaftRole {
                 return;
             }
             if (raftGroup.getCurrentConfiguration().getMembers().contains(sender.getNodeId())) {
-                LOGGER.info("[Node {}] Sender unavailable {}", node.getNodeId(), sender.getNodeId());
-                Disposable disposable = heartbeats.remove(sender.getNodeId());
-                if (disposable != null) {
-                    disposable.dispose();
-                }
-                BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
-                if (logStorageReader != null) {
-                    logStorageReader.close();
-                }
+                removeHeartbeats(node, raftGroup, sender);
             }
         });
     }
@@ -144,6 +135,7 @@ public class LeaderRole implements RaftRole {
     public Mono<RemoveServerResponse> onRemoveServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
         return Mono.just(removeServerRequest)
                 .doOnNext(i -> raftGroup.removeServer(removeServerRequest))
+                .doOnNext(i -> removeHeartbeats(node, raftGroup, node.getSenders().senderById(removeServerRequest.getOldServer())))
                 .doOnError(throwable -> LOGGER.error("Remove server has failed!", throwable))
                 .thenReturn(RemoveServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(true).build())
                 .onErrorReturn(RemoveServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(false).build());
@@ -157,8 +149,9 @@ public class LeaderRole implements RaftRole {
 
         final BoundedLogStorageReader logStorageReader = new BoundedLogStorageReader(raftStorage.openReader());
         CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
+        raftGroup.getSenderById(addServerRequest.getNewServer());
         return raftGroup.getSenderById(addServerRequest.getNewServer())
-                .flatMap(sender -> sender.createGroup(raftGroup.getGroupName(), CreateGroupRequest.newBuilder().build()).then(Mono.just(sender)))
+                .flatMap(sender -> sender.createGroup(raftGroup.getGroupName(), AddGroupRequest.newBuilder().build()).then(Mono.just(sender)))
                 .flatMap(sender -> {
                 final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftGroup, raftStorage, logStorageReader);
                 return sender.appendEntries(raftGroup, appendEntriesRequest)
@@ -189,6 +182,8 @@ public class LeaderRole implements RaftRole {
                 }
             })
             .doOnNext(i -> raftGroup.addServer(addServerRequest))
+            // TODO refactoring
+            .doOnNext(i -> initHeartbeats(node, raftGroup, raftStorage, node.getSenders().senderById(addServerRequest.getNewServer())))
             .doOnError(throwable -> LOGGER.error("Add server has failed!", throwable))
             .thenReturn(AddServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(true).build())
             .onErrorReturn(AddServerResponse.newBuilder().setLeaderHint(node.getNodeId()).setStatus(false).build());
@@ -239,7 +234,7 @@ public class LeaderRole implements RaftRole {
     }
 
     private void initHeartbeats(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
-        LOGGER.info("[Node {}] Sender available {}", node.getNodeId(), sender.getNodeId());
+        LOGGER.info("[Node {}][group {}] Sender available {}", node.getNodeId(), raftGroup.getGroupName(), sender.getNodeId());
         try {
             long senderNextIndex = senderNextIndex(raftStorage);
             nextIndex.put(sender.getNodeId(), senderNextIndex);
@@ -249,6 +244,18 @@ public class LeaderRole implements RaftRole {
         } catch (Exception e) {
             LOGGER.error("initHeartbeats", e);
             throw new StorageException(e);
+        }
+    }
+
+    private void removeHeartbeats(InnerNode node, RaftGroup raftGroup, Sender sender) {
+        LOGGER.info("[Node {}][group {}] Sender unavailable {}", node.getNodeId(), raftGroup.getGroupName(), sender.getNodeId());
+        Disposable disposable = heartbeats.remove(sender.getNodeId());
+        if (disposable != null) {
+            disposable.dispose();
+        }
+        BoundedLogStorageReader logStorageReader = logStorageReaders.remove(sender.getNodeId());
+        if (logStorageReader != null) {
+            logStorageReader.close();
         }
     }
 

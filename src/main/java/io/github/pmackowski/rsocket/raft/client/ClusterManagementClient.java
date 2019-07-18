@@ -2,9 +2,7 @@ package io.github.pmackowski.rsocket.raft.client;
 
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerResponse;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.CreateGroupRequest;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -18,15 +16,14 @@ public class ClusterManagementClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClusterManagementClient.class);
 
     public Mono<Void> createGroup(String groupName, int leaderId, Configuration configuration) {
-        CreateGroupRequest createGroupRequest = CreateGroupRequest.newBuilder()
-                .addAllNodes(configuration.getMembers())
+        AddGroupRequest addGroupRequest = AddGroupRequest.newBuilder()
                 .setLeaderId(leaderId)
-                .setGroupName(groupName)
+                .addAllNodes(configuration.getMembers())
                 .build();
         List<Sender> senders = configuration.getMembers().stream().map(Sender::createSender).collect(Collectors.toList());
 
         return Flux.fromIterable(senders)
-                .flatMap(sender -> sender.createGroup(groupName, createGroupRequest))
+                .flatMap(sender -> sender.createGroup(groupName, addGroupRequest))
                 .then();
     }
 
@@ -34,6 +31,12 @@ public class ClusterManagementClient {
         Sender sender = Sender.createSender(leaderId);
         AddServerRequest addServerRequest = AddServerRequest.newBuilder().setNewServer(newServer).build();
         return sender.addServer(groupName, addServerRequest);
+    }
+
+    public Mono<RemoveServerResponse> removeServer(String groupName, int leaderId, int oldServer) {
+        Sender sender = Sender.createSender(leaderId);
+        RemoveServerRequest removeServerRequest = RemoveServerRequest.newBuilder().setOldServer(oldServer).build();
+        return sender.removeServer(groupName, removeServerRequest);
     }
 
     /*

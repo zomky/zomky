@@ -61,18 +61,15 @@ class NodeFactoryTest {
     @Test
     void receive2() throws InterruptedException {
 
-        Map<Integer, Node> nodes = IntegrationTestsUtils.startNodes(3, 7000);
-
-        //node.dispose();
+        IntegrationTestsUtils.startNodes(3, 7000);
 
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-
         clusterManagementClient.createGroup("group1", 7001, new Configuration(7001,7002)).block();
-
 
         Thread.sleep(2_000);
 
         clusterManagementClient.addServer("group1", 7001, 7000).block();
+        clusterManagementClient.removeServer("group1", 7001, 7002).block();
 
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
 

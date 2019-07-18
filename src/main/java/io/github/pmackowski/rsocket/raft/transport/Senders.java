@@ -36,6 +36,11 @@ public class Senders {
         return Mono.justOrEmpty(senders.get(nodeId));
     }
 
+    // TODO refactoring
+    public Sender senderById(int nodeId) {
+        return senders.get(nodeId);
+    }
+
     public Set<Integer> allMembersExcept(int memberId) {
         return this.node.getCluster().allMembersExcept(memberId);
     }

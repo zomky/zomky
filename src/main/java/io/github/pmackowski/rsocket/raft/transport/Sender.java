@@ -100,8 +100,8 @@ public class Sender {
                 });
     }
 
-    public Mono<RemoveServerResponse> removeServer(RaftGroup raftGroup, RemoveServerRequest removeServerRequest) {
-        Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.REMOVE_SERVER));
+    public Mono<RemoveServerResponse> removeServer(String groupName, RemoveServerRequest removeServerRequest) {
+        Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), metadataRequest(groupName, RpcType.REMOVE_SERVER));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {
@@ -112,12 +112,12 @@ public class Sender {
                 });
     }
 
-    public Mono<CreateGroupResponse> createGroup(String groupName, CreateGroupRequest createGroupRequest) {
+    public Mono<AddGroupResponse> createGroup(String groupName, AddGroupRequest createGroupRequest) {
         Payload payload = ByteBufPayload.create(createGroupRequest.toByteArray(), metadataRequest(groupName, RpcType.CREATE_GROUP));
         return raftSocket.requestResponse(payload)
                 .map(payload1 -> {
                     try {
-                        return CreateGroupResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                        return AddGroupResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid create group response!", e);
                     }

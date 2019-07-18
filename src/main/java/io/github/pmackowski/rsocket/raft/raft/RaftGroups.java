@@ -110,35 +110,29 @@ public class RaftGroups {
                 .doOnNext(removeServerResponse -> LOGGER.info("[Node {}][group {}] Remove server \n{} \n-> \n{}", node.getNodeId(), raftGroup.getGroupName(), removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
     }
 
-    public Mono<CreateGroupResponse> onCreateGroup(String groupName, CreateGroupRequest createGroupRequest) {
+    public Mono<AddGroupResponse> onCreateGroup(String groupName, AddGroupRequest createGroupRequest) {
         ElectionTimeout electionTimeout = createGroupRequest.getLeaderId() == node.getNodeId() ?
                 ElectionTimeout.exactly(Duration.ofMillis(200)) : ElectionTimeout.exactly(Duration.ofMillis(1200));
         RaftRole raftRole = createGroupRequest.getNodesCount() == 0 ? new PassiveRole() : new FollowerRole();
 
         RaftGroup raftGroup = RaftGroup.builder()
-//                .groupName(createGroupRequest.getGroupName())
                 .groupName(groupName)
                 .configuration(new Configuration(createGroupRequest.getNodesList()))
-                .inMemoryRaftStorage()
+                .inMemoryRaftStorage() // TODO hardcoded
                 .node(node)
-//                .raftRole(new PassiveRole())
                 .raftRole(raftRole)
                 .raftConfiguration(RaftConfiguration.builder()
-                        .stateMachine(new KVStateMachine1(node.getNodeId()))
-                        .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+                        .stateMachine(new KVStateMachine1(node.getNodeId())) // TODO hardcoded
+                        .stateMachineEntryConverter(new KVStateMachineEntryConverter()) // TODO hardcoded
                         .electionTimeout(electionTimeout)
                         .build())
                 .build();
         addGroup(raftGroup);
-        return Mono.just(CreateGroupResponse.newBuilder().setStatus(true).build())
+        return Mono.just(AddGroupResponse.newBuilder().setStatus(true).build())
                 .doOnNext(createGroupResponse -> LOGGER.info("[Node {}] Create group {}", node.getNodeId(), groupName));
     }
 
     public void convertToFollower(int term) {
 
-    }
-
-    public RaftGroup getByName(String name) {
-        return raftGroups.get(name);
     }
 }
