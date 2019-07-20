@@ -25,13 +25,12 @@ import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
 public class RaftGroup {
 
@@ -43,16 +42,16 @@ public class RaftGroup {
     private RaftConfiguration raftConfiguration;
     private LogStorageReader logStorageReader;
 
-    private RaftRole nodeState = new FollowerRole();
+    private volatile RaftRole nodeState = new FollowerRole();
     private AtomicInteger currentLeaderId = new AtomicInteger(0);
     private AtomicLong lastApplied = new AtomicLong(0);
     private AtomicLong lastAppendEntriesCall = new AtomicLong(0); // maybe globally for all groups ?
     private volatile Duration currentElectionTimeout = Duration.ofMillis(0);
 
-    private List<ConfirmListener> confirmListeners = new ArrayList<>();
-    private List<LastAppliedListener> lastAppliedListeners = new ArrayList<>();
+    private List<ConfirmListener> confirmListeners = new CopyOnWriteArrayList<>();
+    private List<LastAppliedListener> lastAppliedListeners = new CopyOnWriteArrayList<>();
 
-    private List<ConfigurationChangeListener> configurationChangeListeners = new ArrayList<>();
+    private List<ConfigurationChangeListener> configurationChangeListeners = new CopyOnWriteArrayList<>();
     private volatile Configuration currentConfiguration;
     private volatile long previousConfigurationId;
     private volatile long currentConfigurationId;
@@ -187,6 +186,10 @@ public class RaftGroup {
 
     public boolean isLeader() {
         return nodeState.nodeState() == NodeState.LEADER;
+    }
+
+    public boolean isNotLeader() {
+        return nodeState.nodeState() != NodeState.LEADER;
     }
 
     public boolean isFollower() {
@@ -345,7 +348,6 @@ public class RaftGroup {
                 LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", node.getNodeId(), groupName, indexedLogEntry.getIndex());
             }
         }
-        logStorageReader.close();
     }
 
     public Mono<Sender> getSenderById(int newServer) {
@@ -363,7 +365,6 @@ public class RaftGroup {
         private RaftConfiguration raftConfiguration;
         private InnerNode node;
         private String groupName;
-        private Configuration configuration;
         private RaftRole role;
 
         private Builder() {
@@ -384,12 +385,6 @@ public class RaftGroup {
             return this;
         }
 
-
-        public Builder raftConfiguration(RaftConfiguration.Builder defaultBuilder, Function<RaftConfiguration.Builder,RaftConfiguration.Builder> builderFunction) {
-            this.raftConfiguration = builderFunction.apply(defaultBuilder).build();
-            return this;
-        }
-
         public Builder node(Node node) {
             this.node = (InnerNode) node;
             return this;
@@ -405,23 +400,18 @@ public class RaftGroup {
             return this;
         }
 
-        public Builder configuration(Configuration configuration) {
-            this.configuration = configuration;
-            return this;
-        }
-
         public RaftGroup build() {
             RaftGroup raftGroup = new RaftGroup();
             raftGroup.raftStorage = raftStorage;
             raftGroup.logStorageReader = raftStorage.openCommittedEntriesReader();
-            raftGroup.raftConfiguration = raftConfiguration;
             raftGroup.node = node;
+            raftGroup.raftConfiguration = raftConfiguration;
             raftGroup.nodeState = role;
             raftGroup.groupName = groupName;
             raftGroup.currentConfiguration = raftStorage.getConfiguration();
             if (raftGroup.currentConfiguration == null) {
-                raftGroup.currentConfiguration = configuration;
-                this.raftStorage.updateConfiguration(configuration);
+                raftGroup.currentConfiguration = raftConfiguration.getConfiguration();
+                this.raftStorage.updateConfiguration(raftConfiguration.getConfiguration());
             }
             return raftGroup;
         }

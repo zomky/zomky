@@ -117,11 +117,11 @@ public class RaftGroups {
 
         RaftGroup raftGroup = RaftGroup.builder()
                 .groupName(groupName)
-                .configuration(new Configuration(createGroupRequest.getNodesList()))
                 .inMemoryRaftStorage() // TODO hardcoded
                 .node(node)
                 .raftRole(raftRole)
                 .raftConfiguration(RaftConfiguration.builder()
+                        .configuration(new Configuration(createGroupRequest.getNodesList()))
                         .stateMachine(new KVStateMachine1(node.getNodeId())) // TODO hardcoded
                         .stateMachineEntryConverter(new KVStateMachineEntryConverter()) // TODO hardcoded
                         .electionTimeout(electionTimeout)

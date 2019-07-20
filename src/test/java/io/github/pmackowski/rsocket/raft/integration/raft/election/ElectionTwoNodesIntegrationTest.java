@@ -1,244 +1,363 @@
 package io.github.pmackowski.rsocket.raft.integration.raft.election;
 
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
+import io.github.pmackowski.rsocket.raft.Nodes;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachine1;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
+import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
+import io.github.pmackowski.rsocket.raft.raft.ElectionTimeout;
+import io.github.pmackowski.rsocket.raft.raft.RaftConfiguration;
+import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class ElectionTwoNodesIntegrationTest {
-/*
-    @TempDir
-    Path directory;
 
-    @Mock
-    ElectionTimeout electionTimeout1, electionTimeout2;
-
-    Mono<Node> raftServerMono1, raftServerMono2;
-    Node raftServer1, raftServer2;
-    RaftStorage raftStorage1, raftStorage2;
+    Nodes nodes;
 
     @BeforeEach
     void setUp() {
         IntegrationTestsUtils.checkBlockingCalls();
-        raftStorage1 = IntegrationTestsUtils.raftStorage(directory, "1");
-        raftStorage2 = IntegrationTestsUtils.raftStorage(directory, "2");
     }
 
     @AfterEach
     void tearDown() {
-        raftStorage1.close();
-        raftStorage2.close();
-        raftServer1.dispose();
-        if (raftServer2 != null) {
-            raftServer2.dispose();
-        }
+        nodes.dispose();
     }
 
     @Test
     void electionPreVoteDisabled() {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(50));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(10));
-
-        raftServerMono1 = monoFirstRaftServer(false);
-        raftServerMono2 = monoSecondRaftServer(false);
+        nodes = Nodes.create(7000,7001);
 
         // when
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(50)))
+        );
+        nodes.addRaftGroup(7001, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(10)))
+        );
 
         // then
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer1.isLeader());
-        assertThat(raftServer2.isFollower()).isTrue();
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
 
-        assertThat(raftServer1.getCurrentLeaderId()).isEqualTo(7000);
-        assertThat(raftServer2.getCurrentLeaderId()).isEqualTo(7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7000);
 
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1);
-        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1);
-        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+        assertThat(raftGroupNode1.isLeader()).isTrue();
+        assertThat(raftGroupNode2.isFollower()).isTrue();
 
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isGreaterThanOrEqualTo(1);
+        assertThat(raftGroupNode2.getRaftStorage().getTerm()).isGreaterThanOrEqualTo(1);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isEqualTo(raftGroupNode2.getRaftStorage().getTerm());
+
+        assertThat(raftGroupNode1.getRaftStorage().getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode2.getRaftStorage().getVotedFor()).isEqualTo(7000);
+    }
+
+    @RepeatedTest(3)
+    void electionPreVoteDisabledSameElectionTimeout() {
+        // given
+        nodes = Nodes.create(7000,7001);
+
+        // when
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(100))
+        );
+        nodes.addRaftGroup(7001, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(100))
+        );
+
+        // then
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
+
+        await().atMost(50, TimeUnit.SECONDS).untilAsserted(() -> assertAllHasSameLeaderId(raftGroupNode1, raftGroupNode2));
+        assertExactlyOneLeader(raftGroupNode1, raftGroupNode2);
+        assertVotedFor(raftGroupNode1, raftGroupNode2);
+        assertTerm(raftGroupNode1, raftGroupNode2);
+
     }
 
     @Test
     void electionPreVoteDisabledOneNodeUnavailable() throws InterruptedException {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(50));
-
-        raftServerMono1 = monoFirstRaftServer(false);
+        nodes = Nodes.create(7000);
 
         // when
-        raftServer1 = raftServerMono1.block();
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(50)))
+        );
+
         Thread.sleep(1000);
 
         // then
-        assertThat(raftServer1.isCandidate()).isTrue();
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(10); // term inflation
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+
+        assertThat(raftGroupNode1.isCandidate()).isTrue();
+        assertThat(raftGroupNode1.getRaftStorage().getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isGreaterThanOrEqualTo(10); // term inflation
+    }
+
+    @Test
+    void electionPreVoteDisabledGroupAddedLater() throws InterruptedException {
+        // given
+        nodes = Nodes.create(7000,7001);
+
+        // when
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(50)))
+        );
+
+        Thread.sleep(200);
+        nodes.addRaftGroup(7001, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(10)))
+        );
+
+        // then
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
+
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7000);
+
+        assertThat(raftGroupNode1.isLeader()).isTrue();
+        assertThat(raftGroupNode2.isFollower()).isTrue();
+
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isGreaterThanOrEqualTo(1);
+        assertThat(raftGroupNode2.getRaftStorage().getTerm()).isGreaterThanOrEqualTo(1);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isEqualTo(raftGroupNode2.getRaftStorage().getTerm());
+
+        assertThat(raftGroupNode1.getRaftStorage().getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode2.getRaftStorage().getVotedFor()).isEqualTo(7000);
     }
 
     @Test
     void electionPreVoteDisabledLowerTerm() {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(10));
-
-        raftStorage2.update(1000, 7001);
-
-        raftServerMono1 = monoFirstRaftServer(false);
-        raftServerMono2 = monoSecondRaftServer(false);
+        nodes = Nodes.create(7000, 7001);
+        RaftStorage node1Storage = new InMemoryRaftStorage();
+        RaftStorage node2Storage = new InMemoryRaftStorage();
+        node2Storage.update(1000, 7001);
 
         // when
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+        nodes.addRaftGroup(7000, "group1", node1Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(300)))
+        );
+        nodes.addRaftGroup(7001, "group1", node2Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(10)))
+        );
 
         // then
-        await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer1.isLeader());
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2.isFollower());
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
 
-        assertThat(raftServer1.getCurrentLeaderId()).isEqualTo(7000);
-        assertThat(raftServer2.getCurrentLeaderId()).isEqualTo(7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7000);
 
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+        assertThat(raftGroupNode1.isLeader()).isTrue();
+        assertThat(raftGroupNode2.isFollower()).isTrue();
 
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
+        assertThat(node1Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node2Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node1Storage.getTerm()).isEqualTo(node2Storage.getTerm());
+
+        assertThat(node1Storage.getVotedFor()).isEqualTo(7000);
+        assertThat(node2Storage.getVotedFor()).isEqualTo(7000);
     }
 
     @Test
     void electionPreVoteDisabledLogNotUpToDate() {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(1));
-
-        raftStorage2.update(1000, 7001);
-        raftStorage2.append(new CommandEntry(1000, System.currentTimeMillis(), "abc".getBytes()));
-
-        raftServerMono1 = monoFirstRaftServer(false);
-        raftServerMono2 = monoSecondRaftServer(false);
+        nodes = Nodes.create(7000, 7001);
+        RaftStorage node1Storage = new InMemoryRaftStorage();
+        RaftStorage node2Storage = new InMemoryRaftStorage();
+        node2Storage.update(1000, 7001);
+        node2Storage.append(new CommandEntry(1000, System.currentTimeMillis(), "abc".getBytes()));
 
         // when
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+        nodes.addRaftGroup(7000, "group1", node1Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(300)))
+        );
+        nodes.addRaftGroup(7001, "group1", node2Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(1)))
+        );
 
         // then
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer1.isFollower());
-        await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer2.isLeader());
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
 
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer1.getCurrentLeaderId() == 7001);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2.getCurrentLeaderId() == 7001);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7001);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7001);
 
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+        assertThat(raftGroupNode1.isFollower()).isTrue();
+        assertThat(raftGroupNode2.isLeader()).isTrue();
 
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7001);
-        assertThat(raftStorage2.getVotedFor()).isEqualTo(7001);
+        assertThat(node1Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node2Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node1Storage.getTerm()).isEqualTo(node2Storage.getTerm());
+
+        assertThat(node1Storage.getVotedFor()).isEqualTo(7001);
+        assertThat(node2Storage.getVotedFor()).isEqualTo(7001);
+
     }
 
     @Test
     void electionPreVoteEnabled() {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(50));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(10));
-
-        raftServerMono1 = monoFirstRaftServer(true);
-        raftServerMono2 = monoSecondRaftServer(true);
+        nodes = Nodes.create(7000,7001);
 
         // when
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(true)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(100)))
+        );
+        nodes.addRaftGroup(7001, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(true)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(10)))
+        );
 
         // then
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer1.getCurrentLeaderId() == 7000);
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2.getCurrentLeaderId() == 7000);
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
 
-        assertThat(raftServer1.isLeader()).isTrue();
-        assertThat(raftServer2.isFollower()).isTrue();
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7000);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7000);
 
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1);
-        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1);
-        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+        assertThat(raftGroupNode1.isLeader()).isTrue();
+        assertThat(raftGroupNode2.isFollower()).isTrue();
 
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-        assertThat(raftStorage2.getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isEqualTo(1);
+        assertThat(raftGroupNode2.getRaftStorage().getTerm()).isEqualTo(1);
+
+        assertThat(raftGroupNode1.getRaftStorage().getVotedFor()).isEqualTo(7000);
+        assertThat(raftGroupNode2.getRaftStorage().getVotedFor()).isEqualTo(7000);
     }
 
     @Test
     void electionPreVoteEnabledOneNodeUnavailable() throws InterruptedException {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(50));
-
-        raftServerMono1 = monoFirstRaftServer(true);
+        nodes = Nodes.create(7000);
 
         // when
-        raftServer1 = raftServerMono1.block();
+        nodes.addRaftGroup(7000, "group1", this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(true)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(50)))
+        );
+
         Thread.sleep(1000);
 
         // then
-        assertThat(raftServer1.isFollower()).isTrue();
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(0);
-        assertThat(raftStorage1.getTerm()).isEqualTo(0); // no term inflation
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+
+        assertThat(raftGroupNode1.isFollower()).isTrue();
+        assertThat(raftGroupNode1.getRaftStorage().getVotedFor()).isEqualTo(0);
+        assertThat(raftGroupNode1.getRaftStorage().getTerm()).isEqualTo(0); // no term inflation
     }
 
     @Test
     void electionPreVoteEnabledLogNotUpToDate() {
         // given
-        given(electionTimeout1.nextRandom()).willReturn(Duration.ofMillis(300));
-        given(electionTimeout2.nextRandom()).willReturn(Duration.ofSeconds(1));
-
-        raftStorage2.update(1000, 7001);
-        raftStorage2.append(new CommandEntry(1000, System.currentTimeMillis(), "abc".getBytes()));
-
-        raftServerMono1 = monoFirstRaftServer(true);
-        raftServerMono2 = monoSecondRaftServer(true);
+        nodes = Nodes.create(7000, 7001);
+        RaftStorage node1Storage = new InMemoryRaftStorage();
+        RaftStorage node2Storage = new InMemoryRaftStorage();
+        node2Storage.update(1000, 7001);
+        node2Storage.append(new CommandEntry(1000, System.currentTimeMillis(), "abc".getBytes()));
 
         // when
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+        nodes.addRaftGroup(7000, "group1", node1Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(true)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(300)))
+        );
+        nodes.addRaftGroup(7001, "group1", node2Storage, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(true)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(1)))
+        );
 
         // then
-        await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer2.isLeader());
-        assertThat(raftServer1.isFollower()).isTrue();
+        RaftGroup raftGroupNode1 = nodes.raftGroup(7000, "group1");
+        RaftGroup raftGroupNode2 = nodes.raftGroup(7001, "group1");
 
-        assertThat(raftServer1.getCurrentLeaderId()).isEqualTo(7001);
-        assertThat(raftServer2.getCurrentLeaderId()).isEqualTo(7001);
+        await().atMost(2, TimeUnit.SECONDS).until(() -> raftGroupNode1.getCurrentLeaderId() == 7001);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftGroupNode2.getCurrentLeaderId() == 7001);
 
-        assertThat(raftStorage1.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage2.getTerm()).isGreaterThanOrEqualTo(1001);
-        assertThat(raftStorage1.getTerm()).isEqualTo(raftStorage2.getTerm());
+        assertThat(raftGroupNode1.isFollower()).isTrue();
+        assertThat(raftGroupNode2.isLeader()).isTrue();
 
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7001);
-        assertThat(raftStorage2.getVotedFor()).isEqualTo(7001);
+        assertThat(node1Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node2Storage.getTerm()).isGreaterThanOrEqualTo(1001);
+        assertThat(node1Storage.getTerm()).isEqualTo(node2Storage.getTerm());
+
+        assertThat(node1Storage.getVotedFor()).isEqualTo(7001);
+        assertThat(node2Storage.getVotedFor()).isEqualTo(7001);
+
     }
 
-
-    private Mono<Node> monoFirstRaftServer(boolean preVote) {
-        return monoRaftServer(7000, raftStorage1, electionTimeout1, preVote);
-    }
-
-    private Mono<Node> monoSecondRaftServer(boolean preVote) {
-        return monoRaftServer(7001, raftStorage2, electionTimeout2, preVote);
-    }
-
-    private Mono<Node> monoRaftServer(int nodeId, RaftStorage raftStorage, ElectionTimeout electionTimeout, boolean preVote) {
-        return new NodeFactory()
-                .nodeId(nodeId)
-                .storage(raftStorage)
-                .stateMachine(new KVStateMachine(nodeId))
+    private RaftConfiguration.Builder twoNodeConfiguration(Integer nodeId) {
+        return RaftConfiguration.builder()
+                .stateMachine(new KVStateMachine1(nodeId))
                 .stateMachineEntryConverter(new KVStateMachineEntryConverter())
-                .electionTimeout(electionTimeout)
-                .initialConfiguration(new Configuration(7000, 7001))
-                .preVote(preVote)
-                .start();
+                .configuration(new Configuration(7000, 7001));
     }
-*/
+
+    public static void assertExactlyOneLeader(RaftGroup... raftGroups) {
+        assertThat(Arrays.asList(raftGroups)).filteredOn(RaftGroup::isLeader).hasSize(1);
+        assertThat(Arrays.asList(raftGroups)).filteredOn(RaftGroup::isNotLeader).hasSize(raftGroups.length - 1);
+    }
+
+    public static void assertAllHasSameLeaderId(RaftGroup ... raftGroups) {
+        Set<Integer> leaderIds = Arrays.asList(raftGroups).stream().map(RaftGroup::getCurrentLeaderId).collect(Collectors.toSet());
+        assertThat(leaderIds).hasSize(1);
+        assertThat(leaderIds.iterator().next()).isGreaterThan(0);
+    }
+
+    public static void assertVotedFor(RaftGroup ... raftGroups) {
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+            // TODO follower might increase term and vote for itself
+            Set<Integer> votedForIds = Arrays.stream(raftGroups).map(raftGroup -> raftGroup.getRaftStorage().getVotedFor()).collect(Collectors.toSet());
+            assertThat(votedForIds).hasSize(1);
+            assertThat(votedForIds.iterator().next()).isGreaterThan(0);
+        });
+    }
+
+    public static void assertTerm(RaftGroup ... raftGroups) {
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+            Set<Integer> terms = Arrays.asList(raftGroups).stream().map(raftGroup -> raftGroup.getRaftStorage().getTerm()).collect(Collectors.toSet());
+            assertThat(terms).hasSize(1);
+            assertThat(terms.iterator().next()).isGreaterThanOrEqualTo(1);
+        });
+    }
+
 }

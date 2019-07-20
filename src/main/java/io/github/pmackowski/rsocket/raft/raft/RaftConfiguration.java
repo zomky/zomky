@@ -1,5 +1,7 @@
 package io.github.pmackowski.rsocket.raft.raft;
 
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+
 import java.nio.ByteBuffer;
 
 public class RaftConfiguration {
@@ -8,11 +10,16 @@ public class RaftConfiguration {
     private static final boolean DEFAULT_LEADER_STICKINESS = true;
     private static final int ELECTION_TIMEOUT_MIN_IN_MILLIS = 200;
 
+    private Configuration configuration;
     private boolean preVote;
     private boolean leaderStickiness;
     private ElectionTimeout electionTimeout;
     private StateMachine<ByteBuffer> stateMachine;
     private StateMachineEntryConverter stateMachineEntryConverter;
+
+    public Configuration getConfiguration() {
+        return configuration;
+    }
 
     public boolean isPreVote() {
         return preVote;
@@ -46,6 +53,7 @@ public class RaftConfiguration {
 
     public static class Builder {
 
+        private Configuration configuration;
         private boolean preVote = DEFAULT_PRE_VOTE;
         private boolean leaderStickiness = DEFAULT_LEADER_STICKINESS;
         private ElectionTimeout electionTimeout = ElectionTimeout.random(ELECTION_TIMEOUT_MIN_IN_MILLIS);
@@ -56,11 +64,17 @@ public class RaftConfiguration {
         }
 
         private Builder(RaftConfiguration other) {
+            this.configuration = other.getConfiguration();
             this.preVote = other.isPreVote();
             this.leaderStickiness = other.isLeaderStickiness();
             this.electionTimeout = other.getElectionTimeout();
             this.stateMachine = other.getStateMachine();
             this.stateMachineEntryConverter = other.getStateMachineEntryConverter();
+        }
+
+        public Builder configuration(Configuration configuration) {
+            this.configuration = configuration;
+            return this;
         }
 
         public Builder preVote(boolean preVote) {
@@ -95,6 +109,7 @@ public class RaftConfiguration {
 
         public RaftConfiguration build() {
             RaftConfiguration raftConfiguration = new RaftConfiguration();
+            raftConfiguration.configuration = configuration;
             raftConfiguration.preVote = preVote;
             raftConfiguration.leaderStickiness = leaderStickiness;
             raftConfiguration.electionTimeout = electionTimeout;
