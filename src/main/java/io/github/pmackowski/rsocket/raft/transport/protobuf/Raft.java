@@ -122,11 +122,15 @@ public final class Raft {
       "\032\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
       "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
       "se\022\014\n\004term\030\001 \001(\005\";\n\017MetadataRequest\022\024\n\014m" +
-      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t\"3\n" +
-      "\017AddGroupRequest\022\021\n\tleader_id\030\002 \001(\005\022\r\n\005n" +
-      "odes\030\003 \003(\005\"\"\n\020AddGroupResponse\022\016\n\006status" +
-      "\030\001 \001(\010B8\n4io.github.pmackowski.rsocket.r" +
-      "aft.transport.protobufP\001b\006proto3"
+      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t\"\266\001" +
+      "\n\017AddGroupRequest\022\025\n\rstate_machine\030\001 \001(\t" +
+      "\022\034\n\024election_timeout_min\030\002 \001(\005\022\034\n\024electi" +
+      "on_timeout_max\030\003 \001(\005\022\017\n\007passive\030\004 \001(\010\022\032\n" +
+      "\022persistent_storage\030\005 \001(\010\022\024\n\014segment_siz" +
+      "e\030\006 \001(\005\022\r\n\005nodes\030\007 \003(\005\"\"\n\020AddGroupRespon",
+      "se\022\016\n\006status\030\001 \001(\010B8\n4io.github.pmackows" +
+      "ki.rsocket.raft.transport.protobufP\001b\006pr" +
+      "oto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -223,7 +227,7 @@ public final class Raft {
     internal_static_AddGroupRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AddGroupRequest_descriptor,
-        new java.lang.String[] { "LeaderId", "Nodes", });
+        new java.lang.String[] { "StateMachine", "ElectionTimeoutMin", "ElectionTimeoutMax", "Passive", "PersistentStorage", "SegmentSize", "Nodes", });
     internal_static_AddGroupResponse_descriptor =
       getDescriptor().getMessageTypes().get(14);
     internal_static_AddGroupResponse_fieldAccessorTable = new

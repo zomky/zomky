@@ -88,6 +88,10 @@ public class Nodes {
         return innerNode.getRaftGroups().getByName(name);
     }
 
+    public boolean isLeader(int nodeId, String name) {
+        return raftGroup(nodeId, name).isLeader();
+    }
+
     public void dispose() {
         nodes.values().forEach(InnerNode::dispose);
     }

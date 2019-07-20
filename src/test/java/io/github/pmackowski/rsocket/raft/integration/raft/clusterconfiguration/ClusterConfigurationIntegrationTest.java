@@ -1,26 +1,44 @@
 package io.github.pmackowski.rsocket.raft.integration.raft.clusterconfiguration;
 
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
+import io.github.pmackowski.rsocket.raft.Nodes;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachine1;
+import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
+import io.github.pmackowski.rsocket.raft.integration.IntegrationTestsUtils;
+import io.github.pmackowski.rsocket.raft.raft.ElectionTimeout;
+import io.github.pmackowski.rsocket.raft.raft.RaftConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.test.StepVerifier;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
 import static org.awaitility.Awaitility.await;
 
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class ClusterConfigurationIntegrationTest {
-/*
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigurationIntegrationTest.class);
 
     @TempDir
     Path directory;
 
-    ElectionTimeout electionTimeout = new ElectionTimeout();
+    RaftStorage raftStorage1, raftStorage2, raftStorage3;
 
-    Mono<Node> raftServerMono1, raftServerMono2;
-    RaftStorage raftStorage1, raftStorage2;
-    Node raftServer1, raftServer2;
+    Nodes nodes;
+
 
     @BeforeEach
     void setUp() {
@@ -28,92 +46,50 @@ class ClusterConfigurationIntegrationTest {
         IntegrationTestsUtils.checkBlockingCalls();
         raftStorage1 = IntegrationTestsUtils.raftStorage(directory, "1");
         raftStorage2 = IntegrationTestsUtils.raftStorage(directory, "2");
-
-        raftServerMono1 = new NodeFactory()
-                .nodeId(7000)
-                .storage(raftStorage1)
-                .stateMachine(new KVStateMachine(7000))
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
-                .electionTimeout(electionTimeout)
-                .initialConfiguration(new Configuration(7000))
-                .start();
-
-        raftServerMono2 = new NodeFactory()
-                .nodeId(7001)
-                .storage(raftStorage2)
-                .stateMachine(new KVStateMachine(7001))
-                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
-                .electionTimeout(electionTimeout)
-                .passive(true)
-                .start();
-
+//        raftStorage3 = IntegrationTestsUtils.raftStorage(directory, "3");
     }
 
     @AfterEach
     void tearDown() {
         raftStorage1.close();
         raftStorage2.close();
-        raftServer1.dispose();
-        if (raftServer2 != null)
-            raftServer2.dispose();
+//        raftStorage3.close();
+        nodes.dispose();
     }
 
     @Test
-    void testElection() {
-        raftServer1 = raftServerMono1.block();
-        raftServer2 = raftServerMono2.block();
+    void addServerWhenLogIsEmpty() {
+        // given
+        nodes = Nodes.create(7000,7001,7002);
 
-        await().atMost(2, TimeUnit.SECONDS).until(() -> raftServer1.getCurrentLeaderId() == 7000);
+        nodes.addRaftGroup(7000, "group1", raftStorage1, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofMillis(100)))
+        );
+        nodes.addRaftGroup(7001, "group1", raftStorage2, this::twoNodeConfiguration, (nodeId,builder) -> builder
+                .preVote(false)
+                .electionTimeout(ElectionTimeout.exactly(Duration.ofSeconds(10)))
+        );
+        await().atMost(1, TimeUnit.SECONDS).until(() -> nodes.isLeader(7000, "group1"));
 
-        assertThat(raftServer1.isLeader()).isTrue();
+        // when
+        StepVerifier.create(nodes.raftGroup(7000, "group1").onAddServer(AddServerRequest.newBuilder().setNewServer(7002).build()))
+                    .expectNextCount(1)
+                    .verifyComplete();
 
-        assertThat(raftStorage1.getTerm()).isEqualTo(1);
-        assertThat(raftStorage1.getVotedFor()).isEqualTo(7000);
-    }
-
-    @Test
-    void testLogReplication() {
-        testElection();
-
-        KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
-        kvStoreClient.start();
-
-        int nbEntries = 10;
-
-        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
-                .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
-                .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
-                .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
-                .blockLast();
-
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries);
-    }
-
-    @Test
-    void testLogReplicationWithAddServer() {
-        testElection();
-
-        KVStoreClient kvStoreClient = new KVStoreClient(Arrays.asList(7000));
-        kvStoreClient.start();
-
-        int nbEntries = 10;
-
-        kvStoreClient.put(Flux.range(1, nbEntries).delayElements(Duration.ofMillis(500)).map(i -> new KeyValue("key" + i, "val" + i)))
-                .doOnSubscribe(subscription -> LOGGER.info("KVStoreClient started"))
-                .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
-                .flatMap(keyValue -> {
-                    if (keyValue.getKey().equals("key3")) {
-                        AddServerRequest addServerRequest = AddServerRequest.newBuilder().setNewServer(7001).build();
-                        return raftServer1.onAddServer(groupName, addServerRequest);
-                    } else {
-                        return Flux.empty();
-                    }
-                })
-                .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
-                .blockLast();
-
-        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == nbEntries + 1);
+        // then
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage1.getLastIndexedTerm().getIndex() == 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> raftStorage2.getLastIndexedTerm().getIndex() == 1);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> // TODO
+                nodes.raftGroup(7002, "group1").getRaftStorage().getLastIndexedTerm().getIndex() == 1);
 
     }
-*/
+
+    private RaftConfiguration.Builder twoNodeConfiguration(Integer nodeId) {
+        return RaftConfiguration.builder()
+                .stateMachine(new KVStateMachine1(nodeId))
+                .stateMachineEntryConverter(new KVStateMachineEntryConverter())
+                .configuration(new Configuration(7000, 7001));
+    }
+
 }

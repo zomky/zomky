@@ -1,7 +1,7 @@
 package io.github.pmackowski.rsocket.raft.integration;
 
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
-import io.github.pmackowski.rsocket.raft.Node;
+import io.github.pmackowski.rsocket.raft.Nodes;
 import io.github.pmackowski.rsocket.raft.client.ClusterManagementClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KeyValue;
@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
-import java.util.Map;
 
 @IntegrationTest
 class NodeFactoryTest {
@@ -22,15 +21,14 @@ class NodeFactoryTest {
     @Test
     void receive() throws InterruptedException {
 
-        Map<Integer, Node> nodes = IntegrationTestsUtils.startNodes(3, 7000);
+        Nodes nodes = Nodes.create(7000, 7001, 7002);
 
         //node.dispose();
 
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
 
-        clusterManagementClient.createGroup("group1", 7001, new Configuration(7001,7002)).block();
-        clusterManagementClient.createGroup("group2", 7002, new Configuration(7001,7002)).block();
-
+        clusterManagementClient.addGroup("group1", 7001, new Configuration(7001,7002)).block();
+        clusterManagementClient.addGroup("group2", 7002, new Configuration(7001,7002)).block();
 
         Thread.sleep(2_000);
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
@@ -61,10 +59,10 @@ class NodeFactoryTest {
     @Test
     void receive2() throws InterruptedException {
 
-        IntegrationTestsUtils.startNodes(3, 7000);
+        Nodes nodes = Nodes.create(7000, 7001, 7002);
 
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.createGroup("group1", 7001, new Configuration(7001,7002)).block();
+        clusterManagementClient.addGroup("group1", 7001, new Configuration(7001,7002)).block();
 
         Thread.sleep(2_000);
 

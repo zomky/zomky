@@ -15,7 +15,12 @@ public  final class AddGroupRequest extends
     super(builder);
   }
   private AddGroupRequest() {
-    leaderId_ = 0;
+    stateMachine_ = "";
+    electionTimeoutMin_ = 0;
+    electionTimeoutMax_ = 0;
+    passive_ = false;
+    persistentStorage_ = false;
+    segmentSize_ = 0;
     nodes_ = java.util.Collections.emptyList();
   }
 
@@ -44,25 +49,51 @@ public  final class AddGroupRequest extends
             }
             break;
           }
+          case 10: {
+            java.lang.String s = input.readStringRequireUtf8();
+
+            stateMachine_ = s;
+            break;
+          }
           case 16: {
 
-            leaderId_ = input.readInt32();
+            electionTimeoutMin_ = input.readInt32();
             break;
           }
           case 24: {
-            if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+
+            electionTimeoutMax_ = input.readInt32();
+            break;
+          }
+          case 32: {
+
+            passive_ = input.readBool();
+            break;
+          }
+          case 40: {
+
+            persistentStorage_ = input.readBool();
+            break;
+          }
+          case 48: {
+
+            segmentSize_ = input.readInt32();
+            break;
+          }
+          case 56: {
+            if (!((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
               nodes_ = new java.util.ArrayList<java.lang.Integer>();
-              mutable_bitField0_ |= 0x00000002;
+              mutable_bitField0_ |= 0x00000040;
             }
             nodes_.add(input.readInt32());
             break;
           }
-          case 26: {
+          case 58: {
             int length = input.readRawVarint32();
             int limit = input.pushLimit(length);
-            if (!((mutable_bitField0_ & 0x00000002) == 0x00000002) && input.getBytesUntilLimit() > 0) {
+            if (!((mutable_bitField0_ & 0x00000040) == 0x00000040) && input.getBytesUntilLimit() > 0) {
               nodes_ = new java.util.ArrayList<java.lang.Integer>();
-              mutable_bitField0_ |= 0x00000002;
+              mutable_bitField0_ |= 0x00000040;
             }
             while (input.getBytesUntilLimit() > 0) {
               nodes_.add(input.readInt32());
@@ -78,7 +109,7 @@ public  final class AddGroupRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+      if (((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
         nodes_ = java.util.Collections.unmodifiableList(nodes_);
       }
       makeExtensionsImmutable();
@@ -97,32 +128,102 @@ public  final class AddGroupRequest extends
   }
 
   private int bitField0_;
-  public static final int LEADER_ID_FIELD_NUMBER = 2;
-  private int leaderId_;
+  public static final int STATE_MACHINE_FIELD_NUMBER = 1;
+  private volatile java.lang.Object stateMachine_;
   /**
-   * <code>optional int32 leader_id = 2;</code>
+   * <code>optional string state_machine = 1;</code>
    */
-  public int getLeaderId() {
-    return leaderId_;
+  public java.lang.String getStateMachine() {
+    java.lang.Object ref = stateMachine_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      stateMachine_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>optional string state_machine = 1;</code>
+   */
+  public com.google.protobuf.ByteString
+      getStateMachineBytes() {
+    java.lang.Object ref = stateMachine_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      stateMachine_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
   }
 
-  public static final int NODES_FIELD_NUMBER = 3;
+  public static final int ELECTION_TIMEOUT_MIN_FIELD_NUMBER = 2;
+  private int electionTimeoutMin_;
+  /**
+   * <code>optional int32 election_timeout_min = 2;</code>
+   */
+  public int getElectionTimeoutMin() {
+    return electionTimeoutMin_;
+  }
+
+  public static final int ELECTION_TIMEOUT_MAX_FIELD_NUMBER = 3;
+  private int electionTimeoutMax_;
+  /**
+   * <code>optional int32 election_timeout_max = 3;</code>
+   */
+  public int getElectionTimeoutMax() {
+    return electionTimeoutMax_;
+  }
+
+  public static final int PASSIVE_FIELD_NUMBER = 4;
+  private boolean passive_;
+  /**
+   * <code>optional bool passive = 4;</code>
+   */
+  public boolean getPassive() {
+    return passive_;
+  }
+
+  public static final int PERSISTENT_STORAGE_FIELD_NUMBER = 5;
+  private boolean persistentStorage_;
+  /**
+   * <code>optional bool persistent_storage = 5;</code>
+   */
+  public boolean getPersistentStorage() {
+    return persistentStorage_;
+  }
+
+  public static final int SEGMENT_SIZE_FIELD_NUMBER = 6;
+  private int segmentSize_;
+  /**
+   * <code>optional int32 segment_size = 6;</code>
+   */
+  public int getSegmentSize() {
+    return segmentSize_;
+  }
+
+  public static final int NODES_FIELD_NUMBER = 7;
   private java.util.List<java.lang.Integer> nodes_;
   /**
-   * <code>repeated int32 nodes = 3;</code>
+   * <code>repeated int32 nodes = 7;</code>
    */
   public java.util.List<java.lang.Integer>
       getNodesList() {
     return nodes_;
   }
   /**
-   * <code>repeated int32 nodes = 3;</code>
+   * <code>repeated int32 nodes = 7;</code>
    */
   public int getNodesCount() {
     return nodes_.size();
   }
   /**
-   * <code>repeated int32 nodes = 3;</code>
+   * <code>repeated int32 nodes = 7;</code>
    */
   public int getNodes(int index) {
     return nodes_.get(index);
@@ -142,11 +243,26 @@ public  final class AddGroupRequest extends
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     getSerializedSize();
-    if (leaderId_ != 0) {
-      output.writeInt32(2, leaderId_);
+    if (!getStateMachineBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, stateMachine_);
+    }
+    if (electionTimeoutMin_ != 0) {
+      output.writeInt32(2, electionTimeoutMin_);
+    }
+    if (electionTimeoutMax_ != 0) {
+      output.writeInt32(3, electionTimeoutMax_);
+    }
+    if (passive_ != false) {
+      output.writeBool(4, passive_);
+    }
+    if (persistentStorage_ != false) {
+      output.writeBool(5, persistentStorage_);
+    }
+    if (segmentSize_ != 0) {
+      output.writeInt32(6, segmentSize_);
     }
     if (getNodesList().size() > 0) {
-      output.writeUInt32NoTag(26);
+      output.writeUInt32NoTag(58);
       output.writeUInt32NoTag(nodesMemoizedSerializedSize);
     }
     for (int i = 0; i < nodes_.size(); i++) {
@@ -159,9 +275,28 @@ public  final class AddGroupRequest extends
     if (size != -1) return size;
 
     size = 0;
-    if (leaderId_ != 0) {
+    if (!getStateMachineBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, stateMachine_);
+    }
+    if (electionTimeoutMin_ != 0) {
       size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(2, leaderId_);
+        .computeInt32Size(2, electionTimeoutMin_);
+    }
+    if (electionTimeoutMax_ != 0) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(3, electionTimeoutMax_);
+    }
+    if (passive_ != false) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeBoolSize(4, passive_);
+    }
+    if (persistentStorage_ != false) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeBoolSize(5, persistentStorage_);
+    }
+    if (segmentSize_ != 0) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(6, segmentSize_);
     }
     {
       int dataSize = 0;
@@ -193,8 +328,18 @@ public  final class AddGroupRequest extends
     io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest other = (io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest) obj;
 
     boolean result = true;
-    result = result && (getLeaderId()
-        == other.getLeaderId());
+    result = result && getStateMachine()
+        .equals(other.getStateMachine());
+    result = result && (getElectionTimeoutMin()
+        == other.getElectionTimeoutMin());
+    result = result && (getElectionTimeoutMax()
+        == other.getElectionTimeoutMax());
+    result = result && (getPassive()
+        == other.getPassive());
+    result = result && (getPersistentStorage()
+        == other.getPersistentStorage());
+    result = result && (getSegmentSize()
+        == other.getSegmentSize());
     result = result && getNodesList()
         .equals(other.getNodesList());
     return result;
@@ -207,8 +352,20 @@ public  final class AddGroupRequest extends
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptorForType().hashCode();
-    hash = (37 * hash) + LEADER_ID_FIELD_NUMBER;
-    hash = (53 * hash) + getLeaderId();
+    hash = (37 * hash) + STATE_MACHINE_FIELD_NUMBER;
+    hash = (53 * hash) + getStateMachine().hashCode();
+    hash = (37 * hash) + ELECTION_TIMEOUT_MIN_FIELD_NUMBER;
+    hash = (53 * hash) + getElectionTimeoutMin();
+    hash = (37 * hash) + ELECTION_TIMEOUT_MAX_FIELD_NUMBER;
+    hash = (53 * hash) + getElectionTimeoutMax();
+    hash = (37 * hash) + PASSIVE_FIELD_NUMBER;
+    hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+        getPassive());
+    hash = (37 * hash) + PERSISTENT_STORAGE_FIELD_NUMBER;
+    hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+        getPersistentStorage());
+    hash = (37 * hash) + SEGMENT_SIZE_FIELD_NUMBER;
+    hash = (53 * hash) + getSegmentSize();
     if (getNodesCount() > 0) {
       hash = (37 * hash) + NODES_FIELD_NUMBER;
       hash = (53 * hash) + getNodesList().hashCode();
@@ -331,10 +488,20 @@ public  final class AddGroupRequest extends
     }
     public Builder clear() {
       super.clear();
-      leaderId_ = 0;
+      stateMachine_ = "";
+
+      electionTimeoutMin_ = 0;
+
+      electionTimeoutMax_ = 0;
+
+      passive_ = false;
+
+      persistentStorage_ = false;
+
+      segmentSize_ = 0;
 
       nodes_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000002);
+      bitField0_ = (bitField0_ & ~0x00000040);
       return this;
     }
 
@@ -359,10 +526,15 @@ public  final class AddGroupRequest extends
       io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest result = new io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest(this);
       int from_bitField0_ = bitField0_;
       int to_bitField0_ = 0;
-      result.leaderId_ = leaderId_;
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+      result.stateMachine_ = stateMachine_;
+      result.electionTimeoutMin_ = electionTimeoutMin_;
+      result.electionTimeoutMax_ = electionTimeoutMax_;
+      result.passive_ = passive_;
+      result.persistentStorage_ = persistentStorage_;
+      result.segmentSize_ = segmentSize_;
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
         nodes_ = java.util.Collections.unmodifiableList(nodes_);
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000040);
       }
       result.nodes_ = nodes_;
       result.bitField0_ = to_bitField0_;
@@ -407,13 +579,29 @@ public  final class AddGroupRequest extends
 
     public Builder mergeFrom(io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest other) {
       if (other == io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest.getDefaultInstance()) return this;
-      if (other.getLeaderId() != 0) {
-        setLeaderId(other.getLeaderId());
+      if (!other.getStateMachine().isEmpty()) {
+        stateMachine_ = other.stateMachine_;
+        onChanged();
+      }
+      if (other.getElectionTimeoutMin() != 0) {
+        setElectionTimeoutMin(other.getElectionTimeoutMin());
+      }
+      if (other.getElectionTimeoutMax() != 0) {
+        setElectionTimeoutMax(other.getElectionTimeoutMax());
+      }
+      if (other.getPassive() != false) {
+        setPassive(other.getPassive());
+      }
+      if (other.getPersistentStorage() != false) {
+        setPersistentStorage(other.getPersistentStorage());
+      }
+      if (other.getSegmentSize() != 0) {
+        setSegmentSize(other.getSegmentSize());
       }
       if (!other.nodes_.isEmpty()) {
         if (nodes_.isEmpty()) {
           nodes_ = other.nodes_;
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000040);
         } else {
           ensureNodesIsMutable();
           nodes_.addAll(other.nodes_);
@@ -447,60 +635,233 @@ public  final class AddGroupRequest extends
     }
     private int bitField0_;
 
-    private int leaderId_ ;
+    private java.lang.Object stateMachine_ = "";
     /**
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>optional string state_machine = 1;</code>
      */
-    public int getLeaderId() {
-      return leaderId_;
+    public java.lang.String getStateMachine() {
+      java.lang.Object ref = stateMachine_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        stateMachine_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
     }
     /**
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>optional string state_machine = 1;</code>
      */
-    public Builder setLeaderId(int value) {
-      
-      leaderId_ = value;
+    public com.google.protobuf.ByteString
+        getStateMachineBytes() {
+      java.lang.Object ref = stateMachine_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        stateMachine_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>optional string state_machine = 1;</code>
+     */
+    public Builder setStateMachine(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      stateMachine_ = value;
       onChanged();
       return this;
     }
     /**
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>optional string state_machine = 1;</code>
      */
-    public Builder clearLeaderId() {
+    public Builder clearStateMachine() {
       
-      leaderId_ = 0;
+      stateMachine_ = getDefaultInstance().getStateMachine();
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional string state_machine = 1;</code>
+     */
+    public Builder setStateMachineBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      stateMachine_ = value;
+      onChanged();
+      return this;
+    }
+
+    private int electionTimeoutMin_ ;
+    /**
+     * <code>optional int32 election_timeout_min = 2;</code>
+     */
+    public int getElectionTimeoutMin() {
+      return electionTimeoutMin_;
+    }
+    /**
+     * <code>optional int32 election_timeout_min = 2;</code>
+     */
+    public Builder setElectionTimeoutMin(int value) {
+      
+      electionTimeoutMin_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional int32 election_timeout_min = 2;</code>
+     */
+    public Builder clearElectionTimeoutMin() {
+      
+      electionTimeoutMin_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private int electionTimeoutMax_ ;
+    /**
+     * <code>optional int32 election_timeout_max = 3;</code>
+     */
+    public int getElectionTimeoutMax() {
+      return electionTimeoutMax_;
+    }
+    /**
+     * <code>optional int32 election_timeout_max = 3;</code>
+     */
+    public Builder setElectionTimeoutMax(int value) {
+      
+      electionTimeoutMax_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional int32 election_timeout_max = 3;</code>
+     */
+    public Builder clearElectionTimeoutMax() {
+      
+      electionTimeoutMax_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private boolean passive_ ;
+    /**
+     * <code>optional bool passive = 4;</code>
+     */
+    public boolean getPassive() {
+      return passive_;
+    }
+    /**
+     * <code>optional bool passive = 4;</code>
+     */
+    public Builder setPassive(boolean value) {
+      
+      passive_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional bool passive = 4;</code>
+     */
+    public Builder clearPassive() {
+      
+      passive_ = false;
+      onChanged();
+      return this;
+    }
+
+    private boolean persistentStorage_ ;
+    /**
+     * <code>optional bool persistent_storage = 5;</code>
+     */
+    public boolean getPersistentStorage() {
+      return persistentStorage_;
+    }
+    /**
+     * <code>optional bool persistent_storage = 5;</code>
+     */
+    public Builder setPersistentStorage(boolean value) {
+      
+      persistentStorage_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional bool persistent_storage = 5;</code>
+     */
+    public Builder clearPersistentStorage() {
+      
+      persistentStorage_ = false;
+      onChanged();
+      return this;
+    }
+
+    private int segmentSize_ ;
+    /**
+     * <code>optional int32 segment_size = 6;</code>
+     */
+    public int getSegmentSize() {
+      return segmentSize_;
+    }
+    /**
+     * <code>optional int32 segment_size = 6;</code>
+     */
+    public Builder setSegmentSize(int value) {
+      
+      segmentSize_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional int32 segment_size = 6;</code>
+     */
+    public Builder clearSegmentSize() {
+      
+      segmentSize_ = 0;
       onChanged();
       return this;
     }
 
     private java.util.List<java.lang.Integer> nodes_ = java.util.Collections.emptyList();
     private void ensureNodesIsMutable() {
-      if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+      if (!((bitField0_ & 0x00000040) == 0x00000040)) {
         nodes_ = new java.util.ArrayList<java.lang.Integer>(nodes_);
-        bitField0_ |= 0x00000002;
+        bitField0_ |= 0x00000040;
        }
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public java.util.List<java.lang.Integer>
         getNodesList() {
       return java.util.Collections.unmodifiableList(nodes_);
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public int getNodesCount() {
       return nodes_.size();
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public int getNodes(int index) {
       return nodes_.get(index);
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public Builder setNodes(
         int index, int value) {
@@ -510,7 +871,7 @@ public  final class AddGroupRequest extends
       return this;
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public Builder addNodes(int value) {
       ensureNodesIsMutable();
@@ -519,7 +880,7 @@ public  final class AddGroupRequest extends
       return this;
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public Builder addAllNodes(
         java.lang.Iterable<? extends java.lang.Integer> values) {
@@ -530,11 +891,11 @@ public  final class AddGroupRequest extends
       return this;
     }
     /**
-     * <code>repeated int32 nodes = 3;</code>
+     * <code>repeated int32 nodes = 7;</code>
      */
     public Builder clearNodes() {
       nodes_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000002);
+      bitField0_ = (bitField0_ & ~0x00000040);
       onChanged();
       return this;
     }

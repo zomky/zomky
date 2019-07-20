@@ -15,15 +15,27 @@ public class ClusterManagementClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClusterManagementClient.class);
 
-    public Mono<Void> createGroup(String groupName, int leaderId, Configuration configuration) {
+    public Mono<Void> addGroup(String groupName, int leaderId, Configuration configuration) {
         AddGroupRequest addGroupRequest = AddGroupRequest.newBuilder()
-                .setLeaderId(leaderId)
+                .setElectionTimeoutMin(200)
+                .setElectionTimeoutMax(400)
+                .setPersistentStorage(false)
+                .setStateMachine("kv1")
                 .addAllNodes(configuration.getMembers())
+                .setPassive(false)
                 .build();
         List<Sender> senders = configuration.getMembers().stream().map(Sender::createSender).collect(Collectors.toList());
 
         return Flux.fromIterable(senders)
-                .flatMap(sender -> sender.createGroup(groupName, addGroupRequest))
+                .flatMap(sender -> {
+                    AddGroupRequest addGroupDecoratedRequest = addGroupRequest;
+                    if (sender.getNodeId() == leaderId) {
+                        addGroupDecoratedRequest = AddGroupRequest.newBuilder(addGroupRequest)
+                            .setElectionTimeoutMax(addGroupRequest.getElectionTimeoutMin())
+                            .build();
+                    }
+                    return sender.addGroup(groupName, addGroupDecoratedRequest);
+                })
                 .then();
     }
 

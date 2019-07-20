@@ -134,10 +134,10 @@ public class Receiver {
                                     .flatMap(removeServerRequest -> raftGroups.onRemoveServer(groupName, removeServerRequest))
                                     .map(this::toPayload);
 
-                        case CREATE_GROUP:
+                        case ADD_GROUP:
                             return Mono.just(payload)
                                     .map(this::toCreateGroupRequest)
-                                    .flatMap(createGroupRequest -> raftGroups.onCreateGroup(groupName, createGroupRequest))
+                                    .flatMap(createGroupRequest -> raftGroups.onAddGroup(groupName, createGroupRequest))
                                     .map(this::toPayload);
 
                         case INFO:

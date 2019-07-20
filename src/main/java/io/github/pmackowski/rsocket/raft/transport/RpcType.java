@@ -7,7 +7,7 @@ public enum RpcType {
     PRE_REQUEST_VOTE(3),
     ADD_SERVER(4),
     REMOVE_SERVER(5),
-    CREATE_GROUP(6),
+    ADD_GROUP(6),
 
     INFO(10),
 
@@ -30,7 +30,7 @@ public enum RpcType {
             case 3: return PRE_REQUEST_VOTE;
             case 4: return ADD_SERVER;
             case 5: return REMOVE_SERVER;
-            case 6: return CREATE_GROUP;
+            case 6: return ADD_GROUP;
 
             case 10: return INFO;
 

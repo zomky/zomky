@@ -1,8 +1,11 @@
 package io.github.pmackowski.rsocket.raft.raft;
 
 import io.github.pmackowski.rsocket.raft.InnerNode;
-import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachine1;
-import io.github.pmackowski.rsocket.raft.external.statemachine.KVStateMachineEntryConverter;
+import io.github.pmackowski.rsocket.raft.storage.FileSystemRaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.InMemoryRaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.RaftStorage;
+import io.github.pmackowski.rsocket.raft.storage.RaftStorageConfiguration;
+import io.github.pmackowski.rsocket.raft.storage.log.SizeUnit;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.rsocket.Payload;
@@ -12,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -110,20 +112,27 @@ public class RaftGroups {
                 .doOnNext(removeServerResponse -> LOGGER.info("[Node {}][group {}] Remove server \n{} \n-> \n{}", node.getNodeId(), raftGroup.getGroupName(), removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
     }
 
-    public Mono<AddGroupResponse> onCreateGroup(String groupName, AddGroupRequest createGroupRequest) {
-        ElectionTimeout electionTimeout = createGroupRequest.getLeaderId() == node.getNodeId() ?
-                ElectionTimeout.exactly(Duration.ofMillis(200)) : ElectionTimeout.exactly(Duration.ofMillis(1200));
-        RaftRole raftRole = createGroupRequest.getNodesCount() == 0 ? new PassiveRole() : new FollowerRole();
+    public Mono<AddGroupResponse> onAddGroup(String groupName, AddGroupRequest addGroupRequest) {
+        RaftRole raftRole = Boolean.TRUE.equals(addGroupRequest.getPassive()) ? new PassiveRole() : new FollowerRole();
+        ElectionTimeout electionTimeout = ElectionTimeout.between(addGroupRequest.getElectionTimeoutMin(), addGroupRequest.getElectionTimeoutMax());
 
+        RaftStorage raftStorage = Boolean.TRUE.equals(addGroupRequest.getPersistentStorage()) ?
+                new FileSystemRaftStorage(RaftStorageConfiguration.builder()
+                        .directoryGroup(groupName)
+                        .segmentSize(SizeUnit.bytes, addGroupRequest.getSegmentSize())
+                        .build()
+                ) : new InMemoryRaftStorage();
+
+        @SuppressWarnings("unchecked")
         RaftGroup raftGroup = RaftGroup.builder()
                 .groupName(groupName)
-                .inMemoryRaftStorage() // TODO hardcoded
+                .raftStorage(raftStorage)
                 .node(node)
                 .raftRole(raftRole)
                 .raftConfiguration(RaftConfiguration.builder()
-                        .configuration(new Configuration(createGroupRequest.getNodesList()))
-                        .stateMachine(new KVStateMachine1(node.getNodeId())) // TODO hardcoded
-                        .stateMachineEntryConverter(new KVStateMachineEntryConverter()) // TODO hardcoded
+                        .configuration(new Configuration(addGroupRequest.getNodesList()))
+                        .stateMachine(StateMachine.stateMachine(node.getNodeId(), addGroupRequest.getStateMachine()))
+                        .stateMachineEntryConverter(StateMachine.stateMachineEntryConverter(addGroupRequest.getStateMachine()))
                         .electionTimeout(electionTimeout)
                         .build())
                 .build();

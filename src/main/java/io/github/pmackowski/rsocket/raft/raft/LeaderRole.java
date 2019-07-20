@@ -133,7 +133,7 @@ public class LeaderRole implements RaftRole {
 
     @Override
     public Mono<RemoveServerResponse> onRemoveServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
-        return Mono.just(removeServerRequest)
+        return Mono.just(removeServerRequest) // TODO notify group follower
                 .doOnNext(i -> raftGroup.removeServer(removeServerRequest))
                 .doOnNext(i -> removeHeartbeats(node, raftGroup, node.getSenders().senderById(removeServerRequest.getOldServer())))
                 .doOnError(throwable -> LOGGER.error("Remove server has failed!", throwable))
@@ -151,7 +151,19 @@ public class LeaderRole implements RaftRole {
         CatchUpContext catchUpContext = new CatchUpContext(senderNextIndex(raftStorage), catchUpMaxRounds);
         raftGroup.getSenderById(addServerRequest.getNewServer());
         return raftGroup.getSenderById(addServerRequest.getNewServer())
-                .flatMap(sender -> sender.createGroup(raftGroup.getGroupName(), AddGroupRequest.newBuilder().build()).then(Mono.just(sender)))
+                .flatMap(sender -> {
+                    // TODO copy from raftGroup, now is hardcoded
+                    // TODO a few AddGroupRequest attributes should be persisent (election timeout, persistent storage info, state machine name etc)
+                    // now must be exactly the same as in ClusterManagementClient except passive and passive attributes
+                    AddGroupRequest addGroupRequest = AddGroupRequest.newBuilder()
+                            .setElectionTimeoutMin(200)
+                            .setElectionTimeoutMax(400)
+                            .setPersistentStorage(false)
+                            .setStateMachine("kv1")
+                            .setPassive(true)
+                            .build();
+                    return sender.addGroup(raftGroup.getGroupName(), addGroupRequest).then(Mono.just(sender));
+                })
                 .flatMap(sender -> {
                 final AppendEntriesRequest appendEntriesRequest = appendEntriesRequest(catchUpContext.getSenderNextIndex(), node, raftGroup, raftStorage, logStorageReader);
                 return sender.appendEntries(raftGroup, appendEntriesRequest)
