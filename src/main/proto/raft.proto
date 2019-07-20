@@ -78,13 +78,14 @@ message MetadataRequest {
 }
 
 message AddGroupRequest {
-    string state_machine = 1;
-    int32 election_timeout_min = 2;
-    int32 election_timeout_max = 3;
-    bool passive = 4;
-    bool persistent_storage = 5;
-    int32 segment_size = 6;
-    repeated int32 nodes = 7;
+    int32 leader_id_suggestion = 1;
+    string state_machine = 2;
+    int32 election_timeout_min = 3;
+    int32 election_timeout_max = 4;
+    bool passive = 5;
+    bool persistent_storage = 6;
+    int32 segment_size = 7;
+    repeated int32 nodes = 8;
 }
 
 message AddGroupResponse {

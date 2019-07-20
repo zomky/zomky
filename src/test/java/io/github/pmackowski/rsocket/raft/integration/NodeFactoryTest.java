@@ -6,6 +6,7 @@ import io.github.pmackowski.rsocket.raft.client.ClusterManagementClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
+import io.github.pmackowski.rsocket.raft.transport.protobuf.AddGroupRequest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +28,10 @@ class NodeFactoryTest {
 
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
 
-        clusterManagementClient.addGroup("group1", 7001, new Configuration(7001,7002)).block();
-        clusterManagementClient.addGroup("group2", 7002, new Configuration(7001,7002)).block();
+        Configuration configuration = new Configuration(7001, 7002);
+
+        clusterManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
+        clusterManagementClient.addGroup("group2", addGroupRequest(7002, configuration)).block();
 
         Thread.sleep(2_000);
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
@@ -56,13 +59,26 @@ class NodeFactoryTest {
 
     }
 
+    private AddGroupRequest addGroupRequest(int leaderIdSuggestion, Configuration configuration) {
+        return AddGroupRequest.newBuilder()
+                .setLeaderIdSuggestion(leaderIdSuggestion)
+                .setElectionTimeoutMin(200)
+                .setElectionTimeoutMax(400)
+                .setPersistentStorage(false)
+                .setStateMachine("kv1")
+                .addAllNodes(configuration.getMembers())
+                .setPassive(false)
+                .build();
+    }
+
     @Test
     void receive2() throws InterruptedException {
 
         Nodes nodes = Nodes.create(7000, 7001, 7002);
+        Configuration configuration = new Configuration(7001, 7002);
 
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.addGroup("group1", 7001, new Configuration(7001,7002)).block();
+        clusterManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
 
         Thread.sleep(2_000);
 

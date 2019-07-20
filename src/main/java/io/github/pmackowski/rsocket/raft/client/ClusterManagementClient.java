@@ -1,6 +1,5 @@
 package io.github.pmackowski.rsocket.raft.client;
 
-import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import org.slf4j.Logger;
@@ -15,27 +14,11 @@ public class ClusterManagementClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClusterManagementClient.class);
 
-    public Mono<Void> addGroup(String groupName, int leaderId, Configuration configuration) {
-        AddGroupRequest addGroupRequest = AddGroupRequest.newBuilder()
-                .setElectionTimeoutMin(200)
-                .setElectionTimeoutMax(400)
-                .setPersistentStorage(false)
-                .setStateMachine("kv1")
-                .addAllNodes(configuration.getMembers())
-                .setPassive(false)
-                .build();
-        List<Sender> senders = configuration.getMembers().stream().map(Sender::createSender).collect(Collectors.toList());
+    public Mono<Void> addGroup(String groupName, AddGroupRequest addGroupRequest) {
+        List<Sender> senders = addGroupRequest.getNodesList().stream().map(Sender::createSender).collect(Collectors.toList());
 
         return Flux.fromIterable(senders)
-                .flatMap(sender -> {
-                    AddGroupRequest addGroupDecoratedRequest = addGroupRequest;
-                    if (sender.getNodeId() == leaderId) {
-                        addGroupDecoratedRequest = AddGroupRequest.newBuilder(addGroupRequest)
-                            .setElectionTimeoutMax(addGroupRequest.getElectionTimeoutMin())
-                            .build();
-                    }
-                    return sender.addGroup(groupName, addGroupDecoratedRequest);
-                })
+                .flatMap(sender -> sender.addGroup(groupName, addGroupRequest))
                 .then();
     }
 

@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -114,7 +115,9 @@ public class RaftGroups {
 
     public Mono<AddGroupResponse> onAddGroup(String groupName, AddGroupRequest addGroupRequest) {
         RaftRole raftRole = Boolean.TRUE.equals(addGroupRequest.getPassive()) ? new PassiveRole() : new FollowerRole();
-        ElectionTimeout electionTimeout = ElectionTimeout.between(addGroupRequest.getElectionTimeoutMin(), addGroupRequest.getElectionTimeoutMax());
+        ElectionTimeout electionTimeout = addGroupRequest.getLeaderIdSuggestion() == node.getNodeId() ?
+                ElectionTimeout.exactly(Math.min(100, addGroupRequest.getElectionTimeoutMin())) : // TODO extract 100
+                ElectionTimeout.between(addGroupRequest.getElectionTimeoutMin(), addGroupRequest.getElectionTimeoutMax());
 
         RaftStorage raftStorage = Boolean.TRUE.equals(addGroupRequest.getPersistentStorage()) ?
                 new FileSystemRaftStorage(RaftStorageConfiguration.builder()
