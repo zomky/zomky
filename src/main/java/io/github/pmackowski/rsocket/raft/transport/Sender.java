@@ -1,6 +1,10 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinResponse;
+import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.JoinResponse;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
@@ -27,6 +31,15 @@ public class Sender {
         return new Sender(nodeId, raftSocket, true);
     }
 
+    public static Sender createSender(String bindAddress, int nodeId) {
+        RSocket raftSocket = RSocketFactory.connect()
+                .transport(TcpClientTransport.create(bindAddress, nodeId))
+                .start()
+                .block();
+
+        return new Sender(nodeId, raftSocket, true);
+    }
+
     public static Sender availableSender(int nodeId, RSocket raftSocket) {
         return new Sender(nodeId, raftSocket, true);
     }
@@ -41,13 +54,19 @@ public class Sender {
         this.available = available;
     }
 
+    private byte[] metadataRequest(RpcType rpcType) {
+        MetadataRequest metadataRequest = MetadataRequest.newBuilder()
+                .setMessageType(rpcType.getCode())
+                .build();
+        return metadataRequest.toByteArray();
+    }
+
     private byte[] metadataRequest(String groupName, RpcType rpcType) {
         MetadataRequest metadataRequest = MetadataRequest.newBuilder()
                 .setGroupName(groupName)
                 .setMessageType(rpcType.getCode())
                 .build();
         return metadataRequest.toByteArray();
-
     }
 
     public Mono<PreVoteResponse> requestPreVote(RaftGroup raftGroup, PreVoteRequest preVoteRequest) {
@@ -120,6 +139,30 @@ public class Sender {
                         return AddGroupResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid add group response!", e);
+                    }
+                });
+    }
+
+    public Mono<InitJoinResponse> initJoin(InitJoinRequest initJoinRequest) {
+        Payload payload = ByteBufPayload.create(initJoinRequest.toByteArray(), metadataRequest(RpcType.INIT_JOIN));
+        return raftSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return InitJoinResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid init join response!", e);
+                    }
+                });
+    }
+
+    public Mono<JoinResponse> join(JoinRequest joinRequest) {
+        Payload payload = ByteBufPayload.create(joinRequest.toByteArray(), metadataRequest(RpcType.JOIN));
+        return raftSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return JoinResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid join response!", e);
                     }
                 });
     }

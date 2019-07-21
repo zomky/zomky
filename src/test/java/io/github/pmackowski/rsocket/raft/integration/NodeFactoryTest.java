@@ -2,7 +2,7 @@ package io.github.pmackowski.rsocket.raft.integration;
 
 import io.github.pmackowski.rsocket.raft.IntegrationTest;
 import io.github.pmackowski.rsocket.raft.Nodes;
-import io.github.pmackowski.rsocket.raft.client.ClusterManagementClient;
+import io.github.pmackowski.rsocket.raft.client.RaftManagementClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KVStoreClient;
 import io.github.pmackowski.rsocket.raft.external.statemachine.KeyValue;
 import io.github.pmackowski.rsocket.raft.storage.meta.Configuration;
@@ -26,12 +26,12 @@ class NodeFactoryTest {
 
         //node.dispose();
 
-        ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
+        RaftManagementClient raftManagementClient = new RaftManagementClient();
 
         Configuration configuration = new Configuration(7001, 7002);
 
-        clusterManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
-        clusterManagementClient.addGroup("group2", addGroupRequest(7002, configuration)).block();
+        raftManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
+        raftManagementClient.addGroup("group2", addGroupRequest(7002, configuration)).block();
 
         Thread.sleep(2_000);
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
@@ -52,7 +52,7 @@ class NodeFactoryTest {
                 .doOnComplete(() -> LOGGER.info("KVStoreClient2 finished"))
                 .subscribe();
 
-//        final AddServerResponse group1 = clusterManagementClient.addServer("group1", 7001).block();
+//        final AddServerResponse group1 = raftManagementClient.addServer("group1", 7001).block();
 //
 //        System.out.println(group1);
         Thread.sleep(20_000);
@@ -77,13 +77,13 @@ class NodeFactoryTest {
         Nodes nodes = Nodes.create(7000, 7001, 7002);
         Configuration configuration = new Configuration(7001, 7002);
 
-        ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
+        RaftManagementClient raftManagementClient = new RaftManagementClient();
+        raftManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
 
         Thread.sleep(2_000);
 
-        clusterManagementClient.addServer("group1", 7001, 7000).block();
-        clusterManagementClient.removeServer("group1", 7001, 7002).block();
+        raftManagementClient.addServer("group1", 7001, 7000).block();
+        raftManagementClient.removeServer("group1", 7001, 7002).block();
 
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
 
@@ -95,7 +95,7 @@ class NodeFactoryTest {
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .subscribe();
 
-//        final AddServerResponse group1 = clusterManagementClient.addServer("group1", 7001).block();
+//        final AddServerResponse group1 = raftManagementClient.addServer("group1", 7001).block();
 //
 //        System.out.println(group1);
         Thread.sleep(20_000);

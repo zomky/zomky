@@ -33,5 +33,8 @@ public class Cluster {
         return getMembers().stream().filter(member -> !member.equals(memberId)).collect(Collectors.toSet());
     }
 
+    public void addMember(int member) {
+        this.members.add(member);
+    }
 
 }

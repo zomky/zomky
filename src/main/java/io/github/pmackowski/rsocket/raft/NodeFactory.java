@@ -38,8 +38,20 @@ public class NodeFactory {
 
     public static class ServerNodeFactory {
 
+        private NodeStorage nodeStorage;
+        private String nodeName;
         private int port;
         private Cluster cluster;
+
+        public ServerNodeFactory storage(NodeStorage nodeStorage) {
+            this.nodeStorage = nodeStorage;
+            return this;
+        }
+
+        public ServerNodeFactory nodeName(String nodeName) {
+            this.nodeName = nodeName;
+            return this;
+        }
 
         public ServerNodeFactory port(int port) {
             this.port = port;
@@ -53,8 +65,8 @@ public class NodeFactory {
 
         public Mono<Node> start() {
             return Mono.defer(() -> {
-                DefaultNode kvStoreServer = new DefaultNode(port, cluster);
-                return Mono.just(kvStoreServer).doOnNext(DefaultNode::start);
+                DefaultNode node = new DefaultNode(nodeStorage, nodeName, port, cluster);
+                return Mono.just(node).doOnNext(DefaultNode::start);
             });
         }
 

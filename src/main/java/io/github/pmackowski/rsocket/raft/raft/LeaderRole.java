@@ -154,7 +154,7 @@ public class LeaderRole implements RaftRole {
                 .flatMap(sender -> {
                     // TODO copy from raftGroup, now is hardcoded
                     // TODO a few AddGroupRequest attributes should be persisent (election timeout, persistent storage info, state machine name etc)
-                    // now must be exactly the same as in ClusterManagementClient except passive and passive attributes
+                    // now must be exactly the same as in RaftManagementClient except passive and passive attributes
                     AddGroupRequest addGroupRequest = AddGroupRequest.newBuilder()
                             .setElectionTimeoutMin(200)
                             .setElectionTimeoutMax(400)

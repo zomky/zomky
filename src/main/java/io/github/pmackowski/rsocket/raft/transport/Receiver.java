@@ -4,6 +4,8 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
@@ -50,7 +52,6 @@ public class Receiver {
         clientReceiver.onClose()
                 .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", node.getNodeId()))
                 .subscribe();
-
     }
 
     public void stop() {
@@ -146,6 +147,19 @@ public class Receiver {
                                     .flatMap(infoRequest -> node.onInfoRequest(infoRequest))
                                     .map(this::toPayload);
 
+
+                        case INIT_JOIN:
+                            return Mono.just(payload)
+                                    .map(this::toInitJoinRequest)
+                                    .flatMap(initJoinRequest -> node.onInitJoinRequest(initJoinRequest))
+                                    .map(this::toPayload);
+
+                        case JOIN:
+                            return Mono.just(payload)
+                                    .map(this::toJoinRequest)
+                                    .flatMap(joinRequest -> node.onJoinRequest(joinRequest))
+                                    .map(this::toPayload);
+
                         default:
                             return Mono.error(new RaftException("??"));
                     }
@@ -212,6 +226,22 @@ public class Receiver {
                         return InfoRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid info request!", e);
+                    }
+                }
+
+                private InitJoinRequest toInitJoinRequest(Payload payload) {
+                    try {
+                        return InitJoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid init join request!", e);
+                    }
+                }
+
+                private JoinRequest toJoinRequest(Payload payload) {
+                    try {
+                        return JoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid join request!", e);
                     }
                 }
 

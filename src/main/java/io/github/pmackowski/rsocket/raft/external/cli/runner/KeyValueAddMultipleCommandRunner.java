@@ -27,7 +27,7 @@ public class KeyValueAddMultipleCommandRunner implements ZomkyCommandRunner {
 
         KeyValueAddMultipleCommand command = subCommand(parseResult, KeyValueAddMultipleCommand.class);
 
-        KVStoreClient kvStoreClient = new KVStoreClient(mainCommand.getPort());
+        KVStoreClient kvStoreClient = new KVStoreClient(mainCommand.getAgentPort());
 
         int nbEntries = command.getNumberOfEntries();
         String groupName = command.getGroupName();

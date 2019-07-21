@@ -1,7 +1,6 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
+import io.github.pmackowski.rsocket.raft.client.protobuf.*;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
@@ -20,6 +19,10 @@ public interface InnerNode extends Node {
     void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener);
 
     Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest);
+
+    Mono<InitJoinResponse> onInitJoinRequest(InitJoinRequest initJoinRequest);
+
+    Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest);
 
     Senders getSenders();
 
