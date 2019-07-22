@@ -2,6 +2,9 @@ package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.client.protobuf.*;
 import io.github.pmackowski.rsocket.raft.gossip.Cluster;
+import io.github.pmackowski.rsocket.raft.gossip.GossipReceiver;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.PingRequest;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
@@ -27,6 +30,7 @@ class DefaultNode implements InnerNode {
     private int nodeId;
     private Cluster cluster;
 
+    private GossipReceiver gossipReceiver;
     private Receiver receiver;
     private Senders senders;
     private RaftGroups raftGroups;
@@ -39,6 +43,7 @@ class DefaultNode implements InnerNode {
         this.nodeId = nodeId;
         this.cluster = cluster;
 
+        this.gossipReceiver = new GossipReceiver(this);
         this.receiver = new Receiver(this);
         this.senders = new Senders(this);
         this.raftGroups = new RaftGroups(this);
@@ -47,6 +52,7 @@ class DefaultNode implements InnerNode {
     }
 
     public void start() {
+        gossipReceiver.start();
         receiver.start();
         senders.start();
         raftGroups.start();
@@ -113,6 +119,17 @@ class DefaultNode implements InnerNode {
                        senders.addServer(joinRequest1.getPort());
                    })
                    .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
+    }
+
+    // gossip
+    @Override
+    public Mono<Void> onPingRequest(PingRequest pingRequest) {
+        return Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> onPingReqRequest(PingReqRequest pingReqRequest) {
+        return Mono.empty();
     }
 
     @Override
