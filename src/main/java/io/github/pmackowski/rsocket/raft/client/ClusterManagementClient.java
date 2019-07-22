@@ -1,62 +1,26 @@
 package io.github.pmackowski.rsocket.raft.client;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
-import io.github.pmackowski.rsocket.raft.transport.RpcType;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
-import io.github.pmackowski.rsocket.raft.transport.protobuf.RemoveServerRequest;
-import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
-import io.rsocket.Payload;
-import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
-import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.util.ByteBufPayload;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinResponse;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+
+import java.net.InetAddress;
 
 public class ClusterManagementClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClusterManagementClient.class);
 
-    private Mono<RSocket> leaderMono;
+    public Mono<InitJoinResponse> join(Integer agentPort, InetAddress host, int port) {
+        Sender sender = Sender.createSender(agentPort);
+        InitJoinRequest initJoinRequest = InitJoinRequest.newBuilder()
+                .setRequesterPort(agentPort)
+                .setHost(host.getHostAddress())
+                .setPort(port)
+                .build();
 
-    public ClusterManagementClient(int leaderId) {
-        this.leaderMono = RSocketFactory.connect()
-                .transport(TcpClientTransport.create(leaderId))
-                .start()
-                .cache();
-    }
-
-    public Mono<Boolean> addServer(int newServer) {
-        return leaderMono.flatMap(leader -> {
-            AddServerRequest addServerRequest = AddServerRequest.newBuilder().setNewServer(newServer).build();
-            Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), new byte[] {RpcType.ADD_SERVER.getCode()});
-            return leader.requestResponse(payload);
-        }).map(payload -> true);
-    }
-
-    public Mono<Boolean> removeServer(int oldServer) {
-        return leaderMono.flatMap(leader -> {
-            RemoveServerRequest removeServerRequest = RemoveServerRequest.newBuilder().setOldServer(oldServer).build();
-            Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), new byte[] {RpcType.REMOVE_SERVER.getCode()});
-            return leader.requestResponse(payload);
-        }).map(payload -> true);
-    }
-
-    public Mono<InfoResponse> clusterInfo() {
-        return leaderMono.flatMap(leader -> {
-            InfoRequest infoRequest = InfoRequest.newBuilder().build();
-            Payload payload = ByteBufPayload.create(infoRequest.toByteArray(), new byte[] {RpcType.INFO.getCode()});
-            return leader.requestResponse(payload);
-        }).map(payload1 -> {
-            try {
-                return InfoResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
-            } catch (InvalidProtocolBufferException e) {
-                throw new RaftException("Invalid info response!", e);
-            }
-        });
+        return sender.initJoin(initJoinRequest);
     }
 }

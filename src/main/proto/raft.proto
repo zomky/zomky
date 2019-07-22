@@ -71,3 +71,23 @@ message InstallSnapshotRequest {
 message InstallSnapshotResponse {
     int32 term = 1; // currentTerm, for leader to update itself
 }
+
+message MetadataRequest {
+    int32 message_type = 1;
+    string group_name = 2;
+}
+
+message AddGroupRequest {
+    int32 leader_id_suggestion = 1;
+    string state_machine = 2;
+    int32 election_timeout_min = 3;
+    int32 election_timeout_max = 4;
+    bool passive = 5;
+    bool persistent_storage = 6;
+    int32 segment_size = 7;
+    repeated int32 nodes = 8;
+}
+
+message AddGroupResponse {
+    bool status = 1; // OK if group was added successfully
+}

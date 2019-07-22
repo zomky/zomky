@@ -19,8 +19,8 @@ public class MainCommand {
     @Option(names = "--dry-run")
     private boolean dryRun = false;
 
-    @Option(names = {"--port"})
-    private Integer port = 7000;
+    @Option(names = {"--agent-port"})
+    private Integer agentPort = 7000;
 
     public boolean isHelp() {
         return help;
@@ -34,7 +34,7 @@ public class MainCommand {
         return dryRun;
     }
 
-    public Integer getPort() {
-        return port;
+    public Integer getAgentPort() {
+        return agentPort;
     }
 }

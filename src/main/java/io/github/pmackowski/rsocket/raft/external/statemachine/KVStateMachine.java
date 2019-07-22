@@ -1,7 +1,7 @@
 package io.github.pmackowski.rsocket.raft.external.statemachine;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.StateMachine;
+import io.github.pmackowski.rsocket.raft.raft.StateMachine;
 import io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.CommandEntry;
 import io.github.pmackowski.rsocket.raft.storage.log.entry.LogEntry;
@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
 
 public class KVStateMachine implements StateMachine<ByteBuffer> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KVStateMachine1.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KVStateMachine.class);
 
     private int nodeId;
     private int number;

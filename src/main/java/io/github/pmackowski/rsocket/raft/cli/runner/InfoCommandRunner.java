@@ -1,8 +1,6 @@
 package io.github.pmackowski.rsocket.raft.cli.runner;
 
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
-import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
-import io.github.pmackowski.rsocket.raft.client.ClusterManagementClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -17,12 +15,12 @@ public class InfoCommandRunner implements ZomkyCommandRunner {
 
     @Override
     public void execute(CommandLine.ParseResult parseResult) {
-        MainCommand mainCommand = mainCommand(parseResult);
-        ClusterManagementClient clusterManagementClient = new ClusterManagementClient(mainCommand.getPort());
+        /*MainCommand mainCommand = mainCommand(parseResult);
+        RaftManagementClient clusterManagementClient = new RaftManagementClient(mainCommand.getAgentPort());
         clusterManagementClient.clusterInfo()
                 .doOnNext(clusterInfo -> {
                     LOGGER.info("Cluster info {}", clusterInfo);
                 })
-                .block();
+                .block();*/
     }
 }

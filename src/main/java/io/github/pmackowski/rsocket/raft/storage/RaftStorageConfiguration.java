@@ -59,6 +59,12 @@ public class RaftStorageConfiguration {
             return this;
         }
 
+        // TODO temporary
+        public Builder directoryGroup(String groupName) {
+            this.directory = Paths.get(directory.toAbsolutePath().toString(), groupName);
+            return this;
+        }
+
         public Builder segmentSize(SizeUnit sizeUnit, int size) {
             this.segmentSize = size * sizeUnit.getValue();
             return this;
