@@ -37,15 +37,15 @@ message Gossip {
 }
 
 message Ping {
-    repeated Gossip gossips = 1;
+    int32 node_id = 1;
+    bool req = 2;
+    repeated Gossip gossips = 3;
 }
 
 message Ack {
-    repeated Gossip gossips = 1;
+    int32 node_id = 1;
+    repeated Gossip gossips = 2;
 }
 
-message PingReq {
-    repeated Gossip gossips = 1;
-}
 
 
