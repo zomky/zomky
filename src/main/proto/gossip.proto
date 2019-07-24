@@ -19,3 +19,33 @@ message PingReqRequest {
 message PingReqResponse {
     bool ack = 1;
 }
+
+
+///
+
+message Gossip {
+    enum Suspicion {
+        ALIVE = 0;
+        SUSPECT = 1;
+        CONFIRM = 2;
+    }
+
+    Suspicion suspicion = 1;
+    int32 incarnation = 2;
+    int32 origin_node_id = 3;
+    int32 node_id = 4;
+}
+
+message Ping {
+    repeated Gossip gossips = 1;
+}
+
+message Ack {
+    repeated Gossip gossips = 1;
+}
+
+message PingReq {
+    repeated Gossip gossips = 1;
+}
+
+
