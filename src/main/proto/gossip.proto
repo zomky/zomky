@@ -25,15 +25,15 @@ message PingReqResponse {
 
 message Gossip {
     enum Suspicion {
-        ALIVE = 0;
-        SUSPECT = 1;
-        CONFIRM = 2;
+        UNKNOWN = 0;
+        ALIVE = 1;
+        SUSPECT = 2;
+        DEAD = 3;
     }
 
     Suspicion suspicion = 1;
     int32 incarnation = 2;
-    int32 origin_node_id = 3;
-    int32 node_id = 4;
+    int32 node_id = 3;
 }
 
 message Ping {
