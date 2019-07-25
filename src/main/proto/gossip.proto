@@ -37,9 +37,11 @@ message Gossip {
 }
 
 message Ping {
-    int32 node_id = 1;
-    bool req = 2;
-    repeated Gossip gossips = 3;
+    int32 initiator_node_id = 1;
+    int32 requestor_node_id = 2;
+    int32 destination_node_id = 3;
+    bool direct = 4;
+    repeated Gossip gossips = 5;
 }
 
 message Ack {
