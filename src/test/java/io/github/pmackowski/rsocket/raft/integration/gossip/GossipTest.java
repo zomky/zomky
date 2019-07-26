@@ -39,26 +39,55 @@ public class GossipTest {
 
 //        Queue<Gossip> gossips = new LinkedBlockingQueue<>();
 
-
         public Gossips(int nodeId) {
             this.nodeId = nodeId;
         }
 
         public synchronized void addGossip(int nodeId, Gossip.Suspicion suspicion) {
+            addGossip(nodeId, incarnation, suspicion);
+        }
+
+        public synchronized void addGossip(int nodeId, int incarnation, Gossip.Suspicion suspicion) {
+            // Node is being suspected of being faulty
+            if (this.nodeId == nodeId) {
+                if (this.incarnation == incarnation && suspicion == Gossip.Suspicion.SUSPECT) {
+                    this.incarnation++;
+                    gossips.put(this.nodeId, gossip(this.nodeId, Gossip.Suspicion.ALIVE));
+                }
+                return;
+            }
+
             Gossip gossip = gossips.get(nodeId);
-            if (gossip == null) {
-                gossips.put(nodeId, Gossip.newBuilder().setNodeId(nodeId).setSuspicion(suspicion).setIncarnation(incarnation).build());
-            } else {
-                if (this.nodeId == nodeId && suspicion == Gossip.Suspicion.SUSPECT) {
-                    incarnation++;
+            if (gossip != null && gossip.getSuspicion() == Gossip.Suspicion.DEAD) {
+                return;
+            }
+
+            if (suspicion == Gossip.Suspicion.ALIVE) {
+                if (gossip == null) {
+                    gossips.put(nodeId, gossip(nodeId, suspicion));
+                } else if (gossip.getIncarnation() ){
+
+                }
+            }
+
+            if (suspicion == Gossip.Suspicion.DEAD && gossip.getSuspicion() != Gossip.Suspicion.DEAD) {
+                gossips.put(nodeId, gossip(nodeId, suspicion));
+                return;
+            }
+
+            else {
+                if (suspicion == Gossip.Suspicion.DEAD) {
+                    gossips.put(nodeId, gossip());
+                } else if (suspicion == Gossip.Suspicion.ALIVE) {
+
                 }
 
-                if (suspicion == Gossip.Suspicion.DEAD) {
-                    gossips.put(nodeId, Gossip.newBuilder().setNodeId(nodeId).setSuspicion(suspicion).setIncarnation(incarnation).build());
-                }
-                Gossip.Suspicion currentSuspicion = gossip.getSuspicion();
 //                gossip.getIncarnation()
             }
+        }
+
+        private Gossip gossip(int nodeId, Gossip.Suspicion suspicion) {
+            return Gossip.newBuilder().setNodeId(nodeId).setSuspicion(suspicion).setIncarnation(incarnation).build();
         }
 
         public List<Gossip> choose() {
@@ -70,6 +99,10 @@ public class GossipTest {
         }
 
         public List<Gossip> share() {
+            return null;
+        }
+
+        private Gossip chooseBetween(Gossip gossip1, Gossip gossip2) {
             return null;
         }
     }
