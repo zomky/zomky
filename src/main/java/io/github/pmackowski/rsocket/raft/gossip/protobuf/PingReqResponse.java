@@ -61,12 +61,12 @@ public  final class PingReqResponse extends
   }
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.internal_static_PingReqResponse_descriptor;
+    return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_PingReqResponse_descriptor;
   }
 
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.internal_static_PingReqResponse_fieldAccessorTable
+    return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_PingReqResponse_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
             io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponse.class, io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponse.Builder.class);
   }
@@ -228,12 +228,12 @@ public  final class PingReqResponse extends
       io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponseOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.internal_static_PingReqResponse_descriptor;
+      return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_PingReqResponse_descriptor;
     }
 
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.internal_static_PingReqResponse_fieldAccessorTable
+      return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_PingReqResponse_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
               io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponse.class, io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponse.Builder.class);
     }
@@ -262,7 +262,7 @@ public  final class PingReqResponse extends
 
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.internal_static_PingReqResponse_descriptor;
+      return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_PingReqResponse_descriptor;
     }
 
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqResponse getDefaultInstanceForType() {
