@@ -10,6 +10,7 @@ import io.netty.channel.socket.DatagramPacket;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
@@ -22,9 +23,10 @@ import reactor.netty.udp.UdpServer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 
 public class GossipNode {
 
@@ -33,17 +35,23 @@ public class GossipNode {
     private long probeTimeout = 500;
     private long protocolPeriod = probeTimeout * 3;
 
-    private volatile long delay = 1000;
-
     private List<Integer> nodes = new ArrayList<>();
 
-    private int nodeId;
+    int nodeId;
+    private BiFunction<Integer,Integer, Duration> delayFunction;
     private Gossips gossips;
     private LoopResources loopResources;
     private Connection connection;
+    private Disposable disposable;
+    private AtomicInteger delayCounter = new AtomicInteger(0);
 
     public GossipNode(int nodeId) {
+        this(nodeId, (otherNodeId, counter) -> Duration.ZERO);
+    }
+
+    public GossipNode(int nodeId, BiFunction<Integer,Integer, Duration> delayFunction) {
         this.nodeId = nodeId;
+        this.delayFunction = delayFunction;
         this.loopResources = LoopResources.create("gossip-"+nodeId);
         this.gossips = new Gossips(nodeId);
         this.connection = UdpServer.create()
@@ -52,9 +60,36 @@ public class GossipNode {
                 .bindNow(Duration.ofSeconds(1));
     }
 
+    public void disposeNow() {
+        connection.disposeNow();
+        disposable.dispose();
+    }
+
     public void start() {
 //        Queue<Integer> nodesInRandomOrder = new ArrayList<>();
 //        int selectedPeer = nodesInRandomOrder.poll();
+
+        GossipProbe gossipProbe = new GossipProbe(this);
+
+        disposable = Flux.defer(() -> {
+                    int destinationNodeId = 7001; // round-robin from random list
+                    List<Integer> proxyNodeIds = Arrays.asList(7002, 7003);
+                    List<Gossip> gossips = new ArrayList<>();
+                    Publisher<?> indirectStart = Mono.delay(Duration.ofMillis(400));
+                    Publisher<?> protocolPeriodEnd = Mono.delay(Duration.ofSeconds(2));
+                    return gossipProbe.probeNode(destinationNodeId, proxyNodeIds, gossips, indirectStart, protocolPeriodEnd);
+                })
+                .doOnNext(ack -> {
+                    LOGGER.info("Acks {}", ack);
+                })
+                .doFinally(signalType -> {
+        //                Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
+        //                this.gossips.addGossip(nodeId, suspicion);
+                    LOGGER.info("[Node {}][ping] Probing {} finished.", this.nodeId, 2313123);
+                })
+                .repeat()
+                .subscribe();
+
         List<Integer> indirectPeers = new ArrayList<>(); // select configurable amount of peers
     }
 
@@ -67,25 +102,23 @@ public class GossipNode {
                     Ack ack = Ack.newBuilder().setNodeId(22).addAllGossips(sharedGossips).build();
 
                     if (ping.getDirect()) {
-                        Duration delayDur = Duration.ofMillis(delay);
-                        delay = Math.max(0, delay - 800);
+                        Duration delay = delayFunction.apply(ping.getRequestorNodeId(), delayCounter.incrementAndGet());
                         if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
-                            LOGGER.info("[Node {}][onPing] I am being probed by {} , my delay {}", nodeId, ping.getRequestorNodeId(), delayDur);
+                            LOGGER.info("[Node {}][onPing] I am being probed by {} , my delay {}", nodeId, ping.getRequestorNodeId(), delay);
                         } else {
-                            LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {}, my delay {}", nodeId, ping.getRequestorNodeId(), ping.getInitiatorNodeId(), delayDur);
+                            LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {}, my delay {}", nodeId, ping.getRequestorNodeId(), ping.getInitiatorNodeId(), delay);
                         }
                         return Mono.just(1)
-                                .delayElement(delayDur)
+                                .delayElement(delay)
                                 .then(udpOutbound.sendObject(new DatagramPacket(Unpooled.copiedBuffer(ack.toByteArray()), datagramPacket.sender())).then());
                     } else {
                         LOGGER.info("[Node {}][onPing] Probing {} on behalf of {}", nodeId, ping.getDestinationNodeId(), ping.getInitiatorNodeId());
-
+                        GossipTransport gossipTransport = new GossipTransport();
                         return client(ping.getDestinationNodeId())
                                 .flatMap(connection -> connection
                                                 .outbound()
                                                 // which gossips should be sent ??
                                                 .sendObject(Unpooled.copiedBuffer(Ping.newBuilder(ping).clearGossips().addAllGossips(gossips.share()).setDirect(true).build().toByteArray()))
-//                                                .sendObject(Unpooled.copiedBuffer(Ping.newBuilder(ping).setDirect(true).build().toByteArray()))
                                                 .then(connection.inbound()
                                                         .receiveObject()
                                                         .cast(DatagramPacket.class)
@@ -105,71 +138,7 @@ public class GossipNode {
                                 );
                     }
                 })
-//                    .delayElements(Duration.ofMillis(10))
-//                    .log("udp-server")
                 .then();
-    }
-
-    Mono<Void> ping(int nodeId, Integer ... indirectNodeIds) {
-        AtomicInteger acks = new AtomicInteger(0);
-        Ping ping = Ping.newBuilder().setInitiatorNodeId(this.nodeId)
-                .setRequestorNodeId(this.nodeId)
-                .setDestinationNodeId(nodeId)
-                .addAllGossips(this.gossips.share())
-                .setDirect(true).build();
-        LOGGER.info("[Node {}][ping] Probing {} ...", this.nodeId, nodeId);
-        return client(nodeId)
-                .flatMap(clientConnection -> clientConnection
-                        .outbound()
-                        .sendByteArray(Mono.just(ping.toByteArray()))
-                        .then(clientConnection.inbound()
-                                .receiveObject()
-                                .cast(DatagramPacket.class)
-                                .next()
-                                .doOnNext(i -> LOGGER.info("[Node {}][ping] Direct probe to {} successful.", this.nodeId, nodeId))
-//                                .doOnNext(datagramPacket -> addGossips(datagramPacket, nodeId))
-                                .timeout(Duration.ofMillis(probeTimeout))
-                                .doOnError(i -> LOGGER.error("-- {}", clientConnection.address()))
-                                .then()
-                        )
-                        .then()
-                        .doOnNext(v -> acks.incrementAndGet())
-                        .onErrorResume(throwable -> {
-                            LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", this.nodeId, nodeId, throwable.getMessage());
-                            LOGGER.info("[Node {}][ping] Trying indirect probes to {} through {}.", this.nodeId, nodeId, Arrays.asList(indirectNodeIds));
-
-                            return Flux.fromArray(indirectNodeIds)
-                                    .flatMap(this::client)
-                                    .flatMap(connection2 -> connection2
-                                            .outbound()
-                                            .sendByteArray(Mono.just(Ping.newBuilder(ping).setRequestorNodeId(connection2.address().getPort()).setDirect(false).build().toByteArray()))
-                                            .then(connection2.inbound()
-                                                    .receiveObject()
-                                                    .cast(DatagramPacket.class)
-                                                    .next()
-                                                    .doOnNext(i -> LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", this.nodeId, nodeId, connection2.address().getPort()))
-                                                    .doOnNext(datagramPacket -> addGossips(datagramPacket, nodeId))
-                                                    .doOnNext(v -> acks.incrementAndGet())
-                                                    .timeout(Duration.ofMillis(protocolPeriod - probeTimeout))
-                                                    .onErrorResume(throwable1 -> {
-                                                        LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}.", this.nodeId, nodeId, connection2.address().getPort(), throwable1.getMessage());
-                                                        return Mono.empty();
-                                                    })
-                                                    .flatMap(datagramPacket1 -> clientConnection
-                                                            .outbound()
-                                                            // TODO gossips
-                                                            .sendObject(new DatagramPacket(Unpooled.copiedBuffer(Ack.newBuilder().build().toByteArray()), datagramPacket1.sender()))
-                                                            .then()
-                                                    )
-                                            )
-                                    )
-                                    .then();
-                        })
-                ).doFinally(signalType -> {
-                    Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
-                    this.gossips.addGossip(nodeId, suspicion);
-                    LOGGER.info("[Node {}][ping] Probing {} finished. Acks {}", this.nodeId, nodeId, acks.get());
-                });
     }
 
     private Ping toPing(DatagramPacket datagramPacket) {
@@ -201,11 +170,15 @@ public class GossipNode {
         return UdpClient.create()
                 .port(port)
                 .runOn(loopResources)
-                .connect();
+                .connect()
+                .doOnSubscribe(subscription -> {
+                    LOGGER.debug("[Node {}] Probe {} subscription", nodeId, port);
+                })
+                .doOnCancel(() -> {
+                    LOGGER.info("[Node {}] Indirect probe {} cancelled", nodeId, port);
+                })
+                .doOnError(throwable -> {
+                    LOGGER.warn("Cannont connect!");
+                });
     }
-
-    public void disposeNow() {
-        connection.disposeNow();
-    }
-
 }

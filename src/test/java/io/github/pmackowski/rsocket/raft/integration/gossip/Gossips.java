@@ -88,7 +88,7 @@ public class Gossips {
     }
 
     public List<Gossip> share() {
-        LOGGER.info("[Node {}] sharing my gossips {}", nodeId, gossips.values());
+        LOGGER.debug("[Node {}] sharing my gossips {}", nodeId, gossips.values());
         return new ArrayList<>(gossips.values());
     }
 
