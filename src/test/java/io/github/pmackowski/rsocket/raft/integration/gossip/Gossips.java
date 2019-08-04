@@ -1,10 +1,12 @@
 package io.github.pmackowski.rsocket.raft.integration.gossip;
 
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +26,10 @@ public class Gossips {
     private void addGossipInternal(Gossip gossip) {
         LOGGER.error("[Node {}] New gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
         gossips.put(nodeId, gossip);
+    }
+
+    public void addGossips(Collection<? super Ack> gossips) {
+
     }
 
     public synchronized void addGossip(int nodeId, Gossip.Suspicion suspicion) {

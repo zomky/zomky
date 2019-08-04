@@ -18,7 +18,9 @@ public class GossipTest {
     public void echoTest() throws Exception {
         GossipNode node1 = new GossipNode(7000);
 
-        GossipNode node2 = new GossipNode(7001, (nodeId, counter) -> nodeId == 7000 ? Duration.ofMillis(1000) : Duration.ofMillis(500));
+        GossipNode node2 = new GossipNode(7001, (nodeId, counter) ->
+                nodeId == 7000 ? Mono.delay(Duration.ofMillis(500)) : Mono.delay(Duration.ofMillis(700))
+        );
         GossipNode node3 = new GossipNode(7002);
         GossipNode node4 = new GossipNode(7003);
 

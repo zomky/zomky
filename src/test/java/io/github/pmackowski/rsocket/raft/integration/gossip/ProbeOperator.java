@@ -146,7 +146,7 @@ class ProbeOperator<T, C extends Collection<? super T>, I, P> extends MonoOperat
 
         @Override
         public void onNext(T t) {
-            LOGGER.info("IndirectSubscriber onNext {}", t);
+            LOGGER.debug("IndirectSubscriber onNext {}", t);
             result.add(t);
         }
 

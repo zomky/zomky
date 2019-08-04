@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
+import reactor.netty.resources.LoopResources;
 import reactor.netty.udp.UdpClient;
 
 import java.util.List;
@@ -51,7 +52,11 @@ public class GossipTransport {
                             .then(connection.inbound().receiveObject().cast(DatagramPacket.class).next()
                                     .doOnNext(i -> {
                                         if (ping.getDirect()) {
-                                            LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+                                            if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
+                                                LOGGER.info("[Node {}][onPing] Direct probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                            } else {
+                                                LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+                                            }
                                         } else {
                                             LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
                                         }
@@ -59,9 +64,13 @@ public class GossipTransport {
                                     .map(this::toAck)
                                     .onErrorResume(throwable -> {
                                         if (ping.getDirect()) {
-                                            LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                                            if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
+                                                LOGGER.warn("[Node {}][onPing] Direct probe to {} on behalf of {} failed. Reason {}.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId(), throwable.getMessage());
+                                            } else {
+                                                LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                                            }
                                         } else {
-                                            LOGGER.warn("[Node {}][onPing] Probing {} on behalf of {} failed.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                                            LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
                                         }
                                         return Mono.empty();
                                     })
@@ -71,14 +80,14 @@ public class GossipTransport {
 
     private Mono<? extends Connection> client(Ping ping) {
         return UdpClient.create()
-                .port(ping.getDestinationNodeId())
-//                .runOn(loopResources)
+                .port(ping.getDirect() ? ping.getDestinationNodeId() : ping.getRequestorNodeId())
+                .runOn(LoopResources.create("gossip-" + ping.getRequestorNodeId()))
                 .connect()
                 .doOnCancel(() -> {
-                    LOGGER.info("[Node {}] Indirect probe {} cancelled", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+                    LOGGER.info("[Node {}] Probe to {} has been cancelled", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
                 })
                 .doOnError(throwable -> {
-                    LOGGER.warn("Cannont connect!");
+                    LOGGER.warn("Cannot connect!");
                 });
     }
 

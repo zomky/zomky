@@ -22,9 +22,11 @@ public class GossipProbe {
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipProbe.class);
 
     private int nodeId;
+    private GossipTransport gossipTransport;
 
     public GossipProbe(GossipNode node) {
         this.nodeId = node.nodeId;
+        this.gossipTransport = new GossipTransport();
     }
 
     public Mono<Collection<? super Ack>> probeNode(int destinationNodeId, List<Integer> proxyNodeIds, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
@@ -34,80 +36,25 @@ public class GossipProbe {
     }
 
     private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
-        return client(destinationNodeId)
-                .flatMap(connection -> {
-                    Ping ping = Ping.newBuilder()
-                            .setInitiatorNodeId(this.nodeId)
-                            .setRequestorNodeId(this.nodeId)
-                            .setDestinationNodeId(destinationNodeId)
-                            .addAllGossips(gossips)
-                            .setDirect(true)
-                            .build();
-
-                    return connection.outbound().sendByteArray(Mono.just(ping.toByteArray())).then()
-                            .then(connection.inbound().receiveObject().cast(DatagramPacket.class).next()
-                                    .doOnNext(i -> LOGGER.info("[Node {}][ping] Direct probe to {} successful.", this.nodeId, destinationNodeId))
-                                    .map(this::toAck)
-                                    .onErrorResume(throwable -> {
-                                        LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", this.nodeId, destinationNodeId, throwable.getMessage());
-                                        return Mono.empty();
-                                    })
-                            );
-                });
+        return gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(this.nodeId)
+                .setRequestorNodeId(this.nodeId)
+                .setDestinationNodeId(destinationNodeId)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .build());
     }
 
     private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, List<Gossip> gossips) {
         return Flux.fromIterable(proxies)
-                .flatMap(proxyNodeId -> pingIndirect(destinationNodeId, proxyNodeId, gossips));
-    }
-
-    private Mono<Ack> pingIndirect(int destinationNodeId, int proxyNodeId, List<Gossip> gossips) {
-        return client(proxyNodeId)
-                .flatMap(connection -> {
-                    Ping ping = Ping.newBuilder()
-                            .setInitiatorNodeId(this.nodeId)
-                            .setRequestorNodeId(proxyNodeId)
-                            .setDestinationNodeId(destinationNodeId)
-                            .addAllGossips(gossips)
-                            .setDirect(false)
-                            .build();
-
-                    return connection.outbound().sendByteArray(Mono.just(ping.toByteArray())).then()
-                            .then(connection.inbound().receiveObject().cast(DatagramPacket.class).next()
-                                    .doOnNext(i -> LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", this.nodeId, destinationNodeId, proxyNodeId))
-                                    .map(this::toAck)
-                                    .onErrorResume(throwable -> {
-                                        LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}.", this.nodeId, destinationNodeId, proxyNodeId, throwable.getMessage());
-                                        return Mono.empty();
-                                    })
-                            );
-                });
-    }
-
-    private Mono<? extends Connection> client(int port) {
-        return UdpClient.create()
-                .port(port)
-//                .runOn(loopResources)
-                .connect()
-                .doOnSubscribe(subscription -> {
-                    LOGGER.info("[Node {}] Probe {} subscription", nodeId, port);
-                })
-                .doOnCancel(() -> {
-                    LOGGER.info("[Node {}] Indirect probe {} cancelled", nodeId, port);
-                })
-                .doOnError(throwable -> {
-                    LOGGER.warn("Cannont connect!");
-                });
-    }
-
-    private Ack toAck(DatagramPacket datagramPacket) {
-        LOGGER.debug("[Node {}] toAck Datagram receipient{}", nodeId, datagramPacket.recipient());
-        LOGGER.debug("[Node {}] toAck Datagram sender {}", nodeId, datagramPacket.sender());
-        try {
-            return Ack.parseFrom(NettyUtils.toByteArray(datagramPacket.content().retain()));
-        } catch (InvalidProtocolBufferException e) {
-            throw new RuntimeException(e);
-        }
+                .flatMap(proxyNodeId -> gossipTransport.ping(Ping.newBuilder()
+                        .setInitiatorNodeId(this.nodeId)
+                        .setRequestorNodeId(proxyNodeId)
+                        .setDestinationNodeId(destinationNodeId)
+                        .addAllGossips(gossips)
+                        .setDirect(false)
+                        .build())
+                );
     }
 
 }
