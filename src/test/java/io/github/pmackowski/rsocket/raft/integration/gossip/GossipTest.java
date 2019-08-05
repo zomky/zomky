@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft.integration.gossip;
 
+import io.github.pmackowski.rsocket.raft.gossip.GossipNode;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,11 +27,11 @@ public class GossipTest {
 
         Thread.sleep(1_000);
 
-        GossipProbe gossipProbe = new GossipProbe(node1);
-
-        gossipProbe.probeNode(7001, Arrays.asList(7002, 7003, 7007), new ArrayList<>(), Mono.delay(Duration.ofMillis(400)), Mono.delay(Duration.ofMillis(2000)))
-             .subscribe(i -> LOGGER.info("consume {} ", i));
-
+//        GossipProbe gossipProbe = new GossipProbe(node1);
+//
+//        gossipProbe.probeNode(7001, Arrays.asList(7002, 7003, 7007), new ArrayList<>(), Mono.delay(Duration.ofMillis(400)), Mono.delay(Duration.ofMillis(2000)))
+//             .subscribe(i -> LOGGER.info("consume {} ", i));
+//
 
 //        node1.ping(7001, 7002, 7003).subscribe();
 //        node2.ping(7002, 7001, 7003).subscribe();

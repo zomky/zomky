@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ public class ProbeOperatorTest {
         Thread.sleep(2_000);
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNoEvent(Duration.ofMillis(1000))
+                .expectNoEvent(Duration.ofMillis(100))
                 .expectNext(Arrays.asList(3,4,1))
                 .expectComplete()
                 .verify();

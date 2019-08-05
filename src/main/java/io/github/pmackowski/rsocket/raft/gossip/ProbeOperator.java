@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;

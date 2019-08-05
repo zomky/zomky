@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Gossips {
+class Gossips {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Gossips.class);
 

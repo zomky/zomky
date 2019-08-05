@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
@@ -16,7 +16,7 @@ import reactor.netty.udp.UdpClient;
 
 import java.util.List;
 
-public class GossipTransport {
+class GossipTransport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipTransport.class);
 

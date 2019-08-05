@@ -1,14 +1,15 @@
 package io.github.pmackowski.rsocket.raft;
 
 import io.github.pmackowski.rsocket.raft.client.protobuf.*;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.PingReqRequest;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.PingRequest;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.Senders;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
+import reactor.netty.udp.UdpInbound;
+import reactor.netty.udp.UdpOutbound;
 
 public interface InnerNode extends Node {
 
@@ -26,11 +27,9 @@ public interface InnerNode extends Node {
 
     Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest);
 
-    Mono<InitJoinResponse> onInitJoinRequest(InitJoinRequest initJoinRequest);
-
     Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest);
 
-    Mono<Void> onPingRequest(PingRequest pingRequest);
+    Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest);
 
-    Mono<Void> onPingReqRequest(PingReqRequest pingReqRequest);
+    Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound);
 }

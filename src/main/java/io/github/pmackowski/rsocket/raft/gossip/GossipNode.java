@@ -1,5 +1,10 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
+import io.github.pmackowski.rsocket.raft.InnerNode;
+import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.JoinResponse;
+import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveResponse;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
@@ -10,36 +15,38 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.netty.Connection;
 import reactor.netty.udp.UdpInbound;
 import reactor.netty.udp.UdpOutbound;
-import reactor.netty.udp.UdpServer;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 
-import static io.github.pmackowski.rsocket.raft.integration.gossip.PingUtils.toPing;
+import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
 public class GossipNode {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipNode.class);
 
-    private long probeTimeout = 500;
-    private long protocolPeriod = probeTimeout * 3;
+    private Duration indirectStart = Duration.ofMillis(400);
+    private Duration protocolPeriod = Duration.ofSeconds(2);
+    private int subgroupSize = 2;
 
     private AtomicLong protocolPeriodCounter = new AtomicLong(0);
     private GossipOnPingDelay onPingDelay;
-
-    private List<Integer> nodes = new ArrayList<>();
+    private BooleanSupplier REPEAT_PROBE = () -> true;
 
     int nodeId;
+
+    private Peers peers;
     private Gossips gossips;
-    private Connection connection;
     private Disposable disposable;
+
+    public GossipNode(InnerNode node) {
+
+    }
 
     public GossipNode(int nodeId) {
         this(nodeId, GossipOnPingDelay.NO_DELAY);
@@ -49,35 +56,16 @@ public class GossipNode {
         this.nodeId = nodeId;
         this.onPingDelay = onPingDelay;
         this.gossips = new Gossips(nodeId);
-        this.connection = UdpServer.create()
-                .port(nodeId)
-                .handle(this::onPing)
-                .bindNow(Duration.ofSeconds(1));
+        this.peers = new Peers();
     }
 
-    public void disposeNow() {
-        connection.disposeNow();
+    public void dispose() {
         disposable.dispose();
     }
 
     public void start() {
-//        Queue<Integer> nodesInRandomOrder = new ArrayList<>();
-//        int selectedPeer = nodesInRandomOrder.poll();
-
-        GossipProbe gossipProbe = new GossipProbe(this);
-
-        disposable = Flux.defer(() -> {
-                    protocolPeriodCounter.incrementAndGet();
-                    int destinationNodeId = 7001; // round-robin from random list
-                    List<Integer> proxyNodeIds = Arrays.asList(7002, 7003);
-                    List<Gossip> gossips = new ArrayList<>();
-                    Publisher<?> indirectStart = Mono.delay(Duration.ofMillis(400));
-                    Publisher<?> protocolPeriodEnd = Mono.delay(Duration.ofSeconds(2));
-                    return gossipProbe.probeNode(destinationNodeId, proxyNodeIds, gossips, indirectStart, protocolPeriodEnd);
-                })
-                .doOnNext(ack -> {
-                    this.gossips.addGossips(ack);
-                })
+        disposable = probeNode()
+                .doOnNext(acks -> this.gossips.addGossips(acks))
                 .doOnError(throwable -> {
 //                    this.gossips.addGossip(destinationNodeId, Gossip.Suspicion.SUSPECT);
                 })
@@ -86,13 +74,33 @@ public class GossipNode {
         //                this.gossips.addGossip(nodeId, suspicion);
                     LOGGER.info("[Node {}][ping] Probing {} finished.", this.nodeId, 2313123);
                 })
-                .repeat()
+                .repeat(REPEAT_PROBE)
                 .subscribe();
-
-        List<Integer> indirectPeers = new ArrayList<>(); // select configurable amount of peers
     }
 
-    Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {
+    private Flux<Collection<? super Ack>> probeNode() {
+        GossipProbe gossipProbe = new GossipProbe(this);
+        return Flux.defer(() -> {
+            protocolPeriodCounter.incrementAndGet();
+            int destinationNodeId = peers.nextRandomPeerId();
+            List<Integer> proxyNodeIds = peers.selectCompanions(destinationNodeId, subgroupSize);
+            return gossipProbe.probeNode(destinationNodeId, proxyNodeIds, gossips.share(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
+        });
+    }
+
+    public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
+//        cluster.addMember(joinRequest1.getPort());
+//        senders.addServer(joinRequest1.getPort());
+        peers.add(joinRequest.getPort());
+        return null;
+    }
+
+    public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
+//        peers.remove(leaveRequest.get);
+        return null;
+    }
+
+    public Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {
         return udpInbound.receiveObject()
                 .cast(DatagramPacket.class)
                 .flatMap(datagramPacket -> {
@@ -123,5 +131,4 @@ public class GossipNode {
             }
         }
     }
-
 }

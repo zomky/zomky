@@ -4,8 +4,8 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinRequest;
 import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveRequest;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
@@ -19,6 +19,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.Connection;
+import reactor.netty.udp.UdpServer;
+
+import java.time.Duration;
 
 public class Receiver {
 
@@ -28,11 +32,18 @@ public class Receiver {
 
     private CloseableChannel raftReceiver, clientReceiver;
 
+    private Connection gossipReceiver;
+
     public Receiver(InnerNode node) {
         this.node = node;
     }
 
     public void start() {
+        gossipReceiver = UdpServer.create()
+                .port(node.getNodeId()+20000)
+                .handle(node::onPing)
+                .bindNow(Duration.ofSeconds(1));
+
         raftReceiver = RSocketFactory.receive()
                 .acceptor(new RaftSocketAcceptor(node))
                 .transport(TcpServerTransport.create(node.getNodeId()))
@@ -55,6 +66,7 @@ public class Receiver {
     }
 
     public void stop() {
+        gossipReceiver.dispose();
         raftReceiver.dispose();
         clientReceiver.dispose();
     }
@@ -147,17 +159,16 @@ public class Receiver {
                                     .flatMap(infoRequest -> node.onInfoRequest(infoRequest))
                                     .map(this::toPayload);
 
-
-                        case INIT_JOIN:
-                            return Mono.just(payload)
-                                    .map(this::toInitJoinRequest)
-                                    .flatMap(initJoinRequest -> node.onInitJoinRequest(initJoinRequest))
-                                    .map(this::toPayload);
-
                         case JOIN:
                             return Mono.just(payload)
                                     .map(this::toJoinRequest)
                                     .flatMap(joinRequest -> node.onJoinRequest(joinRequest))
+                                    .map(this::toPayload);
+
+                        case LEAVE:
+                            return Mono.just(payload)
+                                    .map(this::toLeaveRequest)
+                                    .flatMap(leaveRequest -> node.onLeaveRequest(leaveRequest))
                                     .map(this::toPayload);
 
                         default:
@@ -229,19 +240,19 @@ public class Receiver {
                     }
                 }
 
-                private InitJoinRequest toInitJoinRequest(Payload payload) {
-                    try {
-                        return InitJoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RaftException("Invalid init join request!", e);
-                    }
-                }
-
                 private JoinRequest toJoinRequest(Payload payload) {
                     try {
                         return JoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid join request!", e);
+                    }
+                }
+
+                private LeaveRequest toLeaveRequest(Payload payload) {
+                    try {
+                        return LeaveRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid leave request!", e);
                     }
                 }
 

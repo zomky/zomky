@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
@@ -8,7 +8,7 @@ import io.netty.channel.socket.DatagramPacket;
 
 import java.net.InetSocketAddress;
 
-public class AckUtils {
+class AckUtils {
 
     public static Ack toAck(DatagramPacket datagramPacket) {
         try {
@@ -18,7 +18,7 @@ public class AckUtils {
         }
     }
 
-    public static DatagramPacket toDatagram(Ack ack, InetSocketAddress recipient) {
+    static DatagramPacket toDatagram(Ack ack, InetSocketAddress recipient) {
         return new DatagramPacket(Unpooled.copiedBuffer(ack.toByteArray()), recipient);
     }
 }

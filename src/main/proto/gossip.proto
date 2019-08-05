@@ -2,27 +2,6 @@ syntax = "proto3";
 option java_package = "io.github.pmackowski.rsocket.raft.gossip.protobuf";
 option java_multiple_files = true;
 
-message GossipMetadataRequest {
-    int32 message_type = 1;
-}
-
-message PingRequest {
-}
-
-message PingResponse {
-    bool ack = 1;
-}
-
-message PingReqRequest {
-}
-
-message PingReqResponse {
-    bool ack = 1;
-}
-
-
-///
-
 message Gossip {
     enum Suspicion {
         UNKNOWN = 0;

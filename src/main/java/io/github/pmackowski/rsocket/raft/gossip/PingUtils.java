@@ -1,4 +1,4 @@
-package io.github.pmackowski.rsocket.raft.integration.gossip;
+package io.github.pmackowski.rsocket.raft.gossip;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class PingUtils {
+class PingUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PingUtils.class);
 

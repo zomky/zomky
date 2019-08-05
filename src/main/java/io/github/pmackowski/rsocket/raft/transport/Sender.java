@@ -1,10 +1,10 @@
 package io.github.pmackowski.rsocket.raft.transport;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.InitJoinResponse;
 import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
 import io.github.pmackowski.rsocket.raft.client.protobuf.JoinResponse;
+import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveResponse;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
 import io.github.pmackowski.rsocket.raft.raft.RaftGroup;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
@@ -143,18 +143,6 @@ public class Sender {
                 });
     }
 
-    public Mono<InitJoinResponse> initJoin(InitJoinRequest initJoinRequest) {
-        Payload payload = ByteBufPayload.create(initJoinRequest.toByteArray(), metadataRequest(RpcType.INIT_JOIN));
-        return raftSocket.requestResponse(payload)
-                .map(payload1 -> {
-                    try {
-                        return InitJoinResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RaftException("Invalid init join response!", e);
-                    }
-                });
-    }
-
     public Mono<JoinResponse> join(JoinRequest joinRequest) {
         Payload payload = ByteBufPayload.create(joinRequest.toByteArray(), metadataRequest(RpcType.JOIN));
         return raftSocket.requestResponse(payload)
@@ -163,6 +151,18 @@ public class Sender {
                         return JoinResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid join response!", e);
+                    }
+                });
+    }
+
+    public Mono<LeaveResponse> leave(LeaveRequest leaveRequest) {
+        Payload payload = ByteBufPayload.create(leaveRequest.toByteArray(), metadataRequest(RpcType.LEAVE));
+        return raftSocket.requestResponse(payload)
+                .map(payload1 -> {
+                    try {
+                        return LeaveResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid leave response!", e);
                     }
                 });
     }
@@ -190,4 +190,5 @@ public class Sender {
     public void stop() {
         if (raftSocket != null) raftSocket.dispose();
     }
+
 }
