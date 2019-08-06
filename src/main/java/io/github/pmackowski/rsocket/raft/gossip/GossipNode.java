@@ -88,16 +88,42 @@ public class GossipNode {
         });
     }
 
+    // The new member does a full state sync with the existing member over TCP and begins gossiping its existence to the cluster.
+
+    // Join is used to take an existing Memberlist and attempt to join a cluster
+    // by contacting all the given hosts and performing a state sync. Initially,
+    // the Memberlist only contains our own state, so doing this will cause
+    // remote nodes to become aware of the existence of this node, effectively
+    // joining the cluster.
+    //
+    // This returns the number of hosts successfully contacted and an error if
+    // none could be reached. If an error is returned, the node did not successfully
+    // join the cluster.
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
+        // other node asked me to join
 //        cluster.addMember(joinRequest1.getPort());
 //        senders.addServer(joinRequest1.getPort());
-        peers.add(joinRequest.getPort());
-        return null;
+        return Mono.just(joinRequest)
+                   // TODO check credentials
+                   .doOnNext(joinRequest1 -> peers.add(joinRequest1.getPort()))
+                   .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
     }
 
+    // Leave will broadcast a leave message but will not shutdown the background
+    // listeners, meaning the node will continue participating in gossip and state
+    // updates.
+    //
+    // This will block until the leave message is successfully broadcasted to
+    // a member of the cluster, if any exist or until a specified timeout
+    // is reached.
+    //
+    // This method is safe to call multiple times, but must not be called
+    // after the cluster is already shut down.
     public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
 //        peers.remove(leaveRequest.get);
-        return null;
+        return Mono.just(leaveRequest)
+                   // should propagate to cluster that I am leaving
+                   .thenReturn(LeaveResponse.newBuilder().setStatus(true).build());
     }
 
     public Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {

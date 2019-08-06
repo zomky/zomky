@@ -5,6 +5,7 @@ import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoOperator;
 import reactor.core.publisher.Operators;
@@ -215,7 +216,7 @@ class ProbeOperator<T, C extends Collection<? super T>, I, P> extends MonoOperat
         public void cancel() {
             LOGGER.debug("DirectSubscriber cancel");
             direct.cancel();
-            indirect.cancel();
+            //indirect.cancel();
         }
 
         @Override
@@ -233,9 +234,9 @@ class ProbeOperator<T, C extends Collection<? super T>, I, P> extends MonoOperat
                     return;
                 }
             }
-            cancel();
+            //cancel();
 
-            actual.onError(t);
+            //actual.onError(t);
         }
 
         @Override

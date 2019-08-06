@@ -17,36 +17,121 @@ public class ProbeOperatorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProbeOperatorTest.class);
 
     @Test
-    public void takeAll() throws InterruptedException {
+    void successfulDirectWithinRoundTripTime() {
+        Mono<Integer> direct = Mono.just(1);
+        Flux<Integer> indirect = Flux.just(2, 3);
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
 
-        Mono<Integer> source = Mono.just(1).delayElement(Duration.ofMillis(200));
-        Flux<Integer> fallback = Flux.just(3, 4);
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                    .expectSubscription()
+                    .expectNoEvent(Duration.ofMillis(40))
+                    .expectNext(Collections.singletonList(1))
+                    .expectComplete()
+                    .verify();
+    }
 
-        final ProbeOperator<Integer, List<Integer>,Long,Long> flux = new ProbeOperator<>(source, fallback, Mono.delay(Duration.ofMillis(100)), Mono.delay(Duration.ofSeconds(1)));
+    @Test
+    void successfulDirectAfterRoundTripTime() {
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
+        Flux<Integer> indirect = Flux.just(2, 3);
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
 
-        flux.subscribe(i -> LOGGER.info("{}", i));
-
-        Thread.sleep(2_000);
-        StepVerifier.create(flux)
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
-                .expectNoEvent(Duration.ofMillis(100))
-                .expectNext(Arrays.asList(3,4,1))
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(2,3,1))
                 .expectComplete()
                 .verify();
     }
 
     @Test
-    public void takeAlsl() {
+    void successfulDirectAfterRoundTripTimeAndIndirectFailed() {
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
+        Flux<Integer> indirect = Flux.error(new RuntimeException());
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
 
-        Mono<Integer> direct = Mono.just(1);
-        Flux<Integer> indirect = Flux.just(3, 4);
-
-        final ProbeOperator<Integer, List<Integer>,Long,Long> flux = new ProbeOperator<>(direct, indirect, Mono.delay(Duration.ofMillis(100)), Mono.delay(Duration.ofSeconds(1)));
-
-        StepVerifier.create(flux)
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
-                .expectNoEvent(Duration.ofSeconds(1))
-                .expectNext(Collections.singletonList(1))
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(1))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void successfulDirectAfterRoundTripTimeAndIndirectPartiallySuccessful() {
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
+        Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2));
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(2,1))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void successfulDirectAfterRoundTripTimeAndIndirectPartiallySuccessful2() {
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
+        Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2).delayElement(Duration.ofMillis(25)));
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(1,2))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void successfulDirectAfterProtocolPeriodEnd() {
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(100));
+        Flux<Integer> indirect = Flux.just(2, 3);
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(2,3))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void failedDirect() {
+        Mono<Integer> direct = Mono.error(new RuntimeException());
+        Flux<Integer> indirect = Flux.just(1, 2);
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Arrays.asList(1,2))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void failedBothDirectAndIndirect() {
+        Mono<Integer> direct = Mono.error(new RuntimeException());
+        Flux<Integer> indirect = Flux.error(new RuntimeException());
+        Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
+        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(Collections.emptyList())
                 .expectComplete()
                 .verify();
     }
