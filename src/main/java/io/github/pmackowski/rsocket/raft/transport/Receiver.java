@@ -4,6 +4,7 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitLeaveRequest;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest;
@@ -43,7 +44,7 @@ public class Receiver {
     public void start() {
         gossipReceiver = UdpServer.create()
                 .port(node.getNodeId()+20000)
-                .handle(node::onPing)
+                .handle(node.getGossipProtocol()::onPing)
                 .bindNow(Duration.ofSeconds(1));
 
         raftReceiver = RSocketFactory.receive()
@@ -87,14 +88,14 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    RaftProtocol raftGroups = node.getRaftProtocol();
-                    return raftGroups.onClientRequest(payload);
+                    RaftProtocol raftProtocol = node.getRaftProtocol();
+                    return raftProtocol.onClientRequest(payload);
                 }
 
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    RaftProtocol raftGroups = node.getRaftProtocol();
-                    return raftGroups.onClientRequests(payloads);
+                    RaftProtocol raftProtocol = node.getRaftProtocol();
+                    return raftProtocol.onClientRequests(payloads);
                 }
 
             });
@@ -117,42 +118,43 @@ public class Receiver {
                     MetadataRequest metadataRequest = toMetadataRequest(payload);
                     RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
                     String groupName = metadataRequest.getGroupName();
-                    RaftProtocol raftGroups = node.getRaftProtocol();
+                    RaftProtocol raftProtocol = node.getRaftProtocol();
+                    GossipProtocol gossipProtocol = node.getGossipProtocol();
                     switch (rpcType) {
                         case APPEND_ENTRIES:
                             return Mono.just(payload)
                                     .map(this::toAppendEntriesRequest)
-                                    .flatMap(appendEntriesRequest -> raftGroups.onAppendEntries(groupName, appendEntriesRequest))
+                                    .flatMap(appendEntriesRequest -> raftProtocol.onAppendEntries(groupName, appendEntriesRequest))
                                     .map(this::toPayload);
 
                         case PRE_REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toPreVoteRequest)
-                                    .flatMap(preVoteRequest -> raftGroups.onPreRequestVote(groupName, preVoteRequest))
+                                    .flatMap(preVoteRequest -> raftProtocol.onPreRequestVote(groupName, preVoteRequest))
                                     .map(this::toPayload);
 
                         case REQUEST_VOTE:
                             return Mono.just(payload)
                                     .map(this::toVoteRequest)
-                                    .flatMap(voteRequest -> raftGroups.onRequestVote(groupName, voteRequest))
+                                    .flatMap(voteRequest -> raftProtocol.onRequestVote(groupName, voteRequest))
                                     .map(this::toPayload);
 
                         case ADD_SERVER:
                             return Mono.just(payload)
                                     .map(this::toAddServerRequest)
-                                    .flatMap(addServerRequest -> raftGroups.onAddServer(groupName, addServerRequest))
+                                    .flatMap(addServerRequest -> raftProtocol.onAddServer(groupName, addServerRequest))
                                     .map(this::toPayload);
 
                         case REMOVE_SERVER:
                             return Mono.just(payload)
                                     .map(this::toRemoveServerRequest)
-                                    .flatMap(removeServerRequest -> raftGroups.onRemoveServer(groupName, removeServerRequest))
+                                    .flatMap(removeServerRequest -> raftProtocol.onRemoveServer(groupName, removeServerRequest))
                                     .map(this::toPayload);
 
                         case ADD_GROUP:
                             return Mono.just(payload)
                                     .map(this::toCreateGroupRequest)
-                                    .flatMap(createGroupRequest -> raftGroups.onAddGroup(groupName, createGroupRequest))
+                                    .flatMap(createGroupRequest -> raftProtocol.onAddGroup(groupName, createGroupRequest))
                                     .map(this::toPayload);
 
                         case INFO:
@@ -164,25 +166,25 @@ public class Receiver {
                         case INIT_JOIN:
                             return Mono.just(payload)
                                     .map(this::toInitJoinRequest)
-                                    .flatMap(initJoinRequest -> node.onInitJoinRequest(initJoinRequest))
+                                    .flatMap(gossipProtocol::join)
                                     .map(this::toPayload);
 
                         case JOIN:
                             return Mono.just(payload)
                                     .map(this::toJoinRequest)
-                                    .flatMap(joinRequest -> node.onJoinRequest(joinRequest))
+                                    .flatMap(gossipProtocol::onJoinRequest)
                                     .map(this::toPayload);
 
                         case INIT_LEAVE:
                             return Mono.just(payload)
                                     .map(this::toInitLeaveRequest)
-                                    .flatMap(initLeaveRequest -> node.onInitLeaveRequest(initLeaveRequest))
+                                    .flatMap(gossipProtocol::onInitLeaveRequest)
                                     .map(this::toPayload);
 
                         case LEAVE:
                             return Mono.just(payload)
                                     .map(this::toLeaveRequest)
-                                    .flatMap(leaveRequest -> node.onLeaveRequest(leaveRequest))
+                                    .flatMap(gossipProtocol::onLeaveRequest)
                                     .map(this::toPayload);
 
                         default:

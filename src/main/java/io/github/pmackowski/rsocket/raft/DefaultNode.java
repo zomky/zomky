@@ -4,19 +4,16 @@ import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.*;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.raft.RaftProtocol;
 import io.github.pmackowski.rsocket.raft.transport.Receiver;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.Senders;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.netty.udp.UdpInbound;
-import reactor.netty.udp.UdpOutbound;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.HashSet;
@@ -69,6 +66,11 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
+    public GossipProtocol getGossipProtocol() {
+        return gossipProtocol;
+    }
+
+    @Override
     public RaftProtocol getRaftProtocol() {
         return raftProtocol;
     }
@@ -101,31 +103,6 @@ class DefaultNode implements InnerNode {
                 .setRetry(retry)
                 .build()
         ).then();
-    }
-
-    @Override
-    public Mono<InitJoinResponse> onInitJoinRequest(InitJoinRequest initJoinRequest) {
-        return gossipProtocol.join(initJoinRequest);
-    }
-
-    @Override
-    public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
-        return gossipProtocol.onJoinRequest(joinRequest);
-    }
-
-    @Override
-    public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
-        return gossipProtocol.onInitLeaveRequest(initLeaveRequest);
-    }
-
-    @Override
-    public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
-        return gossipProtocol.onLeaveRequest(leaveRequest);
-    }
-
-    @Override
-    public Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {
-        return gossipProtocol.onPing(udpInbound, udpOutbound);
     }
 
     @Override
