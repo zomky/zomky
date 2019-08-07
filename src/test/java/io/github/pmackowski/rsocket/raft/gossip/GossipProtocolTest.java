@@ -14,17 +14,19 @@ class GossipProtocolTest {
 
         NodeFactory.receive()
             .port(7000)
-            .retryJoin(7001)
+//            .retryJoin(7001)
             .start()
             .subscribe();
 
-        Thread.sleep(3000);
+        Thread.sleep(5000);
 
         Node node2 = NodeFactory.receive()
                 .port(7001)
 //                .retryJoin(7000)
                 .start()
                 .block();
+
+        node2.join(7000, false).subscribe();
 
         Thread.sleep(15000);
 

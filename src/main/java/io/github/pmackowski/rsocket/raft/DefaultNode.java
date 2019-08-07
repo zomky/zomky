@@ -96,6 +96,7 @@ class DefaultNode implements InnerNode {
         return Mono.empty();
     }
 
+    @Override
     public Mono<Void> join(Integer joinPort, boolean retry) {
         return gossipProtocol.join(InitJoinRequest.newBuilder()
                 .setRequesterPort(nodeId)
