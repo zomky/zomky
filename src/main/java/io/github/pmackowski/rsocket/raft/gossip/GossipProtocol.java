@@ -1,18 +1,9 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.*;
-import io.github.pmackowski.rsocket.raft.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.transport.RpcType;
-import io.github.pmackowski.rsocket.raft.transport.Sender;
-import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
+import io.github.pmackowski.rsocket.raft.gossip.transport.GossipTcpTransport;
 import io.netty.channel.socket.DatagramPacket;
-import io.rsocket.Payload;
-import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
-import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,30 +97,19 @@ public class GossipProtocol {
 
     public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
         // trying to join other node
-
-//        Sender sender = Sender.createSender(initJoinRequest.getPort());
-        Mono<RSocket> rSocketMono = RSocketFactory.connect()
-                .transport(TcpClientTransport.create(initJoinRequest.getPort()))
-                .start();
-
-        return Mono.defer(() -> rSocketMono)
-                .doOnNext(i -> LOGGER.info("onInitJoinRequest {}", nodeId))
-                .flatMap(rSocket ->
-                    Sender.join(rSocket, JoinRequest.newBuilder().setPort(initJoinRequest.getRequesterPort()).setRequesterPort(initJoinRequest.getRequesterPort()).build())
-                          .doOnNext(joinResponse -> peers.add(initJoinRequest.getPort()))
-                          .doOnNext(joinResponse -> {
-                              LOGGER.info("[Node {}] add member {}", nodeId, initJoinRequest.getPort());
-                              cluster.addMember(initJoinRequest.getPort());
-                          })
-                          .doOnError(t -> LOGGER.error("Huj ", t))
-                         // TODO perform a state sync
-                )
-                .retryWhen(Retry
-                        .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
-                        .fixedBackoff(Duration.ofSeconds(1))
-                        .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", nodeId, initJoinRequest.getPort()))
-                )
-                .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
+        JoinRequest joinRequest = JoinRequest.newBuilder().setPort(initJoinRequest.getPort()).setRequesterPort(initJoinRequest.getRequesterPort()).build();
+        return Mono.defer(() -> GossipTcpTransport.join(joinRequest))
+            .doOnNext(joinResponse -> peers.add(initJoinRequest.getPort()))
+            .doOnNext(joinResponse -> {
+                LOGGER.info("[Node {}] add member {}", nodeId, initJoinRequest.getPort());
+                cluster.addMember(initJoinRequest.getPort());
+            })
+            .retryWhen(Retry
+                    .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
+                    .fixedBackoff(Duration.ofSeconds(1))
+                    .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", nodeId, initJoinRequest.getPort()))
+            )
+            .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
     }
 
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {

@@ -57,7 +57,7 @@ class GossipTransport {
 
     private Mono<? extends Connection> client(Ping ping) {
         return UdpClient.create()
-                .port(ping.getDirect() ? ping.getDestinationNodeId() : ping.getRequestorNodeId())
+                .port(ping.getDirect() ? ping.getDestinationNodeId() + 20000 : ping.getRequestorNodeId() + 20000)
                 .runOn(LoopResources.create("gossip-" + ping.getRequestorNodeId()))
                 .connect()
                 .doOnCancel(() -> {
