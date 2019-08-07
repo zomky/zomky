@@ -15,28 +15,27 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class RaftGroups {
+public class RaftProtocol {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroups.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
 
     private InnerNode node;
     private ScheduledExecutorService stateMachineExecutor;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
 
-    public RaftGroups(InnerNode node) {
+    public RaftProtocol(InnerNode node) {
         this.node = node;
         // TODO initialize from storage
     }
 
     public void start() {
-        LOGGER.info("[Node {}] start groups", node.getNodeId());
+        LOGGER.info("[Node {}] Starting RAFT ...", node.getNodeId());
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
         stateMachineExecutor.scheduleWithFixedDelay(() -> {

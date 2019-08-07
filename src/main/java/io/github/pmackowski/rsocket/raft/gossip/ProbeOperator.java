@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Backpressure not supported
  * @param <T>
  */
-class ProbeOperator<T, C extends Collection<? super T>, I, P> extends MonoOperator<T, C> {
+class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProbeOperator.class);
 

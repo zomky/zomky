@@ -1,14 +1,18 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
-import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.JoinResponse;
-import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveResponse;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
-import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.*;
+import io.github.pmackowski.rsocket.raft.raft.RaftException;
+import io.github.pmackowski.rsocket.raft.transport.RpcType;
+import io.github.pmackowski.rsocket.raft.transport.Sender;
+import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.netty.channel.socket.DatagramPacket;
+import io.rsocket.Payload;
+import io.rsocket.RSocket;
+import io.rsocket.RSocketFactory;
+import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,18 +21,18 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.udp.UdpInbound;
 import reactor.netty.udp.UdpOutbound;
+import reactor.retry.Retry;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
-public class GossipNode {
+public class GossipProtocol {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GossipNode.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GossipProtocol.class);
 
     private Duration indirectStart = Duration.ofMillis(400);
     private Duration protocolPeriod = Duration.ofSeconds(2);
@@ -40,19 +44,24 @@ public class GossipNode {
 
     int nodeId;
 
+    private Cluster cluster;
     private Peers peers;
     private Gossips gossips;
     private Disposable disposable;
 
-    public GossipNode(InnerNode node) {
-
+    public GossipProtocol(InnerNode node) {
+        this.cluster = new Cluster(node.getNodeId());
+        this.nodeId = node.getNodeId();
+        this.peers = new Peers();
+        this.gossips = new Gossips(nodeId);
+        this.onPingDelay = GossipOnPingDelay.NO_DELAY;
     }
 
-    public GossipNode(int nodeId) {
+    public GossipProtocol(int nodeId) {
         this(nodeId, GossipOnPingDelay.NO_DELAY);
     }
 
-    public GossipNode(int nodeId, GossipOnPingDelay onPingDelay) {
+    public GossipProtocol(int nodeId, GossipOnPingDelay onPingDelay) {
         this.nodeId = nodeId;
         this.onPingDelay = onPingDelay;
         this.gossips = new Gossips(nodeId);
@@ -65,48 +74,79 @@ public class GossipNode {
 
     public void start() {
         disposable = probeNode()
-                .doOnNext(acks -> this.gossips.addGossips(acks))
+//                .doOnNext(acks -> this.gossips.addGossips(acks))
+                .doOnNext(acks -> {
+                    LOGGER.info("[Node {}][ping] Probing {} finished.", this.nodeId, acks);
+                })
                 .doOnError(throwable -> {
 //                    this.gossips.addGossip(destinationNodeId, Gossip.Suspicion.SUSPECT);
                 })
                 .doFinally(signalType -> {
         //                Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
         //                this.gossips.addGossip(nodeId, suspicion);
-                    LOGGER.info("[Node {}][ping] Probing {} finished.", this.nodeId, 2313123);
                 })
+
                 .repeat(REPEAT_PROBE)
+                .doOnError(throwable -> LOGGER.error("--",throwable))
                 .subscribe();
     }
 
-    private Flux<Collection<? super Ack>> probeNode() {
+    private Flux<Acks> probeNode() {
         GossipProbe gossipProbe = new GossipProbe(this);
         return Flux.defer(() -> {
             protocolPeriodCounter.incrementAndGet();
-            int destinationNodeId = peers.nextRandomPeerId();
+            Integer destinationNodeId = peers.nextRandomPeerId();
+            if (destinationNodeId == null) {
+                return Mono.delay(protocolPeriod).thenReturn(new Acks());
+            }
             List<Integer> proxyNodeIds = peers.selectCompanions(destinationNodeId, subgroupSize);
             return gossipProbe.probeNode(destinationNodeId, proxyNodeIds, gossips.share(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
         });
     }
 
-    // The new member does a full state sync with the existing member over TCP and begins gossiping its existence to the cluster.
+    public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
+        // trying to join other node
 
-    // Join is used to take an existing Memberlist and attempt to join a cluster
-    // by contacting all the given hosts and performing a state sync. Initially,
-    // the Memberlist only contains our own state, so doing this will cause
-    // remote nodes to become aware of the existence of this node, effectively
-    // joining the cluster.
-    //
-    // This returns the number of hosts successfully contacted and an error if
-    // none could be reached. If an error is returned, the node did not successfully
-    // join the cluster.
+//        Sender sender = Sender.createSender(initJoinRequest.getPort());
+        Mono<RSocket> rSocketMono = RSocketFactory.connect()
+                .transport(TcpClientTransport.create(initJoinRequest.getPort()))
+                .start();
+
+        return Mono.defer(() -> rSocketMono)
+                .doOnNext(i -> LOGGER.info("onInitJoinRequest {}", nodeId))
+                .flatMap(rSocket ->
+                    Sender.join(rSocket, JoinRequest.newBuilder().setPort(initJoinRequest.getRequesterPort()).setRequesterPort(initJoinRequest.getRequesterPort()).build())
+                          .doOnNext(joinResponse -> peers.add(initJoinRequest.getPort()))
+                          .doOnNext(joinResponse -> {
+                              LOGGER.info("[Node {}] add member {}", nodeId, initJoinRequest.getPort());
+                              cluster.addMember(initJoinRequest.getPort());
+                          })
+                          .doOnError(t -> LOGGER.error("Huj ", t))
+                         // TODO perform a state sync
+                )
+                .retryWhen(Retry
+                        .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
+                        .fixedBackoff(Duration.ofSeconds(1))
+                        .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", nodeId, initJoinRequest.getPort()))
+                )
+                .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
+    }
+
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
         // other node asked me to join
-//        cluster.addMember(joinRequest1.getPort());
 //        senders.addServer(joinRequest1.getPort());
         return Mono.just(joinRequest)
                    // TODO check credentials
-                   .doOnNext(joinRequest1 -> peers.add(joinRequest1.getPort()))
+                   .doOnNext(joinRequest1 -> peers.add(joinRequest1.getRequesterPort()))
+                   .doOnNext(joinRequest1 -> {
+                       LOGGER.info("[Node {}] add member {}", nodeId, joinRequest1.getRequesterPort());
+                       cluster.addMember(joinRequest1.getRequesterPort());
+                   })
                    .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
+    }
+
+    public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
+        return null;
     }
 
     // Leave will broadcast a leave message but will not shutdown the background
@@ -119,6 +159,7 @@ public class GossipNode {
     //
     // This method is safe to call multiple times, but must not be called
     // after the cluster is already shut down.
+
     public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
 //        peers.remove(leaveRequest.get);
         return Mono.just(leaveRequest)

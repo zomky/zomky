@@ -15,6 +15,12 @@ public class AgentCommand {
     @Option(names = "--dev")
     private boolean dev = false;
 
+    @Option(names = "--join")
+    private Integer join;
+
+    @Option(names = "--retry-join")
+    private Integer retryJoin;
+
     public String getDataDirectory() {
         return dataDirectory;
     }
@@ -25,5 +31,13 @@ public class AgentCommand {
 
     public boolean isDev() {
         return dev;
+    }
+
+    public Integer getJoin() {
+        return join;
+    }
+
+    public Integer getRetryJoin() {
+        return retryJoin;
     }
 }

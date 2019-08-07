@@ -18,6 +18,6 @@ public class LeaveCommandRunner implements ZomkyCommandRunner {
         MainCommand mainCommand = mainCommand(parseResult);
         LeaveCommand leaveCommand = command(parseResult, LeaveCommand.class);
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.leave(mainCommand.getAgentPort()).block();
+        clusterManagementClient.initLeave(mainCommand.getAgentPort()).block();
     }
 }

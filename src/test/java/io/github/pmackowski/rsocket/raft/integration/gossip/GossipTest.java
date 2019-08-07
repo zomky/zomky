@@ -1,15 +1,12 @@
 package io.github.pmackowski.rsocket.raft.integration.gossip;
 
-import io.github.pmackowski.rsocket.raft.gossip.GossipNode;
+import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 public class GossipTest {
 
@@ -17,13 +14,13 @@ public class GossipTest {
 
     @Test
     public void echoTest() throws Exception {
-        GossipNode node1 = new GossipNode(7000);
+        GossipProtocol node1 = new GossipProtocol(7000);
 
-        GossipNode node2 = new GossipNode(7001, (nodeId, counter) ->
+        GossipProtocol node2 = new GossipProtocol(7001, (nodeId, counter) ->
                 nodeId == 7000 ? Mono.delay(Duration.ofMillis(500)) : Mono.delay(Duration.ofMillis(700))
         );
-        GossipNode node3 = new GossipNode(7002);
-        GossipNode node4 = new GossipNode(7003);
+        GossipProtocol node3 = new GossipProtocol(7002);
+        GossipProtocol node4 = new GossipProtocol(7003);
 
         Thread.sleep(1_000);
 

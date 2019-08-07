@@ -1,11 +1,13 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.client.protobuf.*;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.gossip.Cluster;
-import io.github.pmackowski.rsocket.raft.gossip.GossipNode;
+import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.*;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
-import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
+import io.github.pmackowski.rsocket.raft.raft.RaftProtocol;
 import io.github.pmackowski.rsocket.raft.transport.Receiver;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.Senders;
@@ -31,8 +33,8 @@ class DefaultNode implements InnerNode {
 
     private Receiver receiver;
     private Senders senders;
-    private GossipNode gossipNode;
-    private RaftGroups raftGroups;
+    private GossipProtocol gossipProtocol;
+    private RaftProtocol raftProtocol;
 
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
@@ -41,21 +43,24 @@ class DefaultNode implements InnerNode {
         this.nodeStorage = nodeStorage;
         this.nodeName = nodeName;
         this.nodeId = nodeId;
-        this.cluster = cluster;
+        this.cluster = cluster; // at the beginning must always contain only this node
 
-        this.gossipNode = new GossipNode(this);
         this.receiver = new Receiver(this);
+        this.gossipProtocol = new GossipProtocol(this);
         this.senders = new Senders(this);
-        this.raftGroups = new RaftGroups(this);
+        this.raftProtocol = new RaftProtocol(this);
 
         LOGGER.info("[Node {}] has been initialized", nodeId);
     }
 
-    public void start() {
-        gossipNode.start();
+    public void startReceiver() {
         receiver.start();
+    }
+
+    public void start() {
+        gossipProtocol.start();
         senders.start();
-        raftGroups.start();
+        raftProtocol.start();
     }
 
     @Override
@@ -64,8 +69,8 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
-    public RaftGroups getRaftGroups() {
-        return raftGroups;
+    public RaftProtocol getRaftProtocol() {
+        return raftProtocol;
     }
 
     @Override
@@ -89,19 +94,38 @@ class DefaultNode implements InnerNode {
         return Mono.empty();
     }
 
+    public Mono<Void> join(Integer joinPort, boolean retry) {
+        return gossipProtocol.join(InitJoinRequest.newBuilder()
+                .setRequesterPort(nodeId)
+                .setPort(joinPort)
+                .setRetry(retry)
+                .build()
+        ).then();
+    }
+
+    @Override
+    public Mono<InitJoinResponse> onInitJoinRequest(InitJoinRequest initJoinRequest) {
+        return gossipProtocol.join(initJoinRequest);
+    }
+
     @Override
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
-        return gossipNode.onJoinRequest(joinRequest);
+        return gossipProtocol.onJoinRequest(joinRequest);
+    }
+
+    @Override
+    public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
+        return gossipProtocol.onInitLeaveRequest(initLeaveRequest);
     }
 
     @Override
     public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
-        return gossipNode.onLeaveRequest(leaveRequest);
+        return gossipProtocol.onLeaveRequest(leaveRequest);
     }
 
     @Override
     public Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {
-        return gossipNode.onPing(udpInbound, udpOutbound);
+        return gossipProtocol.onPing(udpInbound, udpOutbound);
     }
 
     @Override
@@ -127,8 +151,8 @@ class DefaultNode implements InnerNode {
     @Override
     public void dispose() {
         LOGGER.info("[Node {}] Stopping ...", nodeId);
-        raftGroups.dispose();
-        gossipNode.dispose();
+        raftProtocol.dispose();
+        gossipProtocol.dispose();
 
         receiver.stop();
         senders.stop();

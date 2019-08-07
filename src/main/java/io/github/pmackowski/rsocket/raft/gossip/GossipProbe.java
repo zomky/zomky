@@ -19,14 +19,15 @@ class GossipProbe {
     private int nodeId;
     private GossipTransport gossipTransport;
 
-    public GossipProbe(GossipNode node) {
+    public GossipProbe(GossipProtocol node) {
         this.nodeId = node.nodeId;
         this.gossipTransport = new GossipTransport();
     }
 
-    public Mono<Collection<? super Ack>> probeNode(int destinationNodeId, List<Integer> proxyNodeIds, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
+    public Mono<Acks> probeNode(int destinationNodeId, List<Integer> proxyNodeIds, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
         return pingDirect(destinationNodeId, gossips)
                 .transform(pingDirect -> new ProbeOperator<>(pingDirect, pingIndirect(destinationNodeId, proxyNodeIds, gossips), indirectStart, protocolPeriodEnd))
+                .map(acks -> new Acks(destinationNodeId, acks))
                 .doOnSubscribe(subscription -> LOGGER.info("[Node {}][ping] Probing {} ...", this.nodeId, destinationNodeId));
     }
 

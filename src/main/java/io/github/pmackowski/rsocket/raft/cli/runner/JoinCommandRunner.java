@@ -18,7 +18,7 @@ public class JoinCommandRunner implements ZomkyCommandRunner {
         MainCommand mainCommand = mainCommand(parseResult);
         JoinCommand joinCommand = command(parseResult, JoinCommand.class);
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.join(mainCommand.getAgentPort(), joinCommand.getHost(), joinCommand.getPort()).block();
+        clusterManagementClient.initJoin(mainCommand.getAgentPort(), joinCommand.getHost(), joinCommand.getPort()).block();
     }
 
 }

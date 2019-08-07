@@ -79,13 +79,13 @@ public class Nodes {
                     .node(node)
                     .raftRole(new FollowerRole())
                     .build();
-            node.getRaftGroups().addGroup(raftGroup);
+            node.getRaftProtocol().addGroup(raftGroup);
         });
     }
 
     public RaftGroup raftGroup(int nodeId, String name) {
         InnerNode innerNode = nodes.get(nodeId);
-        return innerNode.getRaftGroups().getByName(name);
+        return innerNode.getRaftProtocol().getByName(name);
     }
 
     public boolean isLeader(int nodeId, String name) {

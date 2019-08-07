@@ -24,26 +24,6 @@ public final class Client {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_InfoResponse_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_JoinRequest_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_JoinRequest_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_JoinResponse_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_JoinResponse_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_LeaveRequest_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_LeaveRequest_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_LeaveResponse_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_LeaveResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -54,13 +34,9 @@ public final class Client {
   static {
     java.lang.String[] descriptorData = {
       "\n\014client.proto\"\r\n\013InfoRequest\"\037\n\014InfoRes" +
-      "ponse\022\017\n\007members\030\001 \003(\005\"A\n\013JoinRequest\022\026\n" +
-      "\016requester_port\030\001 \001(\005\022\014\n\004host\030\002 \001(\t\022\014\n\004p" +
-      "ort\030\003 \001(\005\"\036\n\014JoinResponse\022\016\n\006status\030\001 \001(" +
-      "\010\"&\n\014LeaveRequest\022\026\n\016requester_port\030\001 \001(" +
-      "\005\"\037\n\rLeaveResponse\022\016\n\006status\030\001 \001(\010B5\n1io" +
-      ".github.pmackowski.rsocket.raft.client.p" +
-      "rotobufP\001b\006proto3"
+      "ponse\022\017\n\007members\030\001 \003(\005B5\n1io.github.pmac" +
+      "kowski.rsocket.raft.client.protobufP\001b\006p" +
+      "roto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -86,30 +62,6 @@ public final class Client {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InfoResponse_descriptor,
         new java.lang.String[] { "Members", });
-    internal_static_JoinRequest_descriptor =
-      getDescriptor().getMessageTypes().get(2);
-    internal_static_JoinRequest_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_JoinRequest_descriptor,
-        new java.lang.String[] { "RequesterPort", "Host", "Port", });
-    internal_static_JoinResponse_descriptor =
-      getDescriptor().getMessageTypes().get(3);
-    internal_static_JoinResponse_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_JoinResponse_descriptor,
-        new java.lang.String[] { "Status", });
-    internal_static_LeaveRequest_descriptor =
-      getDescriptor().getMessageTypes().get(4);
-    internal_static_LeaveRequest_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_LeaveRequest_descriptor,
-        new java.lang.String[] { "RequesterPort", });
-    internal_static_LeaveResponse_descriptor =
-      getDescriptor().getMessageTypes().get(5);
-    internal_static_LeaveResponse_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_LeaveResponse_descriptor,
-        new java.lang.String[] { "Status", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

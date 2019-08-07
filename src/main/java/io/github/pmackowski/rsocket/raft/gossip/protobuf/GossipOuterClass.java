@@ -15,6 +15,46 @@ public final class GossipOuterClass {
         (com.google.protobuf.ExtensionRegistryLite) registry);
   }
   static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_InitJoinRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_InitJoinRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_InitJoinResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_InitJoinResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_JoinRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_JoinRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_JoinResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_JoinResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_InitLeaveRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_InitLeaveRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_InitLeaveResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_InitLeaveResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_LeaveRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_LeaveRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_LeaveResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_LeaveResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_Gossip_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -38,17 +78,26 @@ public final class GossipOuterClass {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\014gossip.proto\"\220\001\n\006Gossip\022$\n\tsuspicion\030\001" +
-      " \001(\0162\021.Gossip.Suspicion\022\023\n\013incarnation\030\002" +
-      " \001(\005\022\017\n\007node_id\030\003 \001(\005\":\n\tSuspicion\022\013\n\007UN" +
-      "KNOWN\020\000\022\t\n\005ALIVE\020\001\022\013\n\007SUSPECT\020\002\022\010\n\004DEAD\020" +
-      "\003\"\203\001\n\004Ping\022\031\n\021initiator_node_id\030\001 \001(\005\022\031\n" +
-      "\021requestor_node_id\030\002 \001(\005\022\033\n\023destination_" +
-      "node_id\030\003 \001(\005\022\016\n\006direct\030\004 \001(\010\022\030\n\007gossips" +
-      "\030\005 \003(\0132\007.Gossip\"0\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022" +
-      "\030\n\007gossips\030\002 \003(\0132\007.GossipB5\n1io.github.p" +
-      "mackowski.rsocket.raft.gossip.protobufP\001",
-      "b\006proto3"
+      "\n\014gossip.proto\"T\n\017InitJoinRequest\022\026\n\016req" +
+      "uester_port\030\001 \001(\005\022\r\n\005retry\030\002 \001(\010\022\014\n\004host" +
+      "\030\003 \001(\t\022\014\n\004port\030\004 \001(\005\"\"\n\020InitJoinResponse" +
+      "\022\016\n\006status\030\001 \001(\010\"A\n\013JoinRequest\022\026\n\016reque" +
+      "ster_port\030\001 \001(\005\022\014\n\004host\030\002 \001(\t\022\014\n\004port\030\003 " +
+      "\001(\005\"\036\n\014JoinResponse\022\016\n\006status\030\001 \001(\010\"*\n\020I" +
+      "nitLeaveRequest\022\026\n\016requester_port\030\001 \001(\005\"" +
+      "#\n\021InitLeaveResponse\022\016\n\006status\030\001 \001(\010\"&\n\014" +
+      "LeaveRequest\022\026\n\016requester_port\030\001 \001(\005\"\037\n\r" +
+      "LeaveResponse\022\016\n\006status\030\001 \001(\010\"\220\001\n\006Gossip",
+      "\022$\n\tsuspicion\030\001 \001(\0162\021.Gossip.Suspicion\022\023" +
+      "\n\013incarnation\030\002 \001(\005\022\017\n\007node_id\030\003 \001(\005\":\n\t" +
+      "Suspicion\022\013\n\007UNKNOWN\020\000\022\t\n\005ALIVE\020\001\022\013\n\007SUS" +
+      "PECT\020\002\022\010\n\004DEAD\020\003\"\203\001\n\004Ping\022\031\n\021initiator_n" +
+      "ode_id\030\001 \001(\005\022\031\n\021requestor_node_id\030\002 \001(\005\022" +
+      "\033\n\023destination_node_id\030\003 \001(\005\022\016\n\006direct\030\004" +
+      " \001(\010\022\030\n\007gossips\030\005 \003(\0132\007.Gossip\"0\n\003Ack\022\017\n" +
+      "\007node_id\030\001 \001(\005\022\030\n\007gossips\030\002 \003(\0132\007.Gossip" +
+      "B5\n1io.github.pmackowski.rsocket.raft.go" +
+      "ssip.protobufP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -62,20 +111,68 @@ public final class GossipOuterClass {
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         }, assigner);
-    internal_static_Gossip_descriptor =
+    internal_static_InitJoinRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
+    internal_static_InitJoinRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_InitJoinRequest_descriptor,
+        new java.lang.String[] { "RequesterPort", "Retry", "Host", "Port", });
+    internal_static_InitJoinResponse_descriptor =
+      getDescriptor().getMessageTypes().get(1);
+    internal_static_InitJoinResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_InitJoinResponse_descriptor,
+        new java.lang.String[] { "Status", });
+    internal_static_JoinRequest_descriptor =
+      getDescriptor().getMessageTypes().get(2);
+    internal_static_JoinRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_JoinRequest_descriptor,
+        new java.lang.String[] { "RequesterPort", "Host", "Port", });
+    internal_static_JoinResponse_descriptor =
+      getDescriptor().getMessageTypes().get(3);
+    internal_static_JoinResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_JoinResponse_descriptor,
+        new java.lang.String[] { "Status", });
+    internal_static_InitLeaveRequest_descriptor =
+      getDescriptor().getMessageTypes().get(4);
+    internal_static_InitLeaveRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_InitLeaveRequest_descriptor,
+        new java.lang.String[] { "RequesterPort", });
+    internal_static_InitLeaveResponse_descriptor =
+      getDescriptor().getMessageTypes().get(5);
+    internal_static_InitLeaveResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_InitLeaveResponse_descriptor,
+        new java.lang.String[] { "Status", });
+    internal_static_LeaveRequest_descriptor =
+      getDescriptor().getMessageTypes().get(6);
+    internal_static_LeaveRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_LeaveRequest_descriptor,
+        new java.lang.String[] { "RequesterPort", });
+    internal_static_LeaveResponse_descriptor =
+      getDescriptor().getMessageTypes().get(7);
+    internal_static_LeaveResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_LeaveResponse_descriptor,
+        new java.lang.String[] { "Status", });
+    internal_static_Gossip_descriptor =
+      getDescriptor().getMessageTypes().get(8);
     internal_static_Gossip_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Gossip_descriptor,
         new java.lang.String[] { "Suspicion", "Incarnation", "NodeId", });
     internal_static_Ping_descriptor =
-      getDescriptor().getMessageTypes().get(1);
+      getDescriptor().getMessageTypes().get(9);
     internal_static_Ping_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Ping_descriptor,
         new java.lang.String[] { "InitiatorNodeId", "RequestorNodeId", "DestinationNodeId", "Direct", "Gossips", });
     internal_static_Ack_descriptor =
-      getDescriptor().getMessageTypes().get(2);
+      getDescriptor().getMessageTypes().get(10);
     internal_static_Ack_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Ack_descriptor,

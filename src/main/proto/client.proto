@@ -9,21 +9,3 @@ message InfoRequest {
 message InfoResponse {
     repeated int32 members = 1;
 }
-
-message JoinRequest {
-    int32 requester_port = 1;
-    string host = 2;
-    int32 port = 3;
-}
-
-message JoinResponse {
-    bool status = 1;
-}
-
-message LeaveRequest {
-    int32 requester_port = 1;
-}
-
-message LeaveResponse {
-    bool status = 1;
-}

@@ -38,7 +38,7 @@ class Peers {
         return n.stream().filter(i -> i != nodeId).limit(numberOfCompanions).collect(Collectors.toList());
     }
 
-    public int nextRandomPeerId() {
+    public Integer nextRandomPeerId() {
         Integer nodeId = shuffledPeers.poll();
         if (nodeId == null) {
             List<Integer> n = new ArrayList<>(peers);

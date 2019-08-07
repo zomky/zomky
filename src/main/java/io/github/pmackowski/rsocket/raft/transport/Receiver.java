@@ -4,10 +4,12 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.JoinRequest;
-import io.github.pmackowski.rsocket.raft.client.protobuf.LeaveRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitLeaveRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.LeaveRequest;
 import io.github.pmackowski.rsocket.raft.raft.RaftException;
-import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
+import io.github.pmackowski.rsocket.raft.raft.RaftProtocol;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.*;
 import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.rsocket.*;
@@ -85,13 +87,13 @@ public class Receiver {
 
                 @Override
                 public Mono<Payload> requestResponse(Payload payload) {
-                    RaftGroups raftGroups = node.getRaftGroups();
+                    RaftProtocol raftGroups = node.getRaftProtocol();
                     return raftGroups.onClientRequest(payload);
                 }
 
                 @Override
                 public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-                    RaftGroups raftGroups = node.getRaftGroups();
+                    RaftProtocol raftGroups = node.getRaftProtocol();
                     return raftGroups.onClientRequests(payloads);
                 }
 
@@ -115,7 +117,7 @@ public class Receiver {
                     MetadataRequest metadataRequest = toMetadataRequest(payload);
                     RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
                     String groupName = metadataRequest.getGroupName();
-                    RaftGroups raftGroups = node.getRaftGroups();
+                    RaftProtocol raftGroups = node.getRaftProtocol();
                     switch (rpcType) {
                         case APPEND_ENTRIES:
                             return Mono.just(payload)
@@ -159,10 +161,22 @@ public class Receiver {
                                     .flatMap(infoRequest -> node.onInfoRequest(infoRequest))
                                     .map(this::toPayload);
 
+                        case INIT_JOIN:
+                            return Mono.just(payload)
+                                    .map(this::toInitJoinRequest)
+                                    .flatMap(initJoinRequest -> node.onInitJoinRequest(initJoinRequest))
+                                    .map(this::toPayload);
+
                         case JOIN:
                             return Mono.just(payload)
                                     .map(this::toJoinRequest)
                                     .flatMap(joinRequest -> node.onJoinRequest(joinRequest))
+                                    .map(this::toPayload);
+
+                        case INIT_LEAVE:
+                            return Mono.just(payload)
+                                    .map(this::toInitLeaveRequest)
+                                    .flatMap(initLeaveRequest -> node.onInitLeaveRequest(initLeaveRequest))
                                     .map(this::toPayload);
 
                         case LEAVE:
@@ -240,11 +254,27 @@ public class Receiver {
                     }
                 }
 
+                private InitJoinRequest toInitJoinRequest(Payload payload) {
+                    try {
+                        return InitJoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid init join request!", e);
+                    }
+                }
+
                 private JoinRequest toJoinRequest(Payload payload) {
                     try {
                         return JoinRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid join request!", e);
+                    }
+                }
+
+                private InitLeaveRequest toInitLeaveRequest(Payload payload) {
+                    try {
+                        return InitLeaveRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid init leave request!", e);
                     }
                 }
 
