@@ -14,7 +14,7 @@ public class GossipTest {
 
     @Test
     public void echoTest() throws Exception {
-        GossipProtocol node1 = new GossipProtocol(7000);
+        /*GossipProtocol node1 = new GossipProtocol(7000);
 
         GossipProtocol node2 = new GossipProtocol(7001, (nodeId, counter) ->
                 nodeId == 7000 ? Mono.delay(Duration.ofMillis(500)) : Mono.delay(Duration.ofMillis(700))
@@ -22,7 +22,7 @@ public class GossipTest {
         GossipProtocol node3 = new GossipProtocol(7002);
         GossipProtocol node4 = new GossipProtocol(7003);
 
-        Thread.sleep(1_000);
+        Thread.sleep(1_000);*/
 
 //        GossipProbe gossipProbe = new GossipProbe(node1);
 //

@@ -153,7 +153,7 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
 
         @Override
         public void onError(Throwable t) {
-            LOGGER.debug("IndirectSubscriber onError {}", t);
+            LOGGER.info("IndirectSubscriber onError {}", t);
         }
 
         @Override

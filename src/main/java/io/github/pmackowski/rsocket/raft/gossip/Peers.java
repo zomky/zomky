@@ -31,6 +31,14 @@ class Peers {
         peers.remove(nodeId);
     }
 
+    public PeerProbe nextPeerProbe(int subgroupSize) {
+        if (peers.isEmpty()) {
+            return PeerProbe.NO_PEER_PROBE;
+        }
+        final Integer peerId = nextRandomPeerId();
+        return new PeerProbe(nextRandomPeerId(), selectCompanions(peerId, subgroupSize));
+    }
+
     public List<Integer> selectCompanions(int nodeId, int numberOfCompanions) {
         // TODO improve performance, now is O(n)
         List<Integer> n = new ArrayList<>(peers);

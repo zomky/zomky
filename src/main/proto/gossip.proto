@@ -57,7 +57,8 @@ message Ping {
     int32 requestor_node_id = 2;
     int32 destination_node_id = 3;
     bool direct = 4;
-    repeated Gossip gossips = 5;
+    int64 counter = 5;
+    repeated Gossip gossips = 6;
 }
 
 message Ack {

@@ -8,11 +8,12 @@ import java.util.List;
 
 public class Acks {
 
-    private Integer destinationNodeId = -1;
+    static final Acks NO_ACKS = new Acks();
+
+    private int destinationNodeId;
     private List<Ack> acks = new ArrayList<>();
 
-    public Acks() {
-
+    private Acks() {
     }
 
     public Acks(int destinationNodeId, Collection<Ack> acks) {
@@ -20,7 +21,7 @@ public class Acks {
         this.acks.addAll(acks);
     }
 
-    public Integer getDestinationNodeId() {
+    public int getDestinationNodeId() {
         return destinationNodeId;
     }
 

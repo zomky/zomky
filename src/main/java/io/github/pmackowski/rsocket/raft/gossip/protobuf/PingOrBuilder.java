@@ -28,25 +28,30 @@ public interface PingOrBuilder extends
   boolean getDirect();
 
   /**
-   * <code>repeated .Gossip gossips = 5;</code>
+   * <code>optional int64 counter = 5;</code>
+   */
+  long getCounter();
+
+  /**
+   * <code>repeated .Gossip gossips = 6;</code>
    */
   java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> 
       getGossipsList();
   /**
-   * <code>repeated .Gossip gossips = 5;</code>
+   * <code>repeated .Gossip gossips = 6;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index);
   /**
-   * <code>repeated .Gossip gossips = 5;</code>
+   * <code>repeated .Gossip gossips = 6;</code>
    */
   int getGossipsCount();
   /**
-   * <code>repeated .Gossip gossips = 5;</code>
+   * <code>repeated .Gossip gossips = 6;</code>
    */
   java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList();
   /**
-   * <code>repeated .Gossip gossips = 5;</code>
+   * <code>repeated .Gossip gossips = 6;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index);
