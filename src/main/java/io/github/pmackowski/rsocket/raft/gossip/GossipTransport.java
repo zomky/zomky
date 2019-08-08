@@ -19,40 +19,17 @@ class GossipTransport {
     public Mono<Ack> ping(Ping ping) {
         return client(ping)
                 .flatMap(connection ->
-                        connection.outbound().sendByteArray(Mono.just(ping.toByteArray())).then()
-                            .then(connection.inbound().receiveObject().cast(DatagramPacket.class).next()
-                                    .doOnNext(i -> log(ping))
+                    connection.outbound()
+                            .sendByteArray(Mono.just(ping.toByteArray()))
+                            .then()
+                            .then(connection
+                                    .inbound()
+                                    .receiveObject()
+                                    .cast(DatagramPacket.class)
+                                    .next()
                                     .map(this::toAck)
-                                    .onErrorResume(throwable -> {
-                                        logError(ping, throwable);
-                                        return Mono.empty();
-                                    })
                             )
                 );
-    }
-
-    private void log(Ping ping) {
-        if (ping.getDirect()) {
-            if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
-                LOGGER.info("[Node {}][onPing] Direct probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
-            } else {
-                LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
-            }
-        } else {
-            LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
-        }
-    }
-
-    private void logError(Ping ping, Throwable throwable) {
-        if (ping.getDirect()) {
-            if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
-                LOGGER.warn("[Node {}][onPing] Direct probe to {} on behalf of {} failed. Reason {}.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId(), throwable.getMessage());
-            } else {
-                LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
-            }
-        } else {
-            LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
-        }
     }
 
     private Mono<? extends Connection> client(Ping ping) {

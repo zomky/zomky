@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.log;
+import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.logError;
+
 class GossipProbe {
 
     private int nodeId;
@@ -35,25 +38,41 @@ class GossipProbe {
     }
 
     private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
-        return gossipTransport.ping(Ping.newBuilder()
+        Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(this.nodeId)
                 .setRequestorNodeId(this.nodeId)
                 .setDestinationNodeId(destinationNodeId)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(clock.getOrDefault(destinationNodeId, new AtomicLong(0)).incrementAndGet())
-                .build());
+                .build();
+        return gossipTransport
+                .ping(ping)
+                .doOnNext(i -> log(ping))
+                .onErrorResume(throwable -> {
+                    logError(ping, throwable);
+                    return Mono.empty();
+                });
     }
 
     private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, List<Gossip> gossips) {
         return Flux.fromIterable(proxies)
-                .flatMap(proxyNodeId -> gossipTransport.ping(Ping.newBuilder()
-                        .setInitiatorNodeId(this.nodeId)
-                        .setRequestorNodeId(proxyNodeId)
-                        .setDestinationNodeId(destinationNodeId)
-                        .addAllGossips(gossips)
-                        .setDirect(false)
-                        .build()));
+                .flatMap(proxyNodeId -> {
+                    Ping ping = Ping.newBuilder()
+                            .setInitiatorNodeId(this.nodeId)
+                            .setRequestorNodeId(proxyNodeId)
+                            .setDestinationNodeId(destinationNodeId)
+                            .addAllGossips(gossips)
+                            .setDirect(false)
+                            .build();
+                    return gossipTransport
+                            .ping(ping)
+                            .doOnNext(i -> log(ping))
+                            .onErrorResume(throwable -> {
+                                logError(ping, throwable);
+                                return Mono.empty();
+                            });
+                });
     }
 
 }

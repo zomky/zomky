@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.logError;
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
 public class GossipProtocol {
@@ -148,7 +149,12 @@ public class GossipProtocol {
                     } else {
                         GossipTransport gossipTransport = new GossipTransport();
                         Ping newPing = PingUtils.direct(ping, sharedGossips);
-                        publisher = gossipTransport.ping(newPing); // TODO handle ack and timeout
+                        publisher = gossipTransport.ping(newPing)
+                                .doOnNext(i -> log(ping))
+                                .onErrorResume(throwable -> {
+                                    logError(ping, throwable);
+                                    return Mono.empty();
+                                }); // TODO handle ack and timeout
                     }
                     return Flux.from(publisher).then(udpOutbound.sendObject(AckUtils.toDatagram(ack, datagramPacket.sender())).then());
                 })
