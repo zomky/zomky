@@ -4,6 +4,8 @@ import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
 import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
+import io.github.pmackowski.rsocket.raft.gossip.listener.NodeJoinedListener;
+import io.github.pmackowski.rsocket.raft.gossip.listener.NodeLeftGracefullyListener;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
@@ -32,6 +34,9 @@ class DefaultNode implements InnerNode {
     private Senders senders;
     private GossipProtocol gossipProtocol;
     private RaftProtocol raftProtocol;
+
+    private Set<NodeJoinedListener> nodeJoinedListeners = new HashSet<>();
+    private Set<NodeLeftGracefullyListener> nodeLeftGracefullyListeners = new HashSet<>();
 
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
@@ -124,6 +129,28 @@ class DefaultNode implements InnerNode {
     @Override
     public void senderUnavailable(Sender sender) {
         senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
+    }
+
+    @Override
+    public void onNodeJoined(NodeJoinedListener nodeJoinedListener) {
+        nodeJoinedListeners.add(nodeJoinedListener);
+    }
+
+    @Override
+    public void onNodeLeftGracefully(NodeLeftGracefullyListener nodeLeftGracefullyListener) {
+        nodeLeftGracefullyListeners.add(nodeLeftGracefullyListener);
+    }
+
+    @Override
+    public void nodeJoined(int nodeId) {
+        // TODO use one of reactor processors instead
+        nodeJoinedListeners.forEach(nodeJoinedListener -> nodeJoinedListener.handle(nodeId));
+    }
+
+    @Override
+    public void nodeLeftGracefully(int nodeId) {
+        // TODO use one of reactor processors instead
+        nodeLeftGracefullyListeners.forEach(nodeLeftGracefullyListener -> nodeLeftGracefullyListener.handle(nodeId));
     }
 
     @Override

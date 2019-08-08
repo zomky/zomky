@@ -26,6 +26,10 @@ public interface InnerNode extends Node {
 
     void onSenderUnavailable(SenderUnavailableListener senderUnavailableListener);
 
+    void nodeJoined(int nodeId);
+
+    void nodeLeftGracefully(int nodeId);
+
     Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest);
 
 }

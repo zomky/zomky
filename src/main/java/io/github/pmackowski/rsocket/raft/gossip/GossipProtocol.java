@@ -35,12 +35,14 @@ public class GossipProtocol {
 
     int nodeId;
 
+    private InnerNode node;
     private Cluster cluster;
     private Peers peers;
     private Gossips gossips;
     private Disposable disposable;
 
     public GossipProtocol(InnerNode node) {
+        this.node = node;
         this.cluster = new Cluster(node.getNodeId());
         this.nodeId = node.getNodeId();
         this.peers = new Peers();
@@ -103,6 +105,7 @@ public class GossipProtocol {
             .doOnNext(joinResponse -> {
                 LOGGER.info("[Node {}] add member {}", nodeId, initJoinRequest.getPort());
                 cluster.addMember(initJoinRequest.getPort());
+                node.nodeJoined(initJoinRequest.getPort());
             })
             .retryWhen(Retry
                     .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
@@ -121,6 +124,7 @@ public class GossipProtocol {
                    .doOnNext(joinRequest1 -> {
                        LOGGER.info("[Node {}] add member {}", nodeId, joinRequest1.getRequesterPort());
                        cluster.addMember(joinRequest1.getRequesterPort());
+                       node.nodeJoined(joinRequest1.getRequesterPort());
                    })
                    .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
     }
