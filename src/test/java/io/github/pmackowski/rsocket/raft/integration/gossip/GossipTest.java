@@ -1,16 +1,37 @@
 package io.github.pmackowski.rsocket.raft.integration.gossip;
 
-import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
+import io.github.pmackowski.rsocket.raft.Node;
+import io.github.pmackowski.rsocket.raft.NodeFactory;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-
-import java.time.Duration;
+import reactor.core.publisher.Hooks;
 
 public class GossipTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipTest.class);
+
+    @Test
+    void names() throws InterruptedException {
+        Hooks.onOperatorDebug();
+
+        NodeFactory.receive()
+                .port(7000)
+                .retryJoin(7001)
+                .start()
+                .subscribe();
+
+        Thread.sleep(5000);
+
+        Node node2 = NodeFactory.receive()
+                .port(7001)
+                .retryJoin(7000)
+                .start()
+                .block();
+
+
+        Thread.sleep(15000);
+    }
 
     @Test
     public void echoTest() throws Exception {

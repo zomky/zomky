@@ -39,6 +39,7 @@ class GossipProbeTest {
     @BeforeEach
     void setUp() {
         // gossip value not important (not mocked because Gossip is final)
+        gossips = new ArrayList<>();
         gossips.add(Gossip.newBuilder().setNodeId(1).build());
         gossipProbe = new GossipProbe(NODE_ID, gossipTransport);
     }

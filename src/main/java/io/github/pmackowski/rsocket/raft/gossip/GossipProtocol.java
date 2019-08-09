@@ -18,7 +18,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.logError;
+import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.*;
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
 public class GossipProtocol {
@@ -32,8 +32,6 @@ public class GossipProtocol {
     private GossipOnPingDelay onPingDelay;
     private BooleanSupplier REPEAT_PROBE = () -> true;
 
-    int nodeId;
-
     private InnerNode node;
     private Cluster cluster;
     private Peers peers;
@@ -42,13 +40,19 @@ public class GossipProtocol {
     private GossipProbe gossipProbe;
     private GossipTransport gossipTransport;
 
+    // for testing
+    public GossipProtocol(InnerNode node, Gossips gossips, GossipOnPingDelay onPingDelay) {
+        this.node = node;
+        this.gossips = gossips;
+        this.onPingDelay = onPingDelay;
+    }
+
     public GossipProtocol(InnerNode node) {
         this.node = node;
         this.cluster = new Cluster(node.getNodeId());
-        this.nodeId = node.getNodeId();
         this.gossipTransport = new GossipTransport();
         this.peers = new Peers();
-        this.gossips = new Gossips(nodeId);
+        this.gossips = new Gossips(node.getNodeId());
         this.onPingDelay = GossipOnPingDelay.NO_DELAY;
         this.gossipProbe = new GossipProbe(node.getNodeId(), gossipTransport);
     }
@@ -58,26 +62,29 @@ public class GossipProtocol {
     }
 
     public void start() {
-        disposable =
-            Flux.defer(() -> {
+        disposable = probeNodes().subscribe();
+    }
+
+    // visible for testing
+    Flux<Acks> probeNodes() {
+        return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
-                LOGGER.info("[Node {}][ping] Probing {} ...", this.nodeId, peerProbe.getDestinationNodeId());
+                log(node.getNodeId(), peerProbe);
                 return gossipProbe.probeNode(peerProbe, gossips.share(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
 //                .doOnNext(acks -> this.gossips.addGossips(acks))
             .doOnNext(acks -> {
-                LOGGER.info("[Node {}][ping] Probing {} finished.", this.nodeId, acks);
+                //LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), acks);
             })
             .doOnError(throwable -> {
 //                    this.gossips.addGossip(destinationNodeId, Gossip.Suspicion.SUSPECT);
             })
             .doFinally(signalType -> {
-    //                Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
-    //                this.gossips.addGossip(nodeId, suspicion);
+                //                Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
+                //                this.gossips.addGossip(nodeId, suspicion);
             })
             .repeat(REPEAT_PROBE)
-            .doOnError(throwable -> LOGGER.error("--",throwable))
-            .subscribe();
+            .doOnError(throwable -> LOGGER.error("--",throwable));
     }
 
     public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
@@ -85,7 +92,7 @@ public class GossipProtocol {
         JoinRequest joinRequest = JoinRequest.newBuilder().setPort(initJoinRequest.getPort()).setRequesterPort(initJoinRequest.getRequesterPort()).build();
         return Mono.defer(() -> GossipTcpTransport.join(joinRequest))
             .doOnNext(joinResponse -> {
-                LOGGER.info("[Node {}] add member {}", nodeId, initJoinRequest.getPort());
+                LOGGER.info("[Node {}] add member {}", node.getNodeId(), initJoinRequest.getPort());
                 peers.add(initJoinRequest.getPort());
                 cluster.addMember(initJoinRequest.getPort());
                 node.nodeJoined(initJoinRequest.getPort());
@@ -93,19 +100,18 @@ public class GossipProtocol {
             .retryWhen(Retry
                     .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
                     .fixedBackoff(Duration.ofSeconds(1))
-                    .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", nodeId, initJoinRequest.getPort()))
+                    .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", node.getNodeId(), initJoinRequest.getPort()))
             )
             .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
     }
 
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
         // other node asked me to join
-//        senders.addServer(joinRequest1.getPort());
         return Mono.just(joinRequest)
                    // TODO check credentials
-                   .doOnNext(joinRequest1 -> peers.add(joinRequest1.getRequesterPort()))
                    .doOnNext(joinRequest1 -> {
-                       LOGGER.info("[Node {}] add member {}", nodeId, joinRequest1.getRequesterPort());
+                       LOGGER.info("[Node {}] add member {}", node.getNodeId(), joinRequest1.getRequesterPort());
+                       peers.add(joinRequest1.getRequesterPort());
                        cluster.addMember(joinRequest1.getRequesterPort());
                        node.nodeJoined(joinRequest1.getRequesterPort());
                    })
@@ -115,17 +121,6 @@ public class GossipProtocol {
     public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
         return null;
     }
-
-    // Leave will broadcast a leave message but will not shutdown the background
-    // listeners, meaning the node will continue participating in gossip and state
-    // updates.
-    //
-    // This will block until the leave message is successfully broadcasted to
-    // a member of the cluster, if any exist or until a specified timeout
-    // is reached.
-    //
-    // This method is safe to call multiple times, but must not be called
-    // after the cluster is already shut down.
 
     public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {
 //        peers.remove(leaveRequest.get);
@@ -139,15 +134,14 @@ public class GossipProtocol {
                 .cast(DatagramPacket.class)
                 .flatMap(datagramPacket -> {
                     Ping ping = toPing(datagramPacket);
-                    log(ping);
+                    logOnPing(ping);
                     List<Gossip> sharedGossips = gossips.mergeAndShare(ping.getGossipsList());
-                    Ack ack = Ack.newBuilder().setNodeId(nodeId).addAllGossips(sharedGossips).build();
+                    Ack ack = Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(sharedGossips).build();
 
                     Publisher<?> publisher;
                     if (ping.getDirect()) {
                         publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter());
                     } else {
-                        GossipTransport gossipTransport = new GossipTransport();
                         Ping newPing = PingUtils.direct(ping, sharedGossips);
                         publisher = gossipTransport.ping(newPing)
                                 .doOnNext(i -> log(ping))
@@ -161,13 +155,4 @@ public class GossipProtocol {
                 .then();
     }
 
-    private void log(Ping ping) {
-        if (ping.getDirect()) {
-            if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
-                LOGGER.info("[Node {}][onPing] I am being probed by {}", ping.getDestinationNodeId(), ping.getRequestorNodeId());
-            } else {
-                LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {}", ping.getDestinationNodeId(), ping.getRequestorNodeId(), ping.getInitiatorNodeId());
-            }
-        }
-    }
 }

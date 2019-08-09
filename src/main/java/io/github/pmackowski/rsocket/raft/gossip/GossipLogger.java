@@ -8,6 +8,24 @@ public class GossipLogger {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipLogger.class);
 
+    public static void log(int nodeId, PeerProbe peerProbe) {
+        if (peerProbe.getDestinationNodeId() == null) {
+            LOGGER.info("[Node {}][ping] No probing for one-node cluster", nodeId);
+        } else {
+            LOGGER.info("[Node {}][ping] Probing {} ...", nodeId, peerProbe.getDestinationNodeId());
+        }
+    }
+
+    public static void logOnPing(Ping ping) {
+        if (ping.getDirect()) {
+            if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
+                LOGGER.info("[Node {}][onPing] I am being probed by {}", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+            } else {
+                LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {}", ping.getDestinationNodeId(), ping.getRequestorNodeId(), ping.getInitiatorNodeId());
+            }
+        }
+    }
+
     public static void log(Ping ping) {
         if (ping.getDirect()) {
             if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
