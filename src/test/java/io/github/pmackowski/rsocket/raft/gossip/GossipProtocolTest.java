@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft.gossip;
 
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.socket.DatagramPacket;
@@ -13,6 +14,7 @@ import org.mockito.BDDMockito;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.NettyOutbound;
@@ -23,11 +25,13 @@ import reactor.test.StepVerifier;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
+// jakub kwietko
 @ExtendWith(MockitoExtension.class)
 class GossipProtocolTest {
 
@@ -38,6 +42,7 @@ class GossipProtocolTest {
 
     @Mock InnerNode node;
     @Mock Gossips gossips;
+    @Mock GossipTransport gossipTransport;
     @Mock UdpInbound udpInbound;
     @Mock UdpOutbound udpOutbound;
     @Spy NettyOutbound nettyOutbound;
@@ -47,20 +52,24 @@ class GossipProtocolTest {
     @BeforeEach
     void setUp() {
         BDDMockito.given(node.getNodeId()).willReturn(SENDER_NODE_ID);
-        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
     }
 
     @Test
-    void onPing() {
+    void onPingDirect() {
         // given
+        List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
                 .setDirect(true)
-                .addAllGossips(new ArrayList<>())
+                .addAllGossips(gossipList)
                 .build();
         givenPing(ping);
-        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(new ArrayList<>());
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
 
-        gossipProtocol = new GossipProtocol(node, gossips, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -69,9 +78,63 @@ class GossipProtocolTest {
 
         assertAck(Ack.newBuilder()
                 .setNodeId(node.getNodeId())
-                .addAllGossips(new ArrayList<>())
+                .addAllGossips(gossipList)
                 .build()
         );
+    }
+
+    @Test // TODO
+    void onPingIndirect() {
+        // given
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(false)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.empty());
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertAck(Ack.newBuilder()
+                .setNodeId(node.getNodeId())
+                .addAllGossips(gossipList)
+                .build()
+        );
+    }
+
+    @Test
+    void onPingError() {
+        // given
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(true)
+                .addAllGossips(new ArrayList<>())
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(Publisher.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(null);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertMonoError();
     }
 
     private void givenPing(Ping ping) {
@@ -84,6 +147,17 @@ class GossipProtocolTest {
         verify(udpOutbound).sendObject(datagramPacketCapture.capture());
         DatagramPacket datagramPacket = datagramPacketCapture.getValue();
         assertThat(datagramPacket.content()).isEqualTo(Unpooled.copiedBuffer(ack.toByteArray()));
-//        assertThat(datagramPacket.sender()).isEqualTo(SENDER);
+    }
+
+    private void assertMonoError() {
+        ArgumentCaptor<Mono> datagramPacketCapture = ArgumentCaptor.forClass(Mono.class);
+        verify(udpOutbound).sendObject(datagramPacketCapture.capture());
+        Mono datagramPacket = datagramPacketCapture.getValue();
+        StepVerifier.create(datagramPacket)
+                .expectSubscription()
+                .consumeErrorWith(exception -> {
+                    assertThat(exception.getMessage()).isEqualTo("onPing unexpected error");
+                })
+                .verify();
     }
 }

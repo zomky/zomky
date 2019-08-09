@@ -41,9 +41,10 @@ public class GossipProtocol {
     private GossipTransport gossipTransport;
 
     // for testing
-    public GossipProtocol(InnerNode node, Gossips gossips, GossipOnPingDelay onPingDelay) {
+    public GossipProtocol(InnerNode node, Gossips gossips, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
         this.node = node;
         this.gossips = gossips;
+        this.gossipTransport = gossipTransport;
         this.onPingDelay = onPingDelay;
     }
 
@@ -133,24 +134,31 @@ public class GossipProtocol {
         return udpInbound.receiveObject()
                 .cast(DatagramPacket.class)
                 .flatMap(datagramPacket -> {
-                    Ping ping = toPing(datagramPacket);
-                    logOnPing(ping);
-                    List<Gossip> sharedGossips = gossips.mergeAndShare(ping.getGossipsList());
-                    Ack ack = Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(sharedGossips).build();
+                    Object obj;
+                    try {
+                        Ping ping = toPing(datagramPacket);
+                        logOnPing(ping);
+                        List<Gossip> sharedGossips = gossips.mergeAndShare(ping.getGossipsList());
+                        Ack ack = Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(sharedGossips).build();
+                        obj = AckUtils.toDatagram(ack, datagramPacket.sender());
 
-                    Publisher<?> publisher;
-                    if (ping.getDirect()) {
-                        publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter());
-                    } else {
-                        Ping newPing = PingUtils.direct(ping, sharedGossips);
-                        publisher = gossipTransport.ping(newPing)
-                                .doOnNext(i -> log(ping))
-                                .onErrorResume(throwable -> {
-                                    logError(ping, throwable);
-                                    return Mono.empty();
-                                }); // TODO handle ack and timeout
+                        Publisher<?> publisher;
+                        if (ping.getDirect()) {
+                            publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter());
+                        } else {
+                            Ping newPing = PingUtils.direct(ping, sharedGossips);
+                            publisher = gossipTransport.ping(newPing)
+                                    .doOnNext(i -> log(ping))
+                                    .onErrorResume(throwable -> { // TODO should not send ack !!!!
+                                        logError(ping, throwable);
+                                        return Mono.empty();
+                                    }); // TODO handle ack and timeout
+                        }
+                        return Flux.from(publisher)
+                                   .then(udpOutbound.sendObject(obj).then());
+                    } catch (Exception e) {
+                        return udpOutbound.sendObject(Mono.error(new Exception("onPing unexpected error")));
                     }
-                    return Flux.from(publisher).then(udpOutbound.sendObject(AckUtils.toDatagram(ack, datagramPacket.sender())).then());
                 })
                 .then();
     }
