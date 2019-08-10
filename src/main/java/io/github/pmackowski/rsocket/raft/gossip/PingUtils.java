@@ -18,7 +18,7 @@ class PingUtils {
         try {
             return Ping.parseFrom(NettyUtils.toByteArray(datagramPacket.content().retain()));
         } catch (InvalidProtocolBufferException e) {
-            throw new RuntimeException(e);
+            throw new GossipException("datagram packet cannot be converted to Ping", e);
         }
     }
 

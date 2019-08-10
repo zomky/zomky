@@ -18,7 +18,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.*;
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
 public class GossipProtocol {
@@ -70,7 +69,11 @@ public class GossipProtocol {
     Flux<Acks> probeNodes() {
         return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
-                log(node.getNodeId(), peerProbe);
+                if (peerProbe.getDestinationNodeId() == null) {
+                    LOGGER.info("[Node {}][ping] No probing for one-node cluster", node.getNodeId());
+                } else {
+                    LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
+                }
                 return gossipProbe.probeNode(peerProbe, gossips.share(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
 //                .doOnNext(acks -> this.gossips.addGossips(acks))
@@ -134,33 +137,86 @@ public class GossipProtocol {
         return udpInbound.receiveObject()
                 .cast(DatagramPacket.class)
                 .flatMap(datagramPacket -> {
-                    Object obj;
                     try {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
+                        checkPing(ping);
                         List<Gossip> sharedGossips = gossips.mergeAndShare(ping.getGossipsList());
                         Ack ack = Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(sharedGossips).build();
-                        obj = AckUtils.toDatagram(ack, datagramPacket.sender());
+                        DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
-                        Publisher<?> publisher;
+                        Mono<?> publisher;
                         if (ping.getDirect()) {
-                            publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter());
+                            publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter())
+                                    .thenReturn(ackDatagram).cast(Object.class)
+                                    .onErrorReturn(Mono.error(new GossipException("onPing direct ping error")));
                         } else {
-                            Ping newPing = PingUtils.direct(ping, sharedGossips);
-                            publisher = gossipTransport.ping(newPing)
-                                    .doOnNext(i -> log(ping))
-                                    .onErrorResume(throwable -> { // TODO should not send ack !!!!
-                                        logError(ping, throwable);
-                                        return Mono.empty();
-                                    }); // TODO handle ack and timeout
+                            Ping pingOnBehalf = PingUtils.direct(ping, sharedGossips);
+                            publisher = gossipTransport.ping(pingOnBehalf)
+                                    .doOnNext(indirectAck -> {
+                                        LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                    })
+                                    // TODO timeout and save indirect ack
+                                    .doOnError(throwable -> {
+                                        LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
+                                    })
+                                    .thenReturn(ackDatagram)
+                                    .cast(Object.class)
+                                    .onErrorReturn(Mono.error(new GossipException("onPing indirect ping error")));
                         }
-                        return Flux.from(publisher)
-                                   .then(udpOutbound.sendObject(obj).then());
+                        return publisher.flatMap(ackDatagramOrMonoError -> {
+                            if (ackDatagramOrMonoError instanceof Publisher) {
+                                Mono monoError = (Mono) ackDatagramOrMonoError;
+                                return udpOutbound.sendObject(monoError).then();
+                            } else {
+                                return udpOutbound.sendObject(ackDatagramOrMonoError).then();
+                            }
+                        });
+                    } catch (GossipException e) {
+                        return udpOutbound.sendObject(Mono.error(e)).then();
                     } catch (Exception e) {
-                        return udpOutbound.sendObject(Mono.error(new Exception("onPing unexpected error")));
+                        String errorMessage = e.getMessage() != null ? e.getMessage() : "onPing unexpected error";
+                        return udpOutbound.sendObject(Mono.error(new GossipException(errorMessage, e))).then();
                     }
-                })
-                .then();
+                });
+    }
+
+    private void checkPing(Ping ping) {
+        if (ping.getDirect()) {
+            checkDirectPing(ping);
+        } else {
+            checkIndirectPing(ping);
+        }
+    }
+
+    private void checkDirectPing(Ping ping) {
+        if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
+            throw new GossipException(String.format("Initiator and requestor node must be the same! [%s,%s]", ping.getInitiatorNodeId(), ping.getRequestorNodeId()));
+        }
+        if (ping.getDestinationNodeId() != node.getNodeId()) {
+            throw new GossipException(String.format("This node is not a destination node! [%s,%s]", ping.getDestinationNodeId(), node.getNodeId()));
+        }
+    }
+
+    private void checkIndirectPing(Ping ping) {
+        if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
+            throw new GossipException(String.format("Initiator and requestor node must not be the same! [%s,%s]", ping.getInitiatorNodeId(), ping.getRequestorNodeId()));
+        }
+        if (ping.getRequestorNodeId() != node.getNodeId()) {
+            throw new GossipException(String.format("This node is not a proxy node! [%s,%s]", ping.getRequestorNodeId(), node.getNodeId()));
+        }
+    }
+
+    private static void logOnPing(Ping ping) {
+        if (ping.getDirect()) {
+            if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
+                LOGGER.info("[Node {}][onPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+            } else {
+                LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId(), ping.getInitiatorNodeId());
+            }
+        } else {
+            LOGGER.info("[Node {}][onPing] Probing {} on behalf of {} ...", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+        }
     }
 
 }

@@ -29,6 +29,11 @@ public class GossipTest {
                 .start()
                 .block();
 
+        NodeFactory.receive()
+                .port(7002)
+                .retryJoin(7000)
+                .start()
+                .block();
 
         Thread.sleep(15000);
     }

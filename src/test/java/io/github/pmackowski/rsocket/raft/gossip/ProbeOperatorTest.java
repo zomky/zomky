@@ -1,8 +1,6 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -10,11 +8,8 @@ import reactor.test.StepVerifier;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class ProbeOperatorTest {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProbeOperatorTest.class);
 
     @Test
     void successfulDirectWithinRoundTripTime() {

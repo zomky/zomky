@@ -4,6 +4,8 @@ import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -12,10 +14,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.log;
-import static io.github.pmackowski.rsocket.raft.gossip.GossipLogger.logError;
-
 class GossipProbe {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GossipProbe.class);
 
     private int nodeId;
     private GossipTransport gossipTransport;
@@ -67,12 +68,28 @@ class GossipProbe {
                             .build();
                     return gossipTransport
                             .ping(ping)
-                            .doOnNext(i -> log(ping))
+                            .doOnNext(ack -> log(ping))
                             .onErrorResume(throwable -> {
                                 logError(ping, throwable);
                                 return Mono.empty();
                             });
                 });
+    }
+
+    private void log(Ping ping) {
+        if (ping.getDirect()) {
+            LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+        } else {
+            LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+        }
+    }
+
+    private void logError(Ping ping, Throwable throwable) {
+        if (ping.getDirect()) {
+            LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+        } else {
+            LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
+        }
     }
 
 }

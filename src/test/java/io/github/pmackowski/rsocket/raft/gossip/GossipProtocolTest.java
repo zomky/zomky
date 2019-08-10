@@ -1,5 +1,6 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.BDDMockito;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -31,12 +31,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
-// jakub kwietko
 @ExtendWith(MockitoExtension.class)
+//@MockitoSettings(strictness = Strictness.LENIENT)
 class GossipProtocolTest {
 
     private static final int SENDER_NODE_ID = 7000;
     private static final int RECIPIENT_NODE_ID = 7001;
+    private static final int PROXY_NODE_ID = 7002;
     private static final InetSocketAddress SENDER = InetSocketAddress.createUnresolved("localhost", SENDER_NODE_ID);
     private static final InetSocketAddress RECIPIENT = InetSocketAddress.createUnresolved("localhost", RECIPIENT_NODE_ID);
 
@@ -45,18 +46,36 @@ class GossipProtocolTest {
     @Mock GossipTransport gossipTransport;
     @Mock UdpInbound udpInbound;
     @Mock UdpOutbound udpOutbound;
-    @Spy NettyOutbound nettyOutbound;
+    @Mock NettyOutbound nettyOutbound;
 
     private GossipProtocol gossipProtocol;
 
     @BeforeEach
     void setUp() {
-        BDDMockito.given(node.getNodeId()).willReturn(SENDER_NODE_ID);
+        BDDMockito.given(nettyOutbound.then()).willReturn(Mono.empty());
+    }
+
+    @Test
+    void onPingBrokenDatagramPacket() {
+        // given
+        DatagramPacket datagramPacket = new DatagramPacket(Unpooled.copiedBuffer("broken".getBytes()), RECIPIENT, SENDER);
+        BDDMockito.<Flux<?>>given(udpInbound.receiveObject()).willReturn(Flux.just(datagramPacket));
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertError(GossipException.class, InvalidProtocolBufferException.class);
     }
 
     @Test
     void onPingDirect() {
         // given
+        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -83,21 +102,154 @@ class GossipProtocolTest {
         );
     }
 
-    @Test // TODO
-    void onPingIndirect() {
+    @Test
+    void onPingError() {
         // given
+        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
+
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(true)
+                .addAllGossips(new ArrayList<>())
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(null);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertError(GossipException.class, "onPing unexpected error");
+    }
+
+    @Test
+    void onPingErrorInitiatorAndRequestorAreDifferent() {
+        // given
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(8888)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(true)
+                .addAllGossips(new ArrayList<>())
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertError(GossipException.class, "Initiator and requestor node must be the same! [7000,8888]");
+    }
+
+    @Test
+    void onPingErrorNodeIsNotADestination() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(8888);
+
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(true)
+                .addAllGossips(new ArrayList<>())
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertError(GossipException.class, "This node is not a destination node! [7001,8888]");
+    }
+
+    @Test
+    void onPingDirectDelayError() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
                 .setRequestorNodeId(SENDER_NODE_ID)
                 .setDestinationNodeId(RECIPIENT_NODE_ID)
-                .setDirect(false)
+                .setDirect(true)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.error(new RuntimeException()).cast(Long.class));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertError(GossipException.class, "onPing direct ping error");
+    }
+
+    @Test
+    void onPingDirectDelay() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(SENDER_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(true)
                 .addAllGossips(gossipList)
                 .build();
         givenPing(ping);
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
         BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
-        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.empty());
+
+        gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ofMillis(100)));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(100))
+                .verifyComplete();
+
+        assertAck(Ack.newBuilder()
+                .setNodeId(node.getNodeId())
+                .addAllGossips(gossipList)
+                .build()
+        );
+    }
+
+    @Test
+    void onPingIndirect() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(PROXY_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(false)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.just(Ack.newBuilder().build()));
 
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
@@ -114,18 +266,22 @@ class GossipProtocolTest {
     }
 
     @Test
-    void onPingError() {
+    void onPingIndirectError() {
         // given
+        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
-                .setRequestorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(PROXY_NODE_ID)
                 .setDestinationNodeId(RECIPIENT_NODE_ID)
-                .setDirect(true)
-                .addAllGossips(new ArrayList<>())
+                .setDirect(false)
+                .addAllGossips(gossipList)
                 .build();
         givenPing(ping);
-        BDDMockito.given(udpOutbound.sendObject(any(Publisher.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(null);
+
+        BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.mergeAndShare(ping.getGossipsList())).willReturn(gossipList);
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.error(new RuntimeException()));
 
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
@@ -134,7 +290,7 @@ class GossipProtocolTest {
                 .expectSubscription()
                 .verifyComplete();
 
-        assertMonoError();
+        assertError(GossipException.class, "onPing indirect ping error");
     }
 
     private void givenPing(Ping ping) {
@@ -149,14 +305,30 @@ class GossipProtocolTest {
         assertThat(datagramPacket.content()).isEqualTo(Unpooled.copiedBuffer(ack.toByteArray()));
     }
 
-    private void assertMonoError() {
-        ArgumentCaptor<Mono> datagramPacketCapture = ArgumentCaptor.forClass(Mono.class);
-        verify(udpOutbound).sendObject(datagramPacketCapture.capture());
-        Mono datagramPacket = datagramPacketCapture.getValue();
-        StepVerifier.create(datagramPacket)
+    private void assertError(Class<?> exceptionType, String expectedErrorMessage) {
+        ArgumentCaptor<Mono> objectCapture = ArgumentCaptor.forClass(Mono.class);
+        verify(udpOutbound).sendObject(objectCapture.capture());
+        Object obj = objectCapture.getValue();
+        assertThat(obj).isInstanceOf(Publisher.class);
+        StepVerifier.create((Publisher) obj)
                 .expectSubscription()
                 .consumeErrorWith(exception -> {
-                    assertThat(exception.getMessage()).isEqualTo("onPing unexpected error");
+                    assertThat(exception).isInstanceOf(exceptionType);
+                    assertThat(exception.getMessage()).isEqualTo(expectedErrorMessage);
+                })
+                .verify();
+    }
+
+    private void assertError(Class<?> exceptionType, Class<?> causeType) {
+        ArgumentCaptor<Mono> objectCapture = ArgumentCaptor.forClass(Mono.class);
+        verify(udpOutbound).sendObject(objectCapture.capture());
+        Object obj = objectCapture.getValue();
+        assertThat(obj).isInstanceOf(Publisher.class);
+        StepVerifier.create((Publisher) obj)
+                .expectSubscription()
+                .consumeErrorWith(exception -> {
+                    assertThat(exception).isInstanceOf(exceptionType);
+                    assertThat(exception.getCause()).isInstanceOf(causeType);
                 })
                 .verify();
     }
