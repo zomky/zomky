@@ -13,25 +13,30 @@ public interface AckOrBuilder extends
   int getNodeId();
 
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>optional bool nack = 2;</code>
+   */
+  boolean getNack();
+
+  /**
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> 
       getGossipsList();
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index);
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   int getGossipsCount();
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList();
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index);

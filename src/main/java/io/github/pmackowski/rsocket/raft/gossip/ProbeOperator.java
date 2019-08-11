@@ -234,6 +234,7 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
                     return;
                 }
             }
+            // TODO call indirectSubscriber if error before RRT (indirectStart)
             //cancel();
 
             //actual.onError(t);

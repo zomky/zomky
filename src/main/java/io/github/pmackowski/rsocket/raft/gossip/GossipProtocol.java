@@ -15,9 +15,9 @@ import reactor.netty.udp.UdpOutbound;
 import reactor.retry.Retry;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import static io.github.pmackowski.rsocket.raft.gossip.AckUtils.nack;
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
 
 public class GossipProtocol {
@@ -66,7 +66,7 @@ public class GossipProtocol {
     }
 
     // visible for testing
-    Flux<Acks> probeNodes() {
+    Flux<ProbeAcks> probeNodes() {
         return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
                 if (peerProbe.getDestinationNodeId() == null) {
@@ -74,21 +74,14 @@ public class GossipProtocol {
                 } else {
                     LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.share(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
+                return gossipProbe.probeNode(peerProbe, gossips.chooseLatestGossipsForPeer(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
-//                .doOnNext(acks -> this.gossips.addGossips(acks))
-            .doOnNext(acks -> {
-                //LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), acks);
-            })
-            .doOnError(throwable -> {
-//                    this.gossips.addGossip(destinationNodeId, Gossip.Suspicion.SUSPECT);
-            })
-            .doFinally(signalType -> {
-                //                Gossip.Suspicion suspicion = acks.get() > 0 ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
-                //                this.gossips.addGossip(nodeId, suspicion);
+            .doOnNext(probeAcks -> {
+                gossips.onProbeCompleted(probeAcks);
+                LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeAcks.getDestinationNodeId());
             })
             .repeat(REPEAT_PROBE)
-            .doOnError(throwable -> LOGGER.error("--",throwable));
+            .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", node.getNodeId(), throwable));
     }
 
     public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
@@ -141,8 +134,7 @@ public class GossipProtocol {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
                         checkPing(ping);
-                        List<Gossip> sharedGossips = gossips.mergeAndShare(ping.getGossipsList());
-                        Ack ack = Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(sharedGossips).build();
+                        Ack ack = gossips.onPing(node.getNodeId(), ping);
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
                         Mono<?> publisher;
@@ -151,16 +143,19 @@ public class GossipProtocol {
                                     .thenReturn(ackDatagram).cast(Object.class)
                                     .onErrorReturn(Mono.error(new GossipException("onPing direct ping error")));
                         } else {
-                            Ping pingOnBehalf = PingUtils.direct(ping, sharedGossips);
+                            Ping pingOnBehalf = PingUtils.direct(ping, ack.getGossipsList());
                             publisher = gossipTransport.ping(pingOnBehalf)
                                     .doOnNext(indirectAck -> {
                                         LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                        gossips.addAck(indirectAck);
                                     })
-                                    // TODO timeout and save indirect ack
+                                    // TODO timeout
                                     .doOnError(throwable -> {
                                         LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
                                     })
                                     .thenReturn(ackDatagram)
+                                    // if proxy is available and cannot reach destination then nack is returned
+                                    .onErrorReturn(AckUtils.toDatagram(nack(ack), datagramPacket.sender()))
                                     .cast(Object.class)
                                     .onErrorReturn(Mono.error(new GossipException("onPing indirect ping error")));
                         }

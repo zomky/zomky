@@ -9,7 +9,7 @@ class GossipsTest {
     void name() {
         Gossips gossips = new Gossips(7000);
 
-        gossips.addGossip(7000, Gossip.Suspicion.SUSPECT);
-        gossips.addGossip(7000, 0, Gossip.Suspicion.SUSPECT);
+//        gossips.addGossip(7000, Gossip.Suspicion.SUSPECT);
+//        gossips.addGossip(7000, 0, Gossip.Suspicion.SUSPECT);
     }
 }

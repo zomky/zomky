@@ -16,6 +16,7 @@ public  final class Ack extends
   }
   private Ack() {
     nodeId_ = 0;
+    nack_ = false;
     gossips_ = java.util.Collections.emptyList();
   }
 
@@ -49,10 +50,15 @@ public  final class Ack extends
             nodeId_ = input.readInt32();
             break;
           }
-          case 18: {
-            if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+          case 16: {
+
+            nack_ = input.readBool();
+            break;
+          }
+          case 26: {
+            if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
               gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>();
-              mutable_bitField0_ |= 0x00000002;
+              mutable_bitField0_ |= 0x00000004;
             }
             gossips_.add(
                 input.readMessage(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.parser(), extensionRegistry));
@@ -66,7 +72,7 @@ public  final class Ack extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+      if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
         gossips_ = java.util.Collections.unmodifiableList(gossips_);
       }
       makeExtensionsImmutable();
@@ -94,35 +100,44 @@ public  final class Ack extends
     return nodeId_;
   }
 
-  public static final int GOSSIPS_FIELD_NUMBER = 2;
+  public static final int NACK_FIELD_NUMBER = 2;
+  private boolean nack_;
+  /**
+   * <code>optional bool nack = 2;</code>
+   */
+  public boolean getNack() {
+    return nack_;
+  }
+
+  public static final int GOSSIPS_FIELD_NUMBER = 3;
   private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_;
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   public int getGossipsCount() {
     return gossips_.size();
   }
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
     return gossips_.get(index);
   }
   /**
-   * <code>repeated .Gossip gossips = 2;</code>
+   * <code>repeated .Gossip gossips = 3;</code>
    */
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index) {
@@ -144,8 +159,11 @@ public  final class Ack extends
     if (nodeId_ != 0) {
       output.writeInt32(1, nodeId_);
     }
+    if (nack_ != false) {
+      output.writeBool(2, nack_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
-      output.writeMessage(2, gossips_.get(i));
+      output.writeMessage(3, gossips_.get(i));
     }
   }
 
@@ -158,9 +176,13 @@ public  final class Ack extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(1, nodeId_);
     }
+    if (nack_ != false) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeBoolSize(2, nack_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, gossips_.get(i));
+        .computeMessageSize(3, gossips_.get(i));
     }
     memoizedSize = size;
     return size;
@@ -180,6 +202,8 @@ public  final class Ack extends
     boolean result = true;
     result = result && (getNodeId()
         == other.getNodeId());
+    result = result && (getNack()
+        == other.getNack());
     result = result && getGossipsList()
         .equals(other.getGossipsList());
     return result;
@@ -194,6 +218,9 @@ public  final class Ack extends
     hash = (19 * hash) + getDescriptorForType().hashCode();
     hash = (37 * hash) + NODE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getNodeId();
+    hash = (37 * hash) + NACK_FIELD_NUMBER;
+    hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+        getNack());
     if (getGossipsCount() > 0) {
       hash = (37 * hash) + GOSSIPS_FIELD_NUMBER;
       hash = (53 * hash) + getGossipsList().hashCode();
@@ -319,9 +346,11 @@ public  final class Ack extends
       super.clear();
       nodeId_ = 0;
 
+      nack_ = false;
+
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000004);
       } else {
         gossipsBuilder_.clear();
       }
@@ -350,10 +379,11 @@ public  final class Ack extends
       int from_bitField0_ = bitField0_;
       int to_bitField0_ = 0;
       result.nodeId_ = nodeId_;
+      result.nack_ = nack_;
       if (gossipsBuilder_ == null) {
-        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        if (((bitField0_ & 0x00000004) == 0x00000004)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000004);
         }
         result.gossips_ = gossips_;
       } else {
@@ -404,11 +434,14 @@ public  final class Ack extends
       if (other.getNodeId() != 0) {
         setNodeId(other.getNodeId());
       }
+      if (other.getNack() != false) {
+        setNack(other.getNack());
+      }
       if (gossipsBuilder_ == null) {
         if (!other.gossips_.isEmpty()) {
           if (gossips_.isEmpty()) {
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000004);
           } else {
             ensureGossipsIsMutable();
             gossips_.addAll(other.gossips_);
@@ -421,7 +454,7 @@ public  final class Ack extends
             gossipsBuilder_.dispose();
             gossipsBuilder_ = null;
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000004);
             gossipsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getGossipsFieldBuilder() : null;
@@ -483,12 +516,38 @@ public  final class Ack extends
       return this;
     }
 
+    private boolean nack_ ;
+    /**
+     * <code>optional bool nack = 2;</code>
+     */
+    public boolean getNack() {
+      return nack_;
+    }
+    /**
+     * <code>optional bool nack = 2;</code>
+     */
+    public Builder setNack(boolean value) {
+      
+      nack_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional bool nack = 2;</code>
+     */
+    public Builder clearNack() {
+      
+      nack_ = false;
+      onChanged();
+      return this;
+    }
+
     private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_ =
       java.util.Collections.emptyList();
     private void ensureGossipsIsMutable() {
-      if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+      if (!((bitField0_ & 0x00000004) == 0x00000004)) {
         gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>(gossips_);
-        bitField0_ |= 0x00000002;
+        bitField0_ |= 0x00000004;
        }
     }
 
@@ -496,7 +555,7 @@ public  final class Ack extends
         io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> gossipsBuilder_;
 
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
       if (gossipsBuilder_ == null) {
@@ -506,7 +565,7 @@ public  final class Ack extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public int getGossipsCount() {
       if (gossipsBuilder_ == null) {
@@ -516,7 +575,7 @@ public  final class Ack extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -526,7 +585,7 @@ public  final class Ack extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder setGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
@@ -543,7 +602,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder setGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -557,7 +616,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder addGossips(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
       if (gossipsBuilder_ == null) {
@@ -573,7 +632,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder addGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
@@ -590,7 +649,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder addGossips(
         io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -604,7 +663,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder addGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -618,7 +677,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder addAllGossips(
         java.lang.Iterable<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> values) {
@@ -633,12 +692,12 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder clearGossips() {
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000004);
         onChanged();
       } else {
         gossipsBuilder_.clear();
@@ -646,7 +705,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public Builder removeGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -659,14 +718,14 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder getGossipsBuilder(
         int index) {
       return getGossipsFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
         int index) {
@@ -676,7 +735,7 @@ public  final class Ack extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
          getGossipsOrBuilderList() {
@@ -687,14 +746,14 @@ public  final class Ack extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder() {
       return getGossipsFieldBuilder().addBuilder(
           io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder(
         int index) {
@@ -702,7 +761,7 @@ public  final class Ack extends
           index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 2;</code>
+     * <code>repeated .Gossip gossips = 3;</code>
      */
     public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder> 
          getGossipsBuilderList() {
@@ -715,7 +774,7 @@ public  final class Ack extends
         gossipsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder>(
                 gossips_,
-                ((bitField0_ & 0x00000002) == 0x00000002),
+                ((bitField0_ & 0x00000004) == 0x00000004),
                 getParentForChildren(),
                 isClean());
         gossips_ = null;

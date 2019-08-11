@@ -24,4 +24,8 @@ public class PeerProbe {
     public List<Integer> getProxyNodeIds() {
         return proxyNodeIds;
     }
+
+    public int getSize() {
+        return 1 + proxyNodeIds.size();
+    }
 }

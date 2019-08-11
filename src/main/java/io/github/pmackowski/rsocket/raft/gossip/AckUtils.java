@@ -11,4 +11,9 @@ class AckUtils {
     static DatagramPacket toDatagram(Ack ack, InetSocketAddress recipient) {
         return new DatagramPacket(Unpooled.copiedBuffer(ack.toByteArray()), recipient);
     }
+
+    public static Ack nack(Ack ack) {
+        return Ack.newBuilder(ack).setNack(true).build();
+    }
+
 }

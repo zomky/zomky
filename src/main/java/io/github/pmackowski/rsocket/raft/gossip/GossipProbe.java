@@ -27,15 +27,19 @@ class GossipProbe {
         this.gossipTransport = gossipTransport;
     }
 
-    Mono<Acks> probeNode(PeerProbe peerProbe, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
+    Mono<ProbeAcks> probeNode(PeerProbe peerProbe, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
         Integer destinationNodeId = peerProbe.getDestinationNodeId();
         if (destinationNodeId == null) {
-            return Mono.from(protocolPeriodEnd).thenReturn(Acks.NO_ACKS);
+            return Mono.from(protocolPeriodEnd).thenReturn(ProbeAcks.NO_PROBE_ACKS);
         }
         List<Integer> proxyNodeIds = peerProbe.getProxyNodeIds();
-        return pingDirect(destinationNodeId, gossips)
-                .transform(pingDirect -> new ProbeOperator<>(pingDirect, pingIndirect(destinationNodeId, proxyNodeIds, gossips), indirectStart, protocolPeriodEnd))
-                .map(acks -> new Acks(destinationNodeId, acks));
+        return new ProbeOperator<>(pingDirect(destinationNodeId, gossips), pingIndirect(destinationNodeId, proxyNodeIds, gossips), indirectStart, protocolPeriodEnd)
+                .map(acks -> ProbeAcks.builder()
+                        .destinationNodeId(destinationNodeId)
+                        .acks(acks)
+                        .maxAcks(peerProbe.getSize())
+                        .build()
+                );
     }
 
     private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
@@ -49,11 +53,8 @@ class GossipProbe {
                 .build();
         return gossipTransport
                 .ping(ping)
-                .doOnNext(i -> log(ping))
-                .onErrorResume(throwable -> {
-                    logError(ping, throwable);
-                    return Mono.empty();
-                });
+                .doOnNext(ack -> log(ping))
+                .doOnError(throwable -> logError(ping, throwable));
     }
 
     private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, List<Gossip> gossips) {
@@ -70,6 +71,7 @@ class GossipProbe {
                             .ping(ping)
                             .doOnNext(ack -> log(ping))
                             .onErrorResume(throwable -> {
+                                // cannot connect to proxy
                                 logError(ping, throwable);
                                 return Mono.empty();
                             });

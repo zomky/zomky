@@ -63,7 +63,8 @@ message Ping {
 
 message Ack {
     int32 node_id = 1;
-    repeated Gossip gossips = 2;
+    bool nack = 2;
+    repeated Gossip gossips = 3;
 }
 
 

@@ -49,7 +49,7 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(PeerProbe.NO_PEER_PROBE, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> assertThat(acks).isEqualTo(Acks.NO_ACKS))
+                .assertNext(acks -> assertThat(acks).isEqualTo(ProbeAcks.NO_PROBE_ACKS))
                 .verifyComplete();
 
         verify(gossipTransport, never()).ping(any());
@@ -250,6 +250,56 @@ class GossipProbeTest {
                 .setCounter(1)
                 .build())
         ).willReturn(Mono.delay(Duration.ofMillis(15)).then(Mono.error(new TimeoutException())));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7002)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(7002).build()));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7003)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).build()));
+
+        // expected order 7003 (indirect), 7002 (indirect)
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
+                .expectSubscription()
+                .assertNext(acks -> {
+                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(acks.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(7003).build(),
+                            Ack.newBuilder().setNodeId(7002).build()
+                    );
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(3)).ping(any());
+    }
+
+    @Test
+    void manyPeersFailedDirectWithinRoundTripTimeAndSuccessfulIndirect() {
+        List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build())
+        ).willReturn(Mono.error(new TimeoutException()));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
