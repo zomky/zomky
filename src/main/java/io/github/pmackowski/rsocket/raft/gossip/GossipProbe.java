@@ -27,17 +27,17 @@ class GossipProbe {
         this.gossipTransport = gossipTransport;
     }
 
-    Mono<ProbeAcks> probeNode(PeerProbe peerProbe, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
+    Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> gossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
         Integer destinationNodeId = peerProbe.getDestinationNodeId();
         if (destinationNodeId == null) {
-            return Mono.from(protocolPeriodEnd).thenReturn(ProbeAcks.NO_PROBE_ACKS);
+            return Mono.from(protocolPeriodEnd).thenReturn(ProbeResult.NO_PROBE_ACKS);
         }
         List<Integer> proxyNodeIds = peerProbe.getProxyNodeIds();
         return new ProbeOperator<>(pingDirect(destinationNodeId, gossips), pingIndirect(destinationNodeId, proxyNodeIds, gossips), indirectStart, protocolPeriodEnd)
-                .map(acks -> ProbeAcks.builder()
+                .map(probeResult -> ProbeResult.builder()
                         .destinationNodeId(destinationNodeId)
-                        .acks(acks)
-                        .maxAcks(peerProbe.getSize())
+                        .probeResult(probeResult)
+                        .subgroupSize(probeResult.isIndirect() ? peerProbe.getSubgroupSize() : 0)
                         .build()
                 );
     }

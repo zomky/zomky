@@ -5,13 +5,10 @@ import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoOperator;
 import reactor.core.publisher.Operators;
 
-import java.util.Collection;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -19,7 +16,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Backpressure not supported
  * @param <T>
  */
-class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C> {
+class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOperator<T, C> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProbeOperator.class);
 
@@ -36,9 +33,8 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
 
     @Override
     public void subscribe(CoreSubscriber<? super C> actual) {
-        LOGGER.debug("ProbeOperator subscribe");
         @SuppressWarnings("unchecked")
-        C result = (C) new CopyOnWriteArrayList<T>();
+        C result = (C) new ProbeOperatorResult<>();
         IndirectSubscriber<T,C> indirectSubscriber = new IndirectSubscriber<>(actual, indirect, result);
         DirectSubscriber<T,C> directSubscriber = new DirectSubscriber<>(actual, indirectSubscriber, result);
         IndirectStartSubscriber<I> indirectStartSubscriber = new IndirectStartSubscriber<>(directSubscriber);
@@ -128,7 +124,7 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
         }
     }
 
-    static final class IndirectSubscriber<T, C extends Collection<? super T>> implements CoreSubscriber<T> {
+    static final class IndirectSubscriber<T, C extends ProbeOperatorResult<? super T>> implements CoreSubscriber<T> {
 
         final CoreSubscriber<? super C> actual;
         final Publisher<? extends T> indirect;
@@ -167,7 +163,7 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
         }
     }
 
-    static final class DirectSubscriber<T, C extends Collection<? super T>> implements CoreSubscriber<T>, Subscription {
+    static final class DirectSubscriber<T, C extends ProbeOperatorResult<? super T>> implements CoreSubscriber<T>, Subscription {
 
         final CoreSubscriber<? super C> actual;
         final IndirectSubscriber<T,C> indirectSubscriber;
@@ -248,6 +244,7 @@ class ProbeOperator<T, C extends Collection<T>, I, P> extends MonoOperator<T, C>
 
         void subscribeIndirect() {
             if (directCompleted.compareAndSet(false, true)) {
+                result.indirect();
                 indirectSubscriber.subscribe();
             }
         }

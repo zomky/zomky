@@ -25,7 +25,7 @@ public class PeerProbe {
         return proxyNodeIds;
     }
 
-    public int getSize() {
-        return 1 + proxyNodeIds.size();
+    public int getSubgroupSize() {
+        return proxyNodeIds.size();
     }
 }

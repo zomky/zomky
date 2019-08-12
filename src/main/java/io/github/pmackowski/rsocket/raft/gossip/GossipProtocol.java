@@ -27,6 +27,7 @@ public class GossipProtocol {
     private Duration indirectStart = Duration.ofMillis(400);
     private Duration protocolPeriod = Duration.ofSeconds(2);
     private int subgroupSize = 2;
+    private int maxGossips = 10;
 
     private GossipOnPingDelay onPingDelay;
     private BooleanSupplier REPEAT_PROBE = () -> true;
@@ -52,7 +53,7 @@ public class GossipProtocol {
         this.cluster = new Cluster(node.getNodeId());
         this.gossipTransport = new GossipTransport();
         this.peers = new Peers();
-        this.gossips = new Gossips(node.getNodeId());
+        this.gossips = Gossips.builder().nodeId(node.getNodeId()).maxGossips(maxGossips).build();
         this.onPingDelay = GossipOnPingDelay.NO_DELAY;
         this.gossipProbe = new GossipProbe(node.getNodeId(), gossipTransport);
     }
@@ -66,7 +67,7 @@ public class GossipProtocol {
     }
 
     // visible for testing
-    Flux<ProbeAcks> probeNodes() {
+    Flux<ProbeResult> probeNodes() {
         return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
                 if (peerProbe.getDestinationNodeId() == null) {
@@ -76,9 +77,9 @@ public class GossipProtocol {
                 }
                 return gossipProbe.probeNode(peerProbe, gossips.chooseLatestGossipsForPeer(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
-            .doOnNext(probeAcks -> {
-                gossips.onProbeCompleted(probeAcks);
-                LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeAcks.getDestinationNodeId());
+            .doOnNext(probeResult -> {
+                gossips.probeCompleted(probeResult);
+                LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeResult.getDestinationNodeId());
             })
             .repeat(REPEAT_PROBE)
             .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", node.getNodeId(), throwable));

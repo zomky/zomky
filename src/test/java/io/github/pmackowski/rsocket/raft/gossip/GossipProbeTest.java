@@ -49,7 +49,7 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(PeerProbe.NO_PEER_PROBE, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> assertThat(acks).isEqualTo(ProbeAcks.NO_PROBE_ACKS))
+                .assertNext(probeResult -> assertThat(probeResult).isEqualTo(ProbeResult.NO_PROBE_ACKS))
                 .verifyComplete();
 
         verify(gossipTransport, never()).ping(any());
@@ -72,9 +72,10 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
                 })
                 .verifyComplete();
 
@@ -98,9 +99,10 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
                 })
                 .verifyComplete();
 
@@ -124,9 +126,10 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).isEmpty();
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).isEmpty();
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
                 })
                 .verifyComplete();
 
@@ -150,9 +153,9 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(27)) // TODO should be 30 but sometimes is not enough
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).isEmpty();
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).isEmpty();
                 })
                 .verifyComplete();
 
@@ -176,9 +179,10 @@ class GossipProbeTest {
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                     .expectSubscription()
-                    .assertNext(acks -> {
-                        assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                        assertThat(acks.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                    .assertNext(probeResult -> {
+                        assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                        assertThat(probeResult.getAcks()).containsExactly(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build());
+                        assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
                     })
                     .verifyComplete();
 
@@ -223,13 +227,14 @@ class GossipProbeTest {
         // expected order 7003 (indirect), 7001 (direct), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(
                             Ack.newBuilder().setNodeId(7003).build(),
                             Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
                             Ack.newBuilder().setNodeId(7002).build()
                     );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
                 })
                 .verifyComplete();
 
@@ -274,12 +279,13 @@ class GossipProbeTest {
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(
                             Ack.newBuilder().setNodeId(7003).build(),
                             Ack.newBuilder().setNodeId(7002).build()
                     );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
                 })
                 .verifyComplete();
 
@@ -324,12 +330,13 @@ class GossipProbeTest {
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(
                             Ack.newBuilder().setNodeId(7003).build(),
                             Ack.newBuilder().setNodeId(7002).build()
                     );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
                 })
                 .verifyComplete();
 
@@ -373,9 +380,9 @@ class GossipProbeTest {
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(
                             Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()
                     );
                 })
@@ -421,9 +428,9 @@ class GossipProbeTest {
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Mono.delay(Duration.ofMillis(10)), Mono.delay(Duration.ofMillis(30))))
                 .expectSubscription()
-                .assertNext(acks -> {
-                    assertThat(acks.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
-                    assertThat(acks.getAcks()).containsExactly(
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.getAcks()).containsExactly(
                             Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
                             Ack.newBuilder().setNodeId(7003).build()
                     );

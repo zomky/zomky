@@ -6,8 +6,6 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
 
 public class ProbeOperatorTest {
 
@@ -21,7 +19,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                     .expectSubscription()
                     .expectNoEvent(Duration.ofMillis(40))
-                    .expectNext(Collections.singletonList(1))
+                    .expectNext(new ProbeOperatorResult<>(false, 1))
                     .expectComplete()
                     .verify();
     }
@@ -36,7 +34,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(2,3,1))
+                .expectNext(new ProbeOperatorResult<>(true, 2,3,1))
                 .expectComplete()
                 .verify();
     }
@@ -51,7 +49,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(1))
+                .expectNext(new ProbeOperatorResult<>(true, 1))
                 .expectComplete()
                 .verify();
     }
@@ -66,7 +64,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(2,1))
+                .expectNext(new ProbeOperatorResult<>(true, 2,1))
                 .expectComplete()
                 .verify();
     }
@@ -81,7 +79,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(1,2))
+                .expectNext(new ProbeOperatorResult<>(true, 1,2))
                 .expectComplete()
                 .verify();
     }
@@ -96,7 +94,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(2,3))
+                .expectNext(new ProbeOperatorResult<>(true, 2,3))
                 .expectComplete()
                 .verify();
     }
@@ -111,7 +109,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Arrays.asList(1,2))
+                .expectNext(new ProbeOperatorResult<>(true, 1,2))
                 .expectComplete()
                 .verify();
     }
@@ -126,7 +124,7 @@ public class ProbeOperatorTest {
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(40))
-                .expectNext(Collections.emptyList())
+                .expectNext(new ProbeOperatorResult<>(true))
                 .expectComplete()
                 .verify();
     }
