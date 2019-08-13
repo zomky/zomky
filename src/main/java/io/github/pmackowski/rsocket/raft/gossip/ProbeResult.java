@@ -3,6 +3,7 @@ package io.github.pmackowski.rsocket.raft.gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ProbeResult {
@@ -45,7 +46,7 @@ public class ProbeResult {
         private int destinationNodeId;
         private ProbeOperatorResult<Ack> probeOperatorResult;
         private int subgroupSize;
-        private List<Gossip> hotGossips;
+        private List<Gossip> hotGossips = new ArrayList<>();
 
         private Builder() {
         }

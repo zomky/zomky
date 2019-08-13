@@ -28,6 +28,7 @@ public class GossipProtocol {
     private Duration protocolPeriod = Duration.ofSeconds(2);
     private int subgroupSize = 2;
     private int maxGossips = 10;
+    private float lambdaGossipSharedMultiplier = 1.5f;
 
     private GossipOnPingDelay onPingDelay;
     private BooleanSupplier REPEAT_PROBE = () -> true;
@@ -41,8 +42,9 @@ public class GossipProtocol {
     private GossipTransport gossipTransport;
 
     // for testing
-    public GossipProtocol(InnerNode node, Gossips gossips, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
+    GossipProtocol(InnerNode node, Peers peers, Gossips gossips, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
         this.node = node;
+        this.peers = peers;
         this.gossips = gossips;
         this.gossipTransport = gossipTransport;
         this.onPingDelay = onPingDelay;
@@ -53,7 +55,11 @@ public class GossipProtocol {
         this.cluster = new Cluster(node.getNodeId());
         this.gossipTransport = new GossipTransport();
         this.peers = new Peers();
-        this.gossips = Gossips.builder().nodeId(node.getNodeId()).maxGossips(maxGossips).build();
+        this.gossips = Gossips.builder()
+                .nodeId(node.getNodeId())
+                .maxGossips(maxGossips)
+                .lambdaGossipSharedMultiplier(lambdaGossipSharedMultiplier)
+                .build();
         this.onPingDelay = GossipOnPingDelay.NO_DELAY;
         this.gossipProbe = new GossipProbe(node.getNodeId(), gossipTransport);
     }
@@ -75,7 +81,7 @@ public class GossipProtocol {
                 } else {
                     LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
+                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
@@ -135,7 +141,7 @@ public class GossipProtocol {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
                         checkPing(ping);
-                        Ack ack = gossips.onPing(node.getNodeId(), Integer.MAX_VALUE, ping); // TODO C * log(n)
+                        Ack ack = gossips.onPing(node.getNodeId(), peers.count(), ping);
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
                         Mono<?> publisher;

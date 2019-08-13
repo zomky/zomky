@@ -16,10 +16,11 @@ class Gossips {
 
     private int nodeId;
     private int maxGossips;
-    private int incarnation;
+    private volatile int incarnation;
+    private float lambdaGossipSharedMultiplier;
     private Map<Integer, GossipShared> gossips = new ConcurrentHashMap<>();
 
-    void probeCompleted(ProbeResult probeResult) {
+    synchronized void probeCompleted(ProbeResult probeResult) {
         makeGossipsLessHot(probeResult.getHotGossips());
         probeResult.getAcks().forEach(this::addAck);
 
@@ -34,16 +35,20 @@ class Gossips {
         );
     }
 
-    Ack onPing(int nodeId, int maxGossipShared, Ping ping) {
+    synchronized Ack onPing(int nodeId, int noPeers, Ping ping) {
         List<Gossip> gossipsList = ping.getGossipsList();
         gossipsList.forEach(this::addGossip);
-        List<Gossip> hotGossips = chooseHotGossips(maxGossipShared, gossipsList);
+        List<Gossip> hotGossips = chooseHotGossips(noPeers, gossipsList);
         makeGossipsLessHot(hotGossips);
 
         return Ack.newBuilder()
                 .setNodeId(nodeId)
                 .addAllGossips(hotGossips)
                 .build();
+    }
+
+    synchronized void addAck(Ack ack) {
+        ack.getGossipsList().forEach(this::addGossip);
     }
 
     // visible for testing
@@ -58,24 +63,22 @@ class Gossips {
         });
     }
 
-    void addAck(Ack ack) {
-        ack.getGossipsList().forEach(this::addGossip);
-    }
-
     List<Gossip> chooseHotGossips() {
         return chooseHotGossips(Integer.MAX_VALUE);
     }
 
-    List<Gossip> chooseHotGossips(int maxGossipShared) {
-        return chooseHotGossips(maxGossipShared, new ArrayList<>());
+    List<Gossip> chooseHotGossips(int noPeers) {
+        return chooseHotGossips(noPeers, new ArrayList<>());
     }
 
     List<Gossip> chooseHotGossips(List<Gossip> ignoreGossips) {
         return chooseHotGossips(Integer.MAX_VALUE, ignoreGossips);
     }
 
-    List<Gossip> chooseHotGossips(int maxGossipShared, List<Gossip> ignoreGossips) {
+    List<Gossip> chooseHotGossips(int noPeers, List<Gossip> ignoreGossips) {
         Set<Gossip> filterOut = new HashSet<>(ignoreGossips);
+        int maxGossipShared = maxGossipsShared(noPeers);
+        System.out.println(maxGossipShared);
         return gossips.values()
                 .stream()
                 .filter(gossipShared -> gossipShared.getShared() < maxGossipShared)
@@ -84,6 +87,15 @@ class Gossips {
                 .map(GossipShared::getGossip)
                 .limit(maxGossips)
                 .collect(Collectors.toList());
+    }
+
+    // visible for testing
+    int maxGossipsShared(int noPeers) {
+        if (noPeers == 0) {
+            return 0;
+        }
+        int log2Ceiling = Long.SIZE - Long.numberOfLeadingZeros(noPeers-1);
+        return Math.round(lambdaGossipSharedMultiplier * (1+log2Ceiling));
     }
 
     Optional<Gossip> getGossip(int nodeId) {
@@ -104,6 +116,7 @@ class Gossips {
         return incarnation;
     }
 
+    // visible for testing
     void addGossip(Gossip gossip) {
         int nodeId = gossip.getNodeId();
         int incarnation = gossip.getIncarnation();
@@ -192,6 +205,7 @@ class Gossips {
         private int nodeId;
         private int maxGossips = Integer.MAX_VALUE;
         private int incarnation;
+        private float lambdaGossipSharedMultiplier = Float.MAX_VALUE;
         private List<GossipShared> gossipsShared = new ArrayList<>();
 
         private Builder() {
@@ -212,6 +226,11 @@ class Gossips {
             return this;
         }
 
+        public Gossips.Builder lambdaGossipSharedMultiplier(float lambdaGossipSharedMultiplier) {
+            this.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
+            return this;
+        }
+
         public Gossips.Builder addGossip(Gossip gossip) {
             return addGossip(gossip, 0);
         }
@@ -226,6 +245,7 @@ class Gossips {
             gossips.nodeId = nodeId;
             gossips.maxGossips = maxGossips;
             gossips.incarnation = incarnation;
+            gossips.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
             gossipsShared.forEach(gossipShared -> {
                 Gossip gossip = gossipShared.getGossip();
                 LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());

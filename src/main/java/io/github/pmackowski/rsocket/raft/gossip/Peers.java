@@ -57,4 +57,7 @@ class Peers {
         return nodeId;
     }
 
+    public int count() {
+        return peers.size();
+    }
 }

@@ -40,10 +40,10 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
         IndirectStartSubscriber<I> indirectStartSubscriber = new IndirectStartSubscriber<>(directSubscriber);
         ProtocolPeriodEndSubscriber<P> protocolPeriodEndSubscriber = new ProtocolPeriodEndSubscriber<>(directSubscriber);
 
-        source.subscribe(directSubscriber);
-
-        indirectStart.subscribe(indirectStartSubscriber);
         protocolPeriodEnd.subscribe(protocolPeriodEndSubscriber);
+        indirectStart.subscribe(indirectStartSubscriber);
+
+        source.subscribe(directSubscriber);
     }
 
     static final class ProtocolPeriodEndSubscriber<P> implements CoreSubscriber<P> {
