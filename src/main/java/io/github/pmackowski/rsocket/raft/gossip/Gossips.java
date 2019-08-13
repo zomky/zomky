@@ -6,17 +6,13 @@ import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 class Gossips {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Gossips.class);
-
-    static final int MAX_GOSSIPS = 32;
 
     private int nodeId;
     private int maxGossips;
@@ -24,6 +20,7 @@ class Gossips {
     private Map<Integer, GossipShared> gossips = new ConcurrentHashMap<>();
 
     void probeCompleted(ProbeResult probeResult) {
+        makeGossipsLessHot(probeResult.getHotGossips());
         probeResult.getAcks().forEach(this::addAck);
 
         Gossip.Suspicion suspicion = probeResult.hasAck() ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
@@ -37,19 +34,56 @@ class Gossips {
         );
     }
 
-    Ack onPing(int nodeId, Ping ping) {
+    Ack onPing(int nodeId, int maxGossipShared, Ping ping) {
         List<Gossip> gossipsList = ping.getGossipsList();
         gossipsList.forEach(this::addGossip);
-        return Ack.newBuilder().setNodeId(nodeId).addAllGossips(chooseLatestGossipsForPeer()).build();
+        List<Gossip> hotGossips = chooseHotGossips(maxGossipShared, gossipsList);
+        makeGossipsLessHot(hotGossips);
+
+        return Ack.newBuilder()
+                .setNodeId(nodeId)
+                .addAllGossips(hotGossips)
+                .build();
+    }
+
+    // visible for testing
+    void makeGossipsLessHot(List<Gossip> hotGossips) {
+        hotGossips.forEach(gossip -> {
+            int gossipShared = Optional
+                .ofNullable(gossips.get(gossip.getNodeId()))
+                .map(GossipShared::getShared)
+                .orElse(0);
+
+            gossips.put(gossip.getNodeId(), new GossipShared(gossip, gossipShared + 1));
+        });
     }
 
     void addAck(Ack ack) {
         ack.getGossipsList().forEach(this::addGossip);
     }
 
-    List<Gossip> chooseLatestGossipsForPeer() {
-        return new ArrayList<>();
-//        return new ArrayList<>(gossips.values());
+    List<Gossip> chooseHotGossips() {
+        return chooseHotGossips(Integer.MAX_VALUE);
+    }
+
+    List<Gossip> chooseHotGossips(int maxGossipShared) {
+        return chooseHotGossips(maxGossipShared, new ArrayList<>());
+    }
+
+    List<Gossip> chooseHotGossips(List<Gossip> ignoreGossips) {
+        return chooseHotGossips(Integer.MAX_VALUE, ignoreGossips);
+    }
+
+    List<Gossip> chooseHotGossips(int maxGossipShared, List<Gossip> ignoreGossips) {
+        Set<Gossip> filterOut = new HashSet<>(ignoreGossips);
+        return gossips.values()
+                .stream()
+                .filter(gossipShared -> gossipShared.getShared() < maxGossipShared)
+                .filter(gossipShared -> !filterOut.contains(gossipShared.gossip))
+                .sorted(Comparator.comparingInt(GossipShared::getShared))
+                .map(GossipShared::getGossip)
+                .limit(maxGossips)
+                .collect(Collectors.toList());
     }
 
     Optional<Gossip> getGossip(int nodeId) {
@@ -156,7 +190,7 @@ class Gossips {
     public static class Builder {
 
         private int nodeId;
-        private int maxGossips = MAX_GOSSIPS;
+        private int maxGossips = Integer.MAX_VALUE;
         private int incarnation;
         private List<GossipShared> gossipsShared = new ArrayList<>();
 

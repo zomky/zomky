@@ -1,6 +1,7 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ public class ProbeResult {
     private int destinationNodeId;
     private ProbeOperatorResult<Ack> probeOperatorResult;
     private int subgroupSize;
+    private List<Gossip> hotGossips;
 
     public int getDestinationNodeId() {
         return destinationNodeId;
@@ -22,6 +24,10 @@ public class ProbeResult {
 
     public int getSubgroupSize() {
         return subgroupSize;
+    }
+
+    public List<Gossip> getHotGossips() {
+        return hotGossips;
     }
 
     public boolean hasAck() {
@@ -39,6 +45,7 @@ public class ProbeResult {
         private int destinationNodeId;
         private ProbeOperatorResult<Ack> probeOperatorResult;
         private int subgroupSize;
+        private List<Gossip> hotGossips;
 
         private Builder() {
         }
@@ -58,11 +65,17 @@ public class ProbeResult {
             return this;
         }
 
+        public ProbeResult.Builder hotGossips(List<Gossip> hotGossips) {
+            this.hotGossips = hotGossips;
+            return this;
+        }
+
         public ProbeResult build() {
             ProbeResult probeResult = new ProbeResult();
             probeResult.destinationNodeId = destinationNodeId;
             probeResult.probeOperatorResult = probeOperatorResult;
             probeResult.subgroupSize = subgroupSize;
+            probeResult.hotGossips = hotGossips;
             return probeResult;
         }
 

@@ -35,6 +35,7 @@ import static org.mockito.Mockito.verify;
 //@MockitoSettings(strictness = Strictness.LENIENT)
 class GossipProtocolTest {
 
+    private static final int MAX_GOSSIP_SHARED = Integer.MAX_VALUE;
     private static final int SENDER_NODE_ID = 7000;
     private static final int RECIPIENT_NODE_ID = 7001;
     private static final int PROXY_NODE_ID = 7002;
@@ -86,7 +87,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, ping))
+        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, MAX_GOSSIP_SHARED, ping))
                   .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
@@ -117,7 +118,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
         BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, ping)).willReturn(null);
+        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, MAX_GOSSIP_SHARED, ping)).willReturn(null);
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
@@ -190,7 +191,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
         BDDMockito.given(udpOutbound.sendObject(any(Mono.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, ping))
+        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, MAX_GOSSIP_SHARED, ping))
                 .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.error(new RuntimeException()).cast(Long.class));
@@ -217,7 +218,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, ping))
+        BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, MAX_GOSSIP_SHARED, ping))
                 .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
         gossipProtocol = new GossipProtocol(node, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ofMillis(100)));
@@ -250,7 +251,7 @@ class GossipProtocolTest {
         givenPing(ping);
 
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, ping))
+        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, MAX_GOSSIP_SHARED, ping))
                 .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.just(Ack.newBuilder().build()));
 
@@ -283,7 +284,7 @@ class GossipProtocolTest {
         givenPing(ping);
 
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
-        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, ping))
+        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, MAX_GOSSIP_SHARED, ping))
                 .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
 
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.error(new RuntimeException("peer unavailable")));

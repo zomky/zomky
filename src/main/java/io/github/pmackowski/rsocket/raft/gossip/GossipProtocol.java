@@ -75,7 +75,7 @@ public class GossipProtocol {
                 } else {
                     LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.chooseLatestGossipsForPeer(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
+                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
             })
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
@@ -135,7 +135,7 @@ public class GossipProtocol {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
                         checkPing(ping);
-                        Ack ack = gossips.onPing(node.getNodeId(), ping);
+                        Ack ack = gossips.onPing(node.getNodeId(), Integer.MAX_VALUE, ping); // TODO C * log(n)
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
                         Mono<?> publisher;
