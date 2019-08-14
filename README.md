@@ -8,3 +8,4 @@ TODO
 4. job suspected -> dead
 5. add listeners nodeJoined, nodeLeaved, nodeShutdown
 6. join node idempotent
+7. lifeguard enhancement

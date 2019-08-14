@@ -6,6 +6,7 @@ import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -17,16 +18,16 @@ class Gossips {
     private int nodeId;
     private int maxGossips;
     private volatile int incarnation;
-    private float lambdaGossipSharedMultiplier;
-    private Map<Integer, GossipShared> gossips = new ConcurrentHashMap<>();
+    private float gossipDisseminationMultiplier;
+    private Map<Integer, GossipDissemination> gossips = new ConcurrentHashMap<>();
 
     synchronized void probeCompleted(ProbeResult probeResult) {
         makeGossipsLessHot(probeResult.getHotGossips());
         probeResult.getAcks().forEach(this::addAck);
 
         Gossip.Suspicion suspicion = probeResult.hasAck() ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
-        GossipShared gossipShared = gossips.get(probeResult.getDestinationNodeId());
-        int incarnation = gossipShared == null ? 0 : gossipShared.getGossip().getIncarnation();
+        GossipDissemination gossipDissemination = gossips.get(probeResult.getDestinationNodeId());
+        int incarnation = gossipDissemination == null ? 0 : gossipDissemination.getGossip().getIncarnation();
         addGossip(Gossip.newBuilder()
                 .setNodeId(probeResult.getDestinationNodeId())
                 .setSuspicion(suspicion)
@@ -51,60 +52,59 @@ class Gossips {
         ack.getGossipsList().forEach(this::addGossip);
     }
 
+    synchronized void markDead(Duration suspicionTimeout) {
+        gossips.values().stream()
+                .filter(gossipDissemination -> gossipDissemination.getGossip().getSuspicion() == Gossip.Suspicion.SUSPECT)
+                .forEach(gossipDissemination -> {
+
+                });
+    }
+
     // visible for testing
     void makeGossipsLessHot(List<Gossip> hotGossips) {
         hotGossips.forEach(gossip -> {
-            int gossipShared = Optional
+            int disseminatedCount = Optional
                 .ofNullable(gossips.get(gossip.getNodeId()))
-                .map(GossipShared::getShared)
+                .map(GossipDissemination::getDisseminatedCount)
                 .orElse(0);
 
-            gossips.put(gossip.getNodeId(), new GossipShared(gossip, gossipShared + 1));
+            gossips.put(gossip.getNodeId(), new GossipDissemination(gossip, disseminatedCount + 1));
         });
-    }
-
-    List<Gossip> chooseHotGossips() {
-        return chooseHotGossips(Integer.MAX_VALUE);
     }
 
     List<Gossip> chooseHotGossips(int noPeers) {
         return chooseHotGossips(noPeers, new ArrayList<>());
     }
 
-    List<Gossip> chooseHotGossips(List<Gossip> ignoreGossips) {
-        return chooseHotGossips(Integer.MAX_VALUE, ignoreGossips);
-    }
-
     List<Gossip> chooseHotGossips(int noPeers, List<Gossip> ignoreGossips) {
         Set<Gossip> filterOut = new HashSet<>(ignoreGossips);
-        int maxGossipShared = maxGossipsShared(noPeers);
-        System.out.println(maxGossipShared);
+        int maxGossipDissemination = maxGossipDissemination(noPeers);
         return gossips.values()
                 .stream()
-                .filter(gossipShared -> gossipShared.getShared() < maxGossipShared)
-                .filter(gossipShared -> !filterOut.contains(gossipShared.gossip))
-                .sorted(Comparator.comparingInt(GossipShared::getShared))
-                .map(GossipShared::getGossip)
+                .filter(gossipDissemination -> gossipDissemination.getDisseminatedCount() < maxGossipDissemination)
+                .filter(gossipDissemination -> !filterOut.contains(gossipDissemination.gossip))
+                .sorted(Comparator.comparingInt(GossipDissemination::getDisseminatedCount))
+                .map(GossipDissemination::getGossip)
                 .limit(maxGossips)
                 .collect(Collectors.toList());
     }
 
     // visible for testing
-    int maxGossipsShared(int noPeers) {
+    int maxGossipDissemination(int noPeers) {
         if (noPeers == 0) {
             return 0;
         }
         int log2Ceiling = Long.SIZE - Long.numberOfLeadingZeros(noPeers-1);
-        return Math.round(lambdaGossipSharedMultiplier * (1+log2Ceiling));
+        return Math.round(gossipDisseminationMultiplier * (log2Ceiling+1));
     }
 
     Optional<Gossip> getGossip(int nodeId) {
-        return Optional.ofNullable(gossips.get(nodeId)).map(GossipShared::getGossip);
+        return Optional.ofNullable(gossips.get(nodeId)).map(GossipDissemination::getGossip);
     }
 
-    int getGossipShared(int nodeId) {
+    int getDisseminatedCount(int nodeId) {
         return Optional.ofNullable(gossips.get(nodeId))
-                    .map(GossipShared::getShared)
+                    .map(GossipDissemination::getDisseminatedCount)
                     .orElse(0);
     }
 
@@ -140,12 +140,12 @@ class Gossips {
             return;
         }
 
-        GossipShared gossipShared = gossips.get(nodeId);
-        if (gossipShared == null) {
+        GossipDissemination gossipDissemination = gossips.get(nodeId);
+        if (gossipDissemination == null) {
             addGossipInternal(gossip(nodeId, incarnation, suspicion));
             return;
         }
-        Gossip currentGossip = gossipShared.getGossip();
+        Gossip currentGossip = gossipDissemination.getGossip();
         if (suspicion == Gossip.Suspicion.ALIVE) {
             if (incarnation > currentGossip.getIncarnation() && (currentGossip.getSuspicion() == Gossip.Suspicion.ALIVE || currentGossip.getSuspicion() == Gossip.Suspicion.SUSPECT)) {
                 addGossipInternal(gossip(nodeId, incarnation, suspicion));
@@ -172,25 +172,27 @@ class Gossips {
 
     private void addGossipInternal(Gossip gossip) {
         LOGGER.info("[Node {}] New gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
-        gossips.put(gossip.getNodeId(), new GossipShared(gossip,0));
+        gossips.put(gossip.getNodeId(), new GossipDissemination(gossip,0));
     }
 
-    private static class GossipShared {
+    private static class GossipDissemination {
 
         private Gossip gossip;
-        private int shared;
+        private int disseminatedCount;
+        private long created;
 
-        public GossipShared(Gossip gossip, int shared) {
+        GossipDissemination(Gossip gossip, int disseminatedCount) {
             this.gossip = gossip;
-            this.shared = shared;
+            this.disseminatedCount = disseminatedCount;
+            this.created = System.currentTimeMillis();
         }
 
         public Gossip getGossip() {
             return gossip;
         }
 
-        public int getShared() {
-            return shared;
+        int getDisseminatedCount() {
+            return disseminatedCount;
         }
     }
 
@@ -205,8 +207,8 @@ class Gossips {
         private int nodeId;
         private int maxGossips = Integer.MAX_VALUE;
         private int incarnation;
-        private float lambdaGossipSharedMultiplier = Float.MAX_VALUE;
-        private List<GossipShared> gossipsShared = new ArrayList<>();
+        private float gossipDisseminationMultiplier = 1f;
+        private List<GossipDissemination> gossipDisseminations = new ArrayList<>();
 
         private Builder() {
         }
@@ -226,8 +228,8 @@ class Gossips {
             return this;
         }
 
-        public Gossips.Builder lambdaGossipSharedMultiplier(float lambdaGossipSharedMultiplier) {
-            this.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
+        public Gossips.Builder gossipDisseminationMultiplier(float gossipDisseminationMultiplier) {
+            this.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
             return this;
         }
 
@@ -235,8 +237,8 @@ class Gossips {
             return addGossip(gossip, 0);
         }
 
-        public Gossips.Builder addGossip(Gossip gossip, int shared) {
-            this.gossipsShared.add(new GossipShared(gossip, shared));
+        public Gossips.Builder addGossip(Gossip gossip, int gossipDisseminatedCount) {
+            this.gossipDisseminations.add(new GossipDissemination(gossip, gossipDisseminatedCount));
             return this;
         }
 
@@ -245,11 +247,11 @@ class Gossips {
             gossips.nodeId = nodeId;
             gossips.maxGossips = maxGossips;
             gossips.incarnation = incarnation;
-            gossips.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
-            gossipsShared.forEach(gossipShared -> {
-                Gossip gossip = gossipShared.getGossip();
+            gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
+            gossipDisseminations.forEach(gossipDissemination -> {
+                Gossip gossip = gossipDissemination.getGossip();
                 LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
-                gossips.gossips.put(gossip.getNodeId(), gossipShared);
+                gossips.gossips.put(gossip.getNodeId(), gossipDissemination);
             });
             return gossips;
         }

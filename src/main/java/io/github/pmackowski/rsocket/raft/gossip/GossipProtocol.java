@@ -58,7 +58,7 @@ public class GossipProtocol {
         this.gossips = Gossips.builder()
                 .nodeId(node.getNodeId())
                 .maxGossips(maxGossips)
-                .lambdaGossipSharedMultiplier(lambdaGossipSharedMultiplier)
+                .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
                 .build();
         this.onPingDelay = GossipOnPingDelay.NO_DELAY;
         this.gossipProbe = new GossipProbe(node.getNodeId(), gossipTransport);
@@ -86,6 +86,10 @@ public class GossipProtocol {
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
                 LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeResult.getDestinationNodeId());
+            })
+            .doOnComplete(() -> {
+                Duration suspicionTimeout = Duration.ofMillis(1000);
+                gossips.markDead(suspicionTimeout);
             })
             .repeat(REPEAT_PROBE)
             .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", node.getNodeId(), throwable));
