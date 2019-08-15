@@ -1,0 +1,71 @@
+syntax = "proto3";
+option java_package = "io.github.pmackowski.rsocket.raft.gossip.protobuf";
+option java_multiple_files = true;
+
+message InitJoinRequest {
+    int32 requester_port = 1;
+    bool retry = 2;
+    string host = 3;
+    int32 port = 4;
+}
+
+message InitJoinResponse {
+    bool status = 1;
+}
+
+message JoinRequest {
+    int32 requester_port = 1;
+    string host = 2;
+    int32 port = 3;
+}
+
+message JoinResponse {
+    bool status = 1;
+}
+
+message InitLeaveRequest {
+    int32 requester_port = 1;
+}
+
+message InitLeaveResponse {
+    bool status = 1;
+}
+
+message LeaveRequest {
+    int32 requester_port = 1;
+}
+
+message LeaveResponse {
+    bool status = 1;
+}
+
+message Gossip {
+    enum Suspicion {
+        UNKNOWN = 0;
+        ALIVE = 1;
+        SUSPECT = 2;
+        DEAD = 3;
+    }
+
+    Suspicion suspicion = 1;
+    int32 incarnation = 2;
+    int32 node_id = 3;
+}
+
+message Ping {
+    int32 initiator_node_id = 1;
+    int32 requestor_node_id = 2;
+    int32 destination_node_id = 3;
+    bool direct = 4;
+    int64 counter = 5;
+    repeated Gossip gossips = 6;
+}
+
+message Ack {
+    int32 node_id = 1;
+    bool nack = 2;
+    repeated Gossip gossips = 3;
+}
+
+
+

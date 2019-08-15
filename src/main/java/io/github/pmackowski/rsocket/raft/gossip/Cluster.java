@@ -1,10 +1,15 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Cluster {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Cluster.class);
 
     // temporary
     public static final Cluster DEFAULT_ONE_NODE_CLUSTER   = new Cluster(7000);
@@ -34,6 +39,7 @@ public class Cluster {
     }
 
     public void addMember(int member) {
+//        LOGGER.info("Cluster add member {}", member);
         this.members.add(member);
     }
 

@@ -10,8 +10,11 @@ public enum RpcType {
     ADD_GROUP(6, true),
 
     INFO(10, false),
-    INIT_JOIN(11, false),
-    JOIN(12, false);
+    STATE_SYNC(11, false),
+    INIT_JOIN(12, false),
+    JOIN(13, false),
+    INIT_LEAVE(14, false),
+    LEAVE(15, false);
 
     private final byte code;
     private final boolean raftCommand;
@@ -38,8 +41,13 @@ public enum RpcType {
             case 5: return REMOVE_SERVER;
             case 6: return ADD_GROUP;
 
+            // TODO move somewhere else ??
             case 10: return INFO;
-            case 11: return JOIN;
+            case 11: return STATE_SYNC;
+            case 12: return INIT_JOIN;
+            case 13: return JOIN;
+            case 14: return INIT_LEAVE;
+            case 15: return LEAVE;
 
             default: throw new RuntimeException("Unknown type !");
         }

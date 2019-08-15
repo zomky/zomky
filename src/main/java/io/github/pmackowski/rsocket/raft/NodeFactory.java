@@ -4,6 +4,8 @@ import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.TcpClientTransport;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class NodeFactory {
@@ -40,7 +42,9 @@ public class NodeFactory {
 
         private NodeStorage nodeStorage;
         private String nodeName;
-        private int port;
+        private Integer port;
+        private Integer joinPort;
+        private boolean retryJoin;
         private Cluster cluster;
 
         public ServerNodeFactory storage(NodeStorage nodeStorage) {
@@ -53,11 +57,28 @@ public class NodeFactory {
             return this;
         }
 
-        public ServerNodeFactory port(int port) {
+        public ServerNodeFactory port(Integer port) {
             this.port = port;
             return this;
         }
 
+        public ServerNodeFactory join(Integer joinPort) {
+            if (joinPort != null) {
+                this.joinPort = joinPort;
+                this.retryJoin = false;
+            }
+            return this;
+        }
+
+        public ServerNodeFactory retryJoin(Integer joinPort) {
+            if (joinPort != null) {
+                this.joinPort = joinPort;
+                this.retryJoin = true;
+            }
+            return this;
+        }
+
+        // only for testing purposes // TODO should be removed
         public ServerNodeFactory cluster(Cluster cluster) {
             this.cluster = cluster;
             return this;
@@ -65,8 +86,16 @@ public class NodeFactory {
 
         public Mono<Node> start() {
             return Mono.defer(() -> {
+                if (cluster == null) {
+                    this.cluster = new Cluster(port);
+                }
                 DefaultNode node = new DefaultNode(nodeStorage, nodeName, port, cluster);
-                return Mono.just(node).doOnNext(DefaultNode::start);
+                node.startReceiver();
+
+                return Mono.justOrEmpty(joinPort)
+                           .flatMap(joinPort1 -> node.join(joinPort1, retryJoin))
+                           .thenReturn(node)
+                           .doOnNext(DefaultNode::start);
             });
         }
 

@@ -1,10 +1,15 @@
 package io.github.pmackowski.rsocket.raft;
 
-import io.github.pmackowski.rsocket.raft.client.protobuf.*;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoRequest;
+import io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse;
 import io.github.pmackowski.rsocket.raft.gossip.Cluster;
+import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
+import io.github.pmackowski.rsocket.raft.gossip.listener.NodeJoinedListener;
+import io.github.pmackowski.rsocket.raft.gossip.listener.NodeLeftGracefullyListener;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
-import io.github.pmackowski.rsocket.raft.raft.RaftGroups;
+import io.github.pmackowski.rsocket.raft.raft.RaftProtocol;
 import io.github.pmackowski.rsocket.raft.transport.Receiver;
 import io.github.pmackowski.rsocket.raft.transport.Sender;
 import io.github.pmackowski.rsocket.raft.transport.Senders;
@@ -13,8 +18,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,7 +32,12 @@ class DefaultNode implements InnerNode {
 
     private Receiver receiver;
     private Senders senders;
-    private RaftGroups raftGroups;
+    private GossipProtocol gossipProtocol;
+    private RaftProtocol raftProtocol;
+
+    private Set<NodeJoinedListener> nodeJoinedListeners = new HashSet<>();
+    private Set<NodeLeftGracefullyListener> nodeLeftGracefullyListeners = new HashSet<>();
+
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
@@ -37,19 +45,24 @@ class DefaultNode implements InnerNode {
         this.nodeStorage = nodeStorage;
         this.nodeName = nodeName;
         this.nodeId = nodeId;
-        this.cluster = cluster;
+        this.cluster = cluster; // at the beginning must always contain only this node
 
         this.receiver = new Receiver(this);
+        this.gossipProtocol = new GossipProtocol(this);
         this.senders = new Senders(this);
-        this.raftGroups = new RaftGroups(this);
+        this.raftProtocol = new RaftProtocol(this);
 
         LOGGER.info("[Node {}] has been initialized", nodeId);
     }
 
-    public void start() {
+    public void startReceiver() {
         receiver.start();
+    }
+
+    public void start() {
+        gossipProtocol.start();
         senders.start();
-        raftGroups.start();
+        raftProtocol.start();
     }
 
     @Override
@@ -58,8 +71,13 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
-    public RaftGroups getRaftGroups() {
-        return raftGroups;
+    public GossipProtocol getGossipProtocol() {
+        return gossipProtocol;
+    }
+
+    @Override
+    public RaftProtocol getRaftProtocol() {
+        return raftProtocol;
     }
 
     @Override
@@ -84,35 +102,13 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
-    public Mono<InitJoinResponse> onInitJoinRequest(InitJoinRequest initJoinRequest) {
-        try {
-            InetAddress inetAddress = InetAddress.getLocalHost();
-            senders.addServer(initJoinRequest.getPort()); // TODO
-            return senders.getSenderById(initJoinRequest.getPort())
-                    .flatMap(sender -> sender.join(JoinRequest.newBuilder().setHost(inetAddress.getHostAddress()).setPort(initJoinRequest.getRequesterPort()).build()))
-                    .doOnNext(joinResponse -> {
-                        LOGGER.info("[Node {}] onInitJoinRequest {}", nodeId, initJoinRequest);
-
-                        if (joinResponse.getStatus()) {
-                            cluster.addMember(initJoinRequest.getPort());
-                            senders.addServer(initJoinRequest.getPort());
-                        }
-                    })
-                    .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
-        return Mono.just(joinRequest)
-                   .doOnNext(joinRequest1 -> {
-                       LOGGER.info("[Node {}] onJoinRequest {}", nodeId, joinRequest);
-                       cluster.addMember(joinRequest1.getPort());
-                       senders.addServer(joinRequest1.getPort());
-                   })
-                   .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
+    public Mono<Void> join(Integer joinPort, boolean retry) {
+        return gossipProtocol.join(InitJoinRequest.newBuilder()
+                .setRequesterPort(nodeId)
+                .setPort(joinPort)
+                .setRetry(retry)
+                .build()
+        ).then();
     }
 
     @Override
@@ -136,9 +132,32 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
+    public void onNodeJoined(NodeJoinedListener nodeJoinedListener) {
+        nodeJoinedListeners.add(nodeJoinedListener);
+    }
+
+    @Override
+    public void onNodeLeftGracefully(NodeLeftGracefullyListener nodeLeftGracefullyListener) {
+        nodeLeftGracefullyListeners.add(nodeLeftGracefullyListener);
+    }
+
+    @Override
+    public void nodeJoined(int nodeId) {
+        // TODO use one of reactor processors instead
+        nodeJoinedListeners.forEach(nodeJoinedListener -> nodeJoinedListener.handle(nodeId));
+    }
+
+    @Override
+    public void nodeLeftGracefully(int nodeId) {
+        // TODO use one of reactor processors instead
+        nodeLeftGracefullyListeners.forEach(nodeLeftGracefullyListener -> nodeLeftGracefullyListener.handle(nodeId));
+    }
+
+    @Override
     public void dispose() {
         LOGGER.info("[Node {}] Stopping ...", nodeId);
-        raftGroups.dispose();
+        raftProtocol.dispose();
+        gossipProtocol.dispose();
 
         receiver.stop();
         senders.stop();

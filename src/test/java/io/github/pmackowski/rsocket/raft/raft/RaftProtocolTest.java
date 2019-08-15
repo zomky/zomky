@@ -30,9 +30,9 @@ import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 @IntegrationTest
-class RaftGroupsTest {
+class RaftProtocolTest {
 /*
-    private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroupsTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocolTest.class);
 
     private static final boolean PRE_VOTE = true;
     private static final boolean LEADER_STICKINESS = true;
@@ -95,7 +95,7 @@ class RaftGroupsTest {
             .configuration(new Configuration(7000,7001))
             .build();
 
-        node1.getRaftGroups().addGroup(raftServer1Group1);
+        node1.getRaftProtocol().addGroup(raftServer1Group1);
 
         RaftGroup raftServer2Group1 = RaftGroup.builder()
                 .groupName("group1")
@@ -108,7 +108,7 @@ class RaftGroupsTest {
                 .configuration(new Configuration(7000,7001))
                 .build();
 
-        node2.getRaftGroups().addGroup(raftServer2Group1);
+        node2.getRaftProtocol().addGroup(raftServer2Group1);
 
 
         RaftGroup raftServer3Group2 = RaftGroup.builder()
@@ -122,7 +122,7 @@ class RaftGroupsTest {
                 .configuration(new Configuration(7002))
                 .build();
 
-        node3.getRaftGroups().addGroup(raftServer3Group2);
+        node3.getRaftProtocol().addGroup(raftServer3Group2);
 
         await().atMost(5, TimeUnit.SECONDS).until(() -> raftServer1Group1.getCurrentLeaderId() == 7000);
         await().atMost(1, TimeUnit.SECONDS).until(() -> raftServer2Group1.getCurrentLeaderId() == 7000);

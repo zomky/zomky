@@ -1,24 +1,23 @@
 package io.github.pmackowski.rsocket.raft.cli.runner;
 
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
-import io.github.pmackowski.rsocket.raft.cli.command.JoinCommand;
+import io.github.pmackowski.rsocket.raft.cli.command.LeaveCommand;
 import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
 import io.github.pmackowski.rsocket.raft.client.ClusterManagementClient;
 import picocli.CommandLine.ParseResult;
 
-public class JoinCommandRunner implements ZomkyCommandRunner {
+public class LeaveCommandRunner implements ZomkyCommandRunner {
 
     @Override
     public boolean support(ParseResult parseResult) {
-        return support("join", parseResult);
+        return support("leave", parseResult);
     }
 
     @Override
     public void execute(ParseResult parseResult) {
         MainCommand mainCommand = mainCommand(parseResult);
-        JoinCommand joinCommand = command(parseResult, JoinCommand.class);
+        LeaveCommand leaveCommand = command(parseResult, LeaveCommand.class);
         ClusterManagementClient clusterManagementClient = new ClusterManagementClient();
-        clusterManagementClient.initJoin(mainCommand.getAgentPort(), joinCommand.getHost(), joinCommand.getPort()).block();
+        clusterManagementClient.initLeave(mainCommand.getAgentPort()).block();
     }
-
 }

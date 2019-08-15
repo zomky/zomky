@@ -6,7 +6,6 @@ import io.github.pmackowski.rsocket.raft.NodeFactory;
 import io.github.pmackowski.rsocket.raft.cli.ZomkyCommandRunner;
 import io.github.pmackowski.rsocket.raft.cli.command.AgentCommand;
 import io.github.pmackowski.rsocket.raft.cli.command.MainCommand;
-import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import picocli.CommandLine.ParseResult;
 
 public class AgentCommandRunner implements ZomkyCommandRunner {
@@ -25,7 +24,8 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
                 .storage(agentCommand.isDev() ? new InMemoryNodeStorage() : new FileSystemNodeStorage(agentCommand.getDataDirectory()))
                 .nodeName(agentCommand.getNodeName())
                 .port(mainCommand.getAgentPort())
-                .cluster(new Cluster(mainCommand.getAgentPort())) // TODO ok only for memory storage
+                .join(agentCommand.getJoin())
+                .retryJoin(agentCommand.getRetryJoin())
                 .start()
                 .block();
     }
