@@ -58,7 +58,8 @@ message Ping {
     int32 destination_node_id = 3;
     bool direct = 4;
     int64 counter = 5;
-    repeated Gossip gossips = 6;
+    int32 indirect_ping_timeout = 6;
+    repeated Gossip gossips = 7;
 }
 
 message Ack {

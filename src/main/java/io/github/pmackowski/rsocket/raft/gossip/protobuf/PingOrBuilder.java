@@ -33,25 +33,30 @@ public interface PingOrBuilder extends
   long getCounter();
 
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>optional int32 indirect_ping_timeout = 6;</code>
+   */
+  int getIndirectPingTimeout();
+
+  /**
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> 
       getGossipsList();
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index);
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   int getGossipsCount();
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList();
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index);

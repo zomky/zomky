@@ -2,12 +2,13 @@ package io.github.pmackowski.rsocket.raft.gossip;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class ProbeOperatorResult<T> {
 
-    private boolean indirect;
+    private volatile boolean indirect;
+    private AtomicBoolean directSuccessful = new AtomicBoolean(false);
     private List<T> elements = new CopyOnWriteArrayList<>();
 
     ProbeOperatorResult() {
@@ -22,7 +23,13 @@ class ProbeOperatorResult<T> {
         this.elements.addAll(Arrays.asList(elements));
     }
 
-    void add(T t) {
+    void addDirect(T t) {
+        if (directSuccessful.compareAndSet(false, true)) {
+            elements.add(t);
+        }
+    }
+
+    void addIndirect(T t) {
         elements.add(t);
     }
 
@@ -38,17 +45,8 @@ class ProbeOperatorResult<T> {
         return indirect;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ProbeOperatorResult)) return false;
-        ProbeOperatorResult<?> that = (ProbeOperatorResult<?>) o;
-        return indirect == that.indirect &&
-                Objects.equals(elements, that.elements);
+    public boolean isDirectSuccessful() {
+        return directSuccessful.get();
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(indirect, elements);
-    }
 }

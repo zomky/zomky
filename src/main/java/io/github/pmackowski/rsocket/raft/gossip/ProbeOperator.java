@@ -21,14 +21,14 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
     private static final Logger LOGGER = LoggerFactory.getLogger(ProbeOperator.class);
 
     private final Publisher<? extends T> indirect;
-    private final Publisher<I> indirectStart;
-    private final Publisher<P> protocolPeriodEnd;
+    private final Publisher<I> indirectDelay;
+    private final Publisher<P> probeTimeout;
 
-    ProbeOperator(Mono<? extends T> direct, Publisher<? extends T> indirect, Publisher<I> indirectStart, Publisher<P> protocolPeriodEnd) {
+    ProbeOperator(Mono<? extends T> direct, Publisher<? extends T> indirect, Publisher<I> indirectDelay, Publisher<P> probeTimeout) {
         super(direct);
         this.indirect = indirect;
-        this.indirectStart = indirectStart;
-        this.protocolPeriodEnd = protocolPeriodEnd;
+        this.indirectDelay = indirectDelay;
+        this.probeTimeout = probeTimeout;
     }
 
     @Override
@@ -37,21 +37,21 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
         C result = (C) new ProbeOperatorResult<>();
         IndirectSubscriber<T,C> indirectSubscriber = new IndirectSubscriber<>(actual, indirect, result);
         DirectSubscriber<T,C> directSubscriber = new DirectSubscriber<>(actual, indirectSubscriber, result);
-        IndirectStartSubscriber<I> indirectStartSubscriber = new IndirectStartSubscriber<>(directSubscriber);
-        ProtocolPeriodEndSubscriber<P> protocolPeriodEndSubscriber = new ProtocolPeriodEndSubscriber<>(directSubscriber);
+        IndirectDelaySubscriber<I> indirectDelaySubscriber = new IndirectDelaySubscriber<>(directSubscriber);
+        ProbeTimeoutSubscriber<P> probeTimeoutSubscriber = new ProbeTimeoutSubscriber<>(directSubscriber);
 
-        protocolPeriodEnd.subscribe(protocolPeriodEndSubscriber);
-        indirectStart.subscribe(indirectStartSubscriber);
+        probeTimeout.subscribe(probeTimeoutSubscriber);
+        indirectDelay.subscribe(indirectDelaySubscriber);
 
         source.subscribe(directSubscriber);
     }
 
-    static final class ProtocolPeriodEndSubscriber<P> implements CoreSubscriber<P> {
+    static final class ProbeTimeoutSubscriber<P> implements CoreSubscriber<P> {
 
         final DirectSubscriber<?,?> directSubscriber;
         boolean once;
 
-        ProtocolPeriodEndSubscriber(DirectSubscriber<?,?> directSubscriber) {
+        ProbeTimeoutSubscriber(DirectSubscriber<?,?> directSubscriber) {
             this.directSubscriber = directSubscriber;
         }
 
@@ -81,22 +81,22 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
                 return;
             }
             once = true;
-            directSubscriber.protocolPeriodComplete();
+            directSubscriber.timeout();
         }
     }
 
-    static final class IndirectStartSubscriber<I> implements CoreSubscriber<I> {
+    static final class IndirectDelaySubscriber<I> implements CoreSubscriber<I> {
 
         final DirectSubscriber<?,?> directSubscriber;
         boolean once;
 
-        IndirectStartSubscriber(DirectSubscriber<?,?> directSubscriber) {
+        IndirectDelaySubscriber(DirectSubscriber<?,?> directSubscriber) {
             this.directSubscriber = directSubscriber;
         }
 
         @Override
         public void onSubscribe(Subscription s) {
-            directSubscriber.setIndirectStart(s);
+            directSubscriber.setIndirectDelay(s);
             s.request(Long.MAX_VALUE);
         }
 
@@ -144,7 +144,7 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
         @Override
         public void onNext(T t) {
             LOGGER.debug("IndirectSubscriber onNext {}", t);
-            result.add(t);
+            result.addIndirect(t);
         }
 
         @Override
@@ -218,7 +218,7 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
         @Override
         public void onNext(T t) {
             LOGGER.debug("DirectSubscriber onNext {}", t);
-            result.add(t);
+            result.addDirect(t);
         }
 
         @Override
@@ -249,7 +249,7 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
             }
         }
 
-        void setIndirectStart(Subscription s) {
+        void setIndirectDelay(Subscription s) {
             if (!INDIRECT.compareAndSet(this, null, s)) {
                 s.cancel();
                 if (indirect != Operators.cancelledSubscription()) {
@@ -258,7 +258,7 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
             }
         }
 
-        void protocolPeriodComplete() {
+        void timeout() {
             actual.onNext(result);
 
             cancel();

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,20 +28,35 @@ class GossipProbe {
         this.gossipTransport = gossipTransport;
     }
 
-    Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, Publisher<?> indirectStart, Publisher<?> protocolPeriodEnd) {
+    Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, Duration indirectDelay, Duration probeTimeout) {
         Integer destinationNodeId = peerProbe.getDestinationNodeId();
         if (destinationNodeId == null) {
-            return Mono.from(protocolPeriodEnd).thenReturn(ProbeResult.NO_PROBE_ACKS);
+            return Mono.delay(probeTimeout).thenReturn(ProbeResult.NO_PROBE_ACKS);
         }
+
+        Publisher<?> indirectDelayPublisher = Mono.delay(indirectDelay);
+        Publisher<?> probeTimeoutPublisher = Mono.delay(probeTimeout);
+
         List<Integer> proxyNodeIds = peerProbe.getProxyNodeIds();
-        return new ProbeOperator<>(pingDirect(destinationNodeId, hotGossips), pingIndirect(destinationNodeId, proxyNodeIds, hotGossips), indirectStart, protocolPeriodEnd)
-                .map(probeResult -> ProbeResult.builder()
+        return new ProbeOperator<>(pingDirect(destinationNodeId, hotGossips), pingIndirect(destinationNodeId, proxyNodeIds, hotGossips), indirectDelayPublisher, probeTimeoutPublisher)
+                .map(probeOperatorResult -> ProbeResult.builder()
                         .destinationNodeId(destinationNodeId)
-                        .probeResult(probeResult)
-                        .subgroupSize(probeResult.isIndirect() ? peerProbe.getSubgroupSize() : 0)
+                        .probeResult(probeOperatorResult)
+                        .subgroupSize(probeOperatorResult.isIndirect() ? peerProbe.getSubgroupSize() : 0)
+                        .missedNack(missedNack(probeOperatorResult, peerProbe))
                         .hotGossips(hotGossips)
                         .build()
                 );
+    }
+
+    private boolean missedNack(ProbeOperatorResult<Ack> probeOperatorResult, PeerProbe peerProbe) {
+        if (!probeOperatorResult.isIndirect()) {
+            return false;
+        }
+        int expectedIndirectAckOrNack =  peerProbe.getSubgroupSize() +
+                (probeOperatorResult.isDirectSuccessful() ? 1 : 0);
+
+        return probeOperatorResult.getElements().size() != expectedIndirectAckOrNack;
     }
 
     private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
@@ -67,6 +83,9 @@ class GossipProbe {
                             .setDestinationNodeId(destinationNodeId)
                             .addAllGossips(gossips)
                             .setDirect(false)
+                            // TODO (probeTimeout - indirectDelay ) * 0.8f ??
+                            // setNackTimeout ???
+                            //.setIndirectPingTimeout()
                             .build();
                     return gossipTransport
                             .ping(ping)

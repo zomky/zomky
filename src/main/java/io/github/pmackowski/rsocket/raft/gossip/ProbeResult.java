@@ -13,6 +13,7 @@ public class ProbeResult {
     private int destinationNodeId;
     private ProbeOperatorResult<Ack> probeOperatorResult;
     private int subgroupSize;
+    private boolean missedNack;
     private List<Gossip> hotGossips;
 
     public int getDestinationNodeId() {
@@ -27,12 +28,16 @@ public class ProbeResult {
         return subgroupSize;
     }
 
-    public List<Gossip> getHotGossips() {
+    List<Gossip> getHotGossips() {
         return hotGossips;
     }
 
-    public boolean hasAck() {
+    boolean hasAck() {
         return getAcks().stream().anyMatch(ack -> !ack.getNack());
+    }
+
+    boolean hasMissedNack() {
+        return missedNack;
     }
 
     private ProbeResult() {}
@@ -46,6 +51,7 @@ public class ProbeResult {
         private int destinationNodeId;
         private ProbeOperatorResult<Ack> probeOperatorResult;
         private int subgroupSize;
+        private boolean missedNack;
         private List<Gossip> hotGossips = new ArrayList<>();
 
         private Builder() {
@@ -66,6 +72,11 @@ public class ProbeResult {
             return this;
         }
 
+        public ProbeResult.Builder missedNack(boolean missedNack) {
+            this.missedNack = missedNack;
+            return this;
+        }
+
         public ProbeResult.Builder hotGossips(List<Gossip> hotGossips) {
             this.hotGossips = hotGossips;
             return this;
@@ -76,6 +87,7 @@ public class ProbeResult {
             probeResult.destinationNodeId = destinationNodeId;
             probeResult.probeOperatorResult = probeOperatorResult;
             probeResult.subgroupSize = subgroupSize;
+            probeResult.missedNack = missedNack;
             probeResult.hotGossips = hotGossips;
             return probeResult;
         }

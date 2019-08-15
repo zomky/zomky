@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 class Gossips {
@@ -19,6 +20,8 @@ class Gossips {
     private int maxGossips;
     private volatile int incarnation;
     private float gossipDisseminationMultiplier;
+    private int maxLocalHealthMultiplier;
+    private AtomicInteger localHealthMultiplier = new AtomicInteger(0);
     private Map<Integer, GossipDissemination> gossips = new ConcurrentHashMap<>();
 
     synchronized void probeCompleted(ProbeResult probeResult) {
@@ -58,6 +61,29 @@ class Gossips {
                 .forEach(gossipDissemination -> {
 
                 });
+    }
+
+    // TODO just started
+    void updateLocalHealthMultiplier(ProbeResult probeResult) {
+        if (probeResult.hasAck()) {
+            localHealthMultiplier.decrementAndGet();
+        } else {
+            localHealthMultiplier.incrementAndGet();
+        }
+        if (probeResult.hasMissedNack()) {
+            localHealthMultiplier.incrementAndGet();
+        }
+    }
+    void refuteSuspectMessageAboutItself() {
+        localHealthMultiplier.incrementAndGet();
+    }
+
+    private void decrementLocalHealthMultiplier() {
+
+    }
+
+    int localHealthMultiplier() {
+        return localHealthMultiplier.intValue();
     }
 
     // visible for testing
@@ -133,6 +159,7 @@ class Gossips {
                     LOGGER.info("[Node {}] I am suspected!", this.nodeId);
                     this.incarnation++;
                     addGossipInternal(gossip(this.nodeId, this.incarnation, Gossip.Suspicion.ALIVE));
+                    refuteSuspectMessageAboutItself();
                 } else {
                     LOGGER.info("[Node {}] Ignoring suspicion about itself due to stale incarnation number", this.nodeId);
                 }
@@ -208,6 +235,7 @@ class Gossips {
         private int maxGossips = Integer.MAX_VALUE;
         private int incarnation;
         private float gossipDisseminationMultiplier = 1f;
+        private int maxLocalHealthMultiplier = 8;
         private List<GossipDissemination> gossipDisseminations = new ArrayList<>();
 
         private Builder() {
@@ -233,6 +261,11 @@ class Gossips {
             return this;
         }
 
+        public Gossips.Builder maxLocalHealthMultiplier(int maxLocalHealthMultiplier) {
+            this.maxLocalHealthMultiplier = maxLocalHealthMultiplier;
+            return this;
+        }
+
         public Gossips.Builder addGossip(Gossip gossip) {
             return addGossip(gossip, 0);
         }
@@ -248,6 +281,7 @@ class Gossips {
             gossips.maxGossips = maxGossips;
             gossips.incarnation = incarnation;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
+            gossips.maxLocalHealthMultiplier = maxLocalHealthMultiplier;
             gossipDisseminations.forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
                 LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());

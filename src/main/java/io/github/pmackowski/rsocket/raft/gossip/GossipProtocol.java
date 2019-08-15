@@ -24,8 +24,9 @@ public class GossipProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipProtocol.class);
 
-    private Duration indirectStart = Duration.ofMillis(400);
-    private Duration protocolPeriod = Duration.ofSeconds(2);
+    private Duration indirectDelay = Duration.ofMillis(400);
+    private Duration baseProbeInterval = Duration.ofSeconds(2);
+    private Duration baseProbeTimeout = Duration.ofSeconds(2);
     private int subgroupSize = 2;
     private int maxGossips = 10;
     private float lambdaGossipSharedMultiplier = 1.5f;
@@ -76,12 +77,13 @@ public class GossipProtocol {
     Flux<ProbeResult> probeNodes() {
         return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
+                Duration probeTimeout = Duration.ofMillis(baseProbeTimeout.toMillis() * (gossips.localHealthMultiplier() + 1));
                 if (peerProbe.getDestinationNodeId() == null) {
                     LOGGER.info("[Node {}][ping] No probing for one-node cluster", node.getNodeId());
                 } else {
                     LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), Mono.delay(indirectStart), Mono.delay(protocolPeriod));
+                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), indirectDelay, probeTimeout);
             })
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
@@ -160,7 +162,7 @@ public class GossipProtocol {
                                         LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                         gossips.addAck(indirectAck);
                                     })
-                                    // TODO timeout
+                                    .timeout(Duration.ofMillis(ping.getIndirectPingTimeout()))
                                     .doOnError(throwable -> {
                                         LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
                                     })

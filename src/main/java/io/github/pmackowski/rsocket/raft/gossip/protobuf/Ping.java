@@ -20,6 +20,7 @@ public  final class Ping extends
     destinationNodeId_ = 0;
     direct_ = false;
     counter_ = 0L;
+    indirectPingTimeout_ = 0;
     gossips_ = java.util.Collections.emptyList();
   }
 
@@ -73,10 +74,15 @@ public  final class Ping extends
             counter_ = input.readInt64();
             break;
           }
-          case 50: {
-            if (!((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
+          case 48: {
+
+            indirectPingTimeout_ = input.readInt32();
+            break;
+          }
+          case 58: {
+            if (!((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
               gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>();
-              mutable_bitField0_ |= 0x00000020;
+              mutable_bitField0_ |= 0x00000040;
             }
             gossips_.add(
                 input.readMessage(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.parser(), extensionRegistry));
@@ -90,7 +96,7 @@ public  final class Ping extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
+      if (((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
         gossips_ = java.util.Collections.unmodifiableList(gossips_);
       }
       makeExtensionsImmutable();
@@ -154,35 +160,44 @@ public  final class Ping extends
     return counter_;
   }
 
-  public static final int GOSSIPS_FIELD_NUMBER = 6;
+  public static final int INDIRECT_PING_TIMEOUT_FIELD_NUMBER = 6;
+  private int indirectPingTimeout_;
+  /**
+   * <code>optional int32 indirect_ping_timeout = 6;</code>
+   */
+  public int getIndirectPingTimeout() {
+    return indirectPingTimeout_;
+  }
+
+  public static final int GOSSIPS_FIELD_NUMBER = 7;
   private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_;
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   public int getGossipsCount() {
     return gossips_.size();
   }
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
     return gossips_.get(index);
   }
   /**
-   * <code>repeated .Gossip gossips = 6;</code>
+   * <code>repeated .Gossip gossips = 7;</code>
    */
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index) {
@@ -216,8 +231,11 @@ public  final class Ping extends
     if (counter_ != 0L) {
       output.writeInt64(5, counter_);
     }
+    if (indirectPingTimeout_ != 0) {
+      output.writeInt32(6, indirectPingTimeout_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
-      output.writeMessage(6, gossips_.get(i));
+      output.writeMessage(7, gossips_.get(i));
     }
   }
 
@@ -246,9 +264,13 @@ public  final class Ping extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(5, counter_);
     }
+    if (indirectPingTimeout_ != 0) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(6, indirectPingTimeout_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(6, gossips_.get(i));
+        .computeMessageSize(7, gossips_.get(i));
     }
     memoizedSize = size;
     return size;
@@ -276,6 +298,8 @@ public  final class Ping extends
         == other.getDirect());
     result = result && (getCounter()
         == other.getCounter());
+    result = result && (getIndirectPingTimeout()
+        == other.getIndirectPingTimeout());
     result = result && getGossipsList()
         .equals(other.getGossipsList());
     return result;
@@ -300,6 +324,8 @@ public  final class Ping extends
     hash = (37 * hash) + COUNTER_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getCounter());
+    hash = (37 * hash) + INDIRECT_PING_TIMEOUT_FIELD_NUMBER;
+    hash = (53 * hash) + getIndirectPingTimeout();
     if (getGossipsCount() > 0) {
       hash = (37 * hash) + GOSSIPS_FIELD_NUMBER;
       hash = (53 * hash) + getGossipsList().hashCode();
@@ -433,9 +459,11 @@ public  final class Ping extends
 
       counter_ = 0L;
 
+      indirectPingTimeout_ = 0;
+
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000020);
+        bitField0_ = (bitField0_ & ~0x00000040);
       } else {
         gossipsBuilder_.clear();
       }
@@ -468,10 +496,11 @@ public  final class Ping extends
       result.destinationNodeId_ = destinationNodeId_;
       result.direct_ = direct_;
       result.counter_ = counter_;
+      result.indirectPingTimeout_ = indirectPingTimeout_;
       if (gossipsBuilder_ == null) {
-        if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        if (((bitField0_ & 0x00000040) == 0x00000040)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
-          bitField0_ = (bitField0_ & ~0x00000020);
+          bitField0_ = (bitField0_ & ~0x00000040);
         }
         result.gossips_ = gossips_;
       } else {
@@ -534,11 +563,14 @@ public  final class Ping extends
       if (other.getCounter() != 0L) {
         setCounter(other.getCounter());
       }
+      if (other.getIndirectPingTimeout() != 0) {
+        setIndirectPingTimeout(other.getIndirectPingTimeout());
+      }
       if (gossipsBuilder_ == null) {
         if (!other.gossips_.isEmpty()) {
           if (gossips_.isEmpty()) {
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000020);
+            bitField0_ = (bitField0_ & ~0x00000040);
           } else {
             ensureGossipsIsMutable();
             gossips_.addAll(other.gossips_);
@@ -551,7 +583,7 @@ public  final class Ping extends
             gossipsBuilder_.dispose();
             gossipsBuilder_ = null;
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000020);
+            bitField0_ = (bitField0_ & ~0x00000040);
             gossipsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getGossipsFieldBuilder() : null;
@@ -717,12 +749,38 @@ public  final class Ping extends
       return this;
     }
 
+    private int indirectPingTimeout_ ;
+    /**
+     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     */
+    public int getIndirectPingTimeout() {
+      return indirectPingTimeout_;
+    }
+    /**
+     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     */
+    public Builder setIndirectPingTimeout(int value) {
+      
+      indirectPingTimeout_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     */
+    public Builder clearIndirectPingTimeout() {
+      
+      indirectPingTimeout_ = 0;
+      onChanged();
+      return this;
+    }
+
     private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_ =
       java.util.Collections.emptyList();
     private void ensureGossipsIsMutable() {
-      if (!((bitField0_ & 0x00000020) == 0x00000020)) {
+      if (!((bitField0_ & 0x00000040) == 0x00000040)) {
         gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>(gossips_);
-        bitField0_ |= 0x00000020;
+        bitField0_ |= 0x00000040;
        }
     }
 
@@ -730,7 +788,7 @@ public  final class Ping extends
         io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> gossipsBuilder_;
 
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
       if (gossipsBuilder_ == null) {
@@ -740,7 +798,7 @@ public  final class Ping extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public int getGossipsCount() {
       if (gossipsBuilder_ == null) {
@@ -750,7 +808,7 @@ public  final class Ping extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -760,7 +818,7 @@ public  final class Ping extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder setGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
@@ -777,7 +835,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder setGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -791,7 +849,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder addGossips(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
       if (gossipsBuilder_ == null) {
@@ -807,7 +865,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder addGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
@@ -824,7 +882,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder addGossips(
         io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -838,7 +896,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder addGossips(
         int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -852,7 +910,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder addAllGossips(
         java.lang.Iterable<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> values) {
@@ -867,12 +925,12 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder clearGossips() {
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000020);
+        bitField0_ = (bitField0_ & ~0x00000040);
         onChanged();
       } else {
         gossipsBuilder_.clear();
@@ -880,7 +938,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public Builder removeGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -893,14 +951,14 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder getGossipsBuilder(
         int index) {
       return getGossipsFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
         int index) {
@@ -910,7 +968,7 @@ public  final class Ping extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
          getGossipsOrBuilderList() {
@@ -921,14 +979,14 @@ public  final class Ping extends
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder() {
       return getGossipsFieldBuilder().addBuilder(
           io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder(
         int index) {
@@ -936,7 +994,7 @@ public  final class Ping extends
           index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 6;</code>
+     * <code>repeated .Gossip gossips = 7;</code>
      */
     public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder> 
          getGossipsBuilderList() {
@@ -949,7 +1007,7 @@ public  final class Ping extends
         gossipsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder>(
                 gossips_,
-                ((bitField0_ & 0x00000020) == 0x00000020),
+                ((bitField0_ & 0x00000040) == 0x00000040),
                 getParentForChildren(),
                 isClean());
         gossips_ = null;

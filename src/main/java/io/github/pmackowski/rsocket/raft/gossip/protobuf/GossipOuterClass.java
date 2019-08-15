@@ -91,14 +91,15 @@ public final class GossipOuterClass {
       "\022$\n\tsuspicion\030\001 \001(\0162\021.Gossip.Suspicion\022\023" +
       "\n\013incarnation\030\002 \001(\005\022\017\n\007node_id\030\003 \001(\005\":\n\t" +
       "Suspicion\022\013\n\007UNKNOWN\020\000\022\t\n\005ALIVE\020\001\022\013\n\007SUS" +
-      "PECT\020\002\022\010\n\004DEAD\020\003\"\224\001\n\004Ping\022\031\n\021initiator_n" +
+      "PECT\020\002\022\010\n\004DEAD\020\003\"\263\001\n\004Ping\022\031\n\021initiator_n" +
       "ode_id\030\001 \001(\005\022\031\n\021requestor_node_id\030\002 \001(\005\022" +
       "\033\n\023destination_node_id\030\003 \001(\005\022\016\n\006direct\030\004" +
-      " \001(\010\022\017\n\007counter\030\005 \001(\003\022\030\n\007gossips\030\006 \003(\0132\007" +
-      ".Gossip\">\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030" +
-      "\002 \001(\010\022\030\n\007gossips\030\003 \003(\0132\007.GossipB5\n1io.gi" +
-      "thub.pmackowski.rsocket.raft.gossip.prot",
-      "obufP\001b\006proto3"
+      " \001(\010\022\017\n\007counter\030\005 \001(\003\022\035\n\025indirect_ping_t" +
+      "imeout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossip\">" +
+      "\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022\030\n\007" +
+      "gossips\030\003 \003(\0132\007.GossipB5\n1io.github.pmac",
+      "kowski.rsocket.raft.gossip.protobufP\001b\006p" +
+      "roto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -171,7 +172,7 @@ public final class GossipOuterClass {
     internal_static_Ping_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Ping_descriptor,
-        new java.lang.String[] { "InitiatorNodeId", "RequestorNodeId", "DestinationNodeId", "Direct", "Counter", "Gossips", });
+        new java.lang.String[] { "InitiatorNodeId", "RequestorNodeId", "DestinationNodeId", "Direct", "Counter", "IndirectPingTimeout", "Gossips", });
     internal_static_Ack_descriptor =
       getDescriptor().getMessageTypes().get(10);
     internal_static_Ack_fieldAccessorTable = new

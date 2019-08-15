@@ -7,6 +7,8 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 class ProbeOperatorTest {
 
     @Test
@@ -14,12 +16,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.just(1);
         Flux<Integer> indirect = Flux.just(2, 3);
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                     .expectSubscription()
                     .thenAwait(Duration.ofMillis(50))
-                    .expectNext(new ProbeOperatorResult<>(false, 1))
+                    .assertNext(o -> {
+                        ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                        assertThat(probeOperatorResult.isIndirect()).isFalse();
+                        assertThat(probeOperatorResult.isDirectSuccessful()).isTrue();
+                        assertThat(probeOperatorResult.getElements()).containsExactly(1);
+                    })
                     .expectComplete()
                     .verify();
     }
@@ -29,12 +36,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
         Flux<Integer> indirect = Flux.just(2, 3);
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 2,3,1))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isTrue();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(2,3,1);
+                })
                 .expectComplete()
                 .verify();
     }
@@ -44,12 +56,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
         Flux<Integer> indirect = Flux.error(new RuntimeException());
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 1))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isTrue();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(1);
+                })
                 .expectComplete()
                 .verify();
     }
@@ -59,12 +76,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
         Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2));
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 2,1))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isTrue();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(2,1);
+                })
                 .expectComplete()
                 .verify();
     }
@@ -74,27 +96,37 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
         Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2).delayElement(Duration.ofMillis(25)));
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 1,2))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isTrue();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(1,2);
+                })
                 .expectComplete()
                 .verify();
     }
 
     @Test
-    void successfulDirectAfterProtocolPeriodEnd() {
+    void successfulDirectAfterProbeTimeout() {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(100));
         Flux<Integer> indirect = Flux.just(2, 3);
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 2,3))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isFalse();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(2,3);
+                })
                 .expectComplete()
                 .verify();
     }
@@ -104,12 +136,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.error(new RuntimeException());
         Flux<Integer> indirect = Flux.just(1, 2);
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true, 1,2))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isFalse();
+                    assertThat(probeOperatorResult.getElements()).containsExactly(1,2);
+                })
                 .expectComplete()
                 .verify();
     }
@@ -119,12 +156,17 @@ class ProbeOperatorTest {
         Mono<Integer> direct = Mono.error(new RuntimeException());
         Flux<Integer> indirect = Flux.error(new RuntimeException());
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> protocolPeriodEnd = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
 
-        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, protocolPeriodEnd))
+        StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(50))
-                .expectNext(new ProbeOperatorResult<>(true))
+                .assertNext(o -> {
+                    ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
+                    assertThat(probeOperatorResult.isIndirect()).isTrue();
+                    assertThat(probeOperatorResult.isDirectSuccessful()).isFalse();
+                    assertThat(probeOperatorResult.getElements()).isEmpty();
+                })
                 .expectComplete()
                 .verify();
     }
