@@ -7,6 +7,7 @@ import io.github.pmackowski.rsocket.raft.utils.NettyUtils;
 import io.netty.channel.socket.DatagramPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.resources.LoopResources;
@@ -16,17 +17,17 @@ class GossipTransport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipTransport.class);
 
-    public Mono<Ack> ping(Ping ping) {
+    public Flux<Ack> ping(Ping ping) {
         return client(ping)
-                .flatMap(connection ->
+                .flatMapMany(connection ->
                     connection.outbound()
                             .sendByteArray(Mono.just(ping.toByteArray()))
                             .then()
-                            .then(connection
+                            .thenMany(connection
                                     .inbound()
                                     .receiveObject()
                                     .cast(DatagramPacket.class)
-                                    .next()
+//                                    .next()
                                     .map(this::toAck)
                             )
                 );

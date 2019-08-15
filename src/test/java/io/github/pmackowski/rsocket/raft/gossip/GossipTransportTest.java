@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.udp.UdpInbound;
@@ -54,7 +55,8 @@ class GossipTransportTest {
 
         StepVerifier.create(pingUdpServer(ping))
                 .assertNext(ack -> assertThat(ack.getNodeId()).isEqualTo(123))
-                .verifyComplete();
+                .thenCancel()
+                .verify();
     }
 
     @Test
@@ -86,7 +88,7 @@ class GossipTransportTest {
                 .bindNow(Duration.ofSeconds(1));
     }
 
-    private Mono<Ack> pingUdpServer(Ping ping) {
+    private Flux<Ack> pingUdpServer(Ping ping) {
         return gossipTransport
                 .ping(ping)
                 .doOnSubscribe(s-> LOGGER.info("[Node {}] Probing {} ...", ping.getInitiatorNodeId(), ping.getDestinationNodeId()));

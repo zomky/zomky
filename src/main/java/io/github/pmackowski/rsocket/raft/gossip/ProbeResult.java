@@ -3,8 +3,8 @@ package io.github.pmackowski.rsocket.raft.gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ProbeResult {
 
@@ -22,6 +22,14 @@ public class ProbeResult {
 
     public List<Ack> getAcks() {
         return probeOperatorResult.getElements();
+    }
+
+    public List<Ack> getDistinctAcks() {
+        Map<Integer, Ack> ackByNodeId = probeOperatorResult.getElements().stream()
+                .collect(Collectors.groupingBy(Ack::getNodeId, Collectors.collectingAndThen(Collectors.toList(),
+                        acks -> acks.stream().filter(ack -> !ack.getNack()).findFirst().orElse(acks.get(0))))
+                );
+        return new ArrayList<>(ackByNodeId.values());
     }
 
     public int getSubgroupSize() {

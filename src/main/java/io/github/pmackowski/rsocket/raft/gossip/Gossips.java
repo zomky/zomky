@@ -26,7 +26,7 @@ class Gossips {
 
     synchronized void probeCompleted(ProbeResult probeResult) {
         makeGossipsLessHot(probeResult.getHotGossips());
-        probeResult.getAcks().forEach(this::addAck);
+        probeResult.getDistinctAcks().forEach(this::addAck);
 
         Gossip.Suspicion suspicion = probeResult.hasAck() ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;
         GossipDissemination gossipDissemination = gossips.get(probeResult.getDestinationNodeId());

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.BDDMockito;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -256,7 +255,7 @@ class GossipProtocolTest {
         BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
         BDDMockito.given(gossips.onPing(PROXY_NODE_ID, NUMBER_OF_PEERS, ping))
                 .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
-        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.just(Ack.newBuilder().build()));
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()));
 
         gossipProtocol = new GossipProtocol(node, peers, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
@@ -290,7 +289,7 @@ class GossipProtocolTest {
         BDDMockito.given(gossips.onPing(PROXY_NODE_ID, NUMBER_OF_PEERS, ping))
                 .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
 
-        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Mono.error(new RuntimeException("peer unavailable")));
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.error(new RuntimeException("peer unavailable")));
 
         gossipProtocol = new GossipProtocol(node, peers, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 

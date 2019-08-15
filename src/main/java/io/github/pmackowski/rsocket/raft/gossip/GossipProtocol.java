@@ -158,11 +158,12 @@ public class GossipProtocol {
                         } else {
                             Ping pingOnBehalf = PingUtils.direct(ping, ack.getGossipsList());
                             publisher = gossipTransport.ping(pingOnBehalf)
+                                    .next()
                                     .doOnNext(indirectAck -> {
                                         LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                         gossips.addAck(indirectAck);
                                     })
-                                    .timeout(Duration.ofMillis(ping.getIndirectPingTimeout()))
+                                    //.timeout(Duration.ofMillis(ping.getIndirectPingTimeout()))
                                     .doOnError(throwable -> {
                                         LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
                                     })

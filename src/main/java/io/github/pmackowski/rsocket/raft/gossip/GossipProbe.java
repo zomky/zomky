@@ -53,10 +53,14 @@ class GossipProbe {
         if (!probeOperatorResult.isIndirect()) {
             return false;
         }
-        int expectedIndirectAckOrNack =  peerProbe.getSubgroupSize() +
+        int expectedAckOrNack =  peerProbe.getSubgroupSize() +
                 (probeOperatorResult.isDirectSuccessful() ? 1 : 0);
 
-        return probeOperatorResult.getElements().size() != expectedIndirectAckOrNack;
+        long ackOrNack = probeOperatorResult.getElements().stream()
+                .map(Ack::getNodeId)
+                .distinct()
+                .count();
+        return ackOrNack != expectedAckOrNack;
     }
 
     private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
@@ -70,7 +74,8 @@ class GossipProbe {
                 .build();
         return gossipTransport
                 .ping(ping)
-                .doOnNext(ack -> log(ping))
+                .next()
+                .doOnNext(ack -> log(ping, ack))
                 .doOnError(throwable -> logError(ping, throwable));
     }
 
@@ -89,7 +94,7 @@ class GossipProbe {
                             .build();
                     return gossipTransport
                             .ping(ping)
-                            .doOnNext(ack -> log(ping))
+                            .doOnNext(ack -> log(ping, ack))
                             .onErrorResume(throwable -> {
                                 // cannot connect to proxy
                                 logError(ping, throwable);
@@ -98,11 +103,15 @@ class GossipProbe {
                 });
     }
 
-    private void log(Ping ping) {
+    private void log(Ping ping, Ack ack) {
         if (ping.getDirect()) {
             LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
         } else {
-            LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+            if (ack.getNack()) {
+                LOGGER.info("[Node {}][ping] Indirect probe to {} through {} failed.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+            } else {
+                LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+            }
         }
     }
 

@@ -112,10 +112,12 @@ class GossipsTest {
                 .subgroupSize(1)
                 .probeResult(new ProbeOperatorResult<>(true,
                                 Ack.newBuilder()
+                                        .setNodeId(7001)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(1).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build(),
                                 Ack.newBuilder()
+                                        .setNodeId(7002)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build()
@@ -147,16 +149,17 @@ class GossipsTest {
                 .subgroupSize(2)
                 .probeResult(new ProbeOperatorResult<>(true,
                                 Ack.newBuilder()
+                                        .setNodeId(7001)
                                         .setNack(true)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(1).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build(),
                                 Ack.newBuilder()
+                                        .setNodeId(7002)
                                         .setNack(true)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build()
-
                         )
                 )
                 .build();
@@ -184,10 +187,12 @@ class GossipsTest {
                 .subgroupSize(2)
                 .probeResult(new ProbeOperatorResult<>(true,
                                 Ack.newBuilder()
+                                        .setNodeId(7001)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(1).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build(),
                                 Ack.newBuilder()
+                                        .setNodeId(7002)
                                         .setNack(true)
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build())

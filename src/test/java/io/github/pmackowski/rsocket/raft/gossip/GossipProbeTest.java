@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -67,7 +68,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(20), Duration.ofMillis(50)))
                 .expectSubscription()
@@ -96,7 +97,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenReturn(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(50)))
                 .expectSubscription()
@@ -125,7 +126,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(200)).thenReturn(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(200)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(100)))
                 .expectSubscription()
@@ -154,7 +155,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.error(new TimeoutException()));
+        ).willReturn(Flux.error(new TimeoutException()));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(50)))
                 .expectSubscription()
@@ -183,7 +184,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(20), Duration.ofMillis(50)))
                     .expectSubscription()
@@ -212,7 +213,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(80)).thenReturn(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(80)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -222,7 +223,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(70)).thenReturn(Ack.newBuilder().setNodeId(7002).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(70)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7002).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -232,7 +233,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).build()));
 
         // expected order 7003 (indirect), 7001 (direct), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(50), Duration.ofMillis(200)))
@@ -266,7 +267,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).then(Mono.error(new TimeoutException())));
+        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -276,7 +277,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(7002).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7002).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -286,7 +287,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).build()));
 
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(100)))
@@ -319,7 +320,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.error(new TimeoutException()));
+        ).willReturn(Flux.error(new TimeoutException()));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -329,7 +330,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(7002).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7002).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -339,7 +340,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).build()));
 
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(50)))
@@ -372,7 +373,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -382,7 +383,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.error(new TimeoutException()));
+        ).willReturn(Flux.error(new TimeoutException()));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -392,7 +393,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.error(new TimeoutException()));
+        ).willReturn(Flux.error(new TimeoutException()));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(30)))
                 .expectSubscription()
@@ -423,7 +424,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(100)).thenReturn(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(100)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -433,7 +434,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.error(new TimeoutException()));
+        ).willReturn(Flux.error(new TimeoutException()));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -443,7 +444,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(10)).thenReturn(Ack.newBuilder().setNodeId(7003).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(10)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7003).build())));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(200)))
                 .expectSubscription()
@@ -475,7 +476,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).then(Mono.error(new TimeoutException())));
+        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -485,7 +486,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(7002).setNack(true).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7002).setNack(true).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -495,7 +496,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).setNack(true).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build()));
 
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(100)))
@@ -528,7 +529,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).then(Mono.error(new TimeoutException())));
+        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -538,7 +539,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenReturn(Ack.newBuilder().setNodeId(7002).setNack(true).build()));
+        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(7002).setNack(true).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -548,7 +549,7 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Mono.just(Ack.newBuilder().setNodeId(7003).build()));
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).build()));
 
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(100)))
@@ -568,4 +569,183 @@ class GossipProbeTest {
         verify(gossipTransport, times(3)).ping(any());
     }
 
+    @Test
+    void manyPeersSuccessfulDirectAfterRoundTripTimeAndOneIndirectReturnsNackAndAck() {
+        // lifeguard - LHA-Probe
+        List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7002)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.error(new TimeoutException()));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7003)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build(), Ack.newBuilder().setNodeId(7003).build())
+                         .delayElements(Duration.ofMillis(70))
+        );
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(200)))
+                .expectSubscription()
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(7003).setNack(true).build(),
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getDistinctAcks()).containsExactlyInAnyOrder(
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
+                    assertThat(probeResult.hasMissedNack()).isTrue();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(3)).ping(any());
+    }
+
+    @Test
+    void manyPeersSuccessfulDirectAfterRoundTripTimeCheckMissedNack() {
+        // lifeguard - LHA-Probe
+        List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7002)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        // missed nack
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofDays(1)));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7003)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build(), Ack.newBuilder().setNodeId(7003).build())
+                .delayElements(Duration.ofMillis(70))
+        );
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(200)))
+                .expectSubscription()
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(7003).setNack(true).build(),
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getDistinctAcks()).containsExactlyInAnyOrder(
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
+                    assertThat(probeResult.hasMissedNack()).isTrue();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(3)).ping(any());
+    }
+
+    @Test
+    void manyPeersFailedDirectCheckMissedNack() {
+        // lifeguard - LHA-Probe
+        List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build())
+        ).willReturn(Flux.error(new TimeoutException()));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                        .setInitiatorNodeId(NODE_ID)
+                        .setRequestorNodeId(7002)
+                        .setDestinationNodeId(DESTINATION_NODE_ID)
+                        .addAllGossips(gossips)
+                        .setDirect(false)
+                        .setCounter(0)
+                        .build())
+        // missed nack
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofDays(1)));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7003)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build(), Ack.newBuilder().setNodeId(7003).build())
+                .delayElements(Duration.ofMillis(70))
+        );
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(200)))
+                .expectSubscription()
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(7003).setNack(true).build(),
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getDistinctAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(7003).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(2);
+                    assertThat(probeResult.hasMissedNack()).isTrue();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(3)).ping(any());
+    }
 }
