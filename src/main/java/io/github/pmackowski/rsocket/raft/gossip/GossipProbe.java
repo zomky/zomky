@@ -28,17 +28,20 @@ class GossipProbe {
         this.gossipTransport = gossipTransport;
     }
 
-    Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, Duration indirectDelay, Duration probeTimeout) {
+    Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, PeerProbeTimeouts peerProbeTimeouts) {
         Integer destinationNodeId = peerProbe.getDestinationNodeId();
         if (destinationNodeId == null) {
-            return Mono.delay(probeTimeout).thenReturn(ProbeResult.NO_PROBE_ACKS);
+            return Mono.delay(peerProbeTimeouts.probeTimeout()).thenReturn(ProbeResult.NO_PROBE_ACKS);
         }
 
-        Publisher<?> indirectDelayPublisher = Mono.delay(indirectDelay);
-        Publisher<?> probeTimeoutPublisher = Mono.delay(probeTimeout);
+        Publisher<?> indirectDelayPublisher = Mono.delay(peerProbeTimeouts.indirectDelay());
+        Publisher<?> probeTimeoutPublisher = Mono.delay(peerProbeTimeouts.probeTimeout());
 
         List<Integer> proxyNodeIds = peerProbe.getProxyNodeIds();
-        return new ProbeOperator<>(pingDirect(destinationNodeId, hotGossips), pingIndirect(destinationNodeId, proxyNodeIds, hotGossips), indirectDelayPublisher, probeTimeoutPublisher)
+        return new ProbeOperator<>(pingDirect(destinationNodeId, hotGossips),
+                                   pingIndirect(destinationNodeId, proxyNodeIds, peerProbeTimeouts.nackTimeout(), hotGossips),
+                                   indirectDelayPublisher,
+                                   probeTimeoutPublisher)
                 .map(probeOperatorResult -> ProbeResult.builder()
                         .destinationNodeId(destinationNodeId)
                         .probeResult(probeOperatorResult)
@@ -79,7 +82,7 @@ class GossipProbe {
                 .doOnError(throwable -> logError(ping, throwable));
     }
 
-    private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, List<Gossip> gossips) {
+    private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, Duration nackTimeout, List<Gossip> gossips) {
         return Flux.fromIterable(proxies)
                 .flatMap(proxyNodeId -> {
                     Ping ping = Ping.newBuilder()
@@ -88,9 +91,7 @@ class GossipProbe {
                             .setDestinationNodeId(destinationNodeId)
                             .addAllGossips(gossips)
                             .setDirect(false)
-                            // TODO (probeTimeout - indirectDelay ) * 0.8f ??
-                            // setNackTimeout ???
-                            //.setIndirectPingTimeout()
+                            .setNackTimeout((int) nackTimeout.toMillis())
                             .build();
                     return gossipTransport
                             .ping(ping)

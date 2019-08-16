@@ -77,13 +77,18 @@ public class GossipProtocol {
     Flux<ProbeResult> probeNodes() {
         return Flux.defer(() -> {
                 PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
-                Duration probeTimeout = Duration.ofMillis(baseProbeTimeout.toMillis() * (gossips.localHealthMultiplier() + 1));
+                PeerProbeTimeouts peerProbeTimeouts = PeerProbeTimeouts.builder()
+                        .baseProbeTimeout(baseProbeTimeout)
+                        .nackRatio(0.6f)
+                        .localHealthMultiplier(gossips.localHealthMultiplier())
+                        .build();
+
                 if (peerProbe.getDestinationNodeId() == null) {
                     LOGGER.info("[Node {}][ping] No probing for one-node cluster", node.getNodeId());
                 } else {
                     LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), indirectDelay, probeTimeout);
+                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), peerProbeTimeouts);
             })
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
@@ -165,7 +170,7 @@ public class GossipProtocol {
                                     .takeUntil(indirectAckOrNack -> !indirectAckOrNack.getNack())
                                     .doOnNext(indirectAckOrNack -> {
                                         if (indirectAckOrNack.getNack()) {
-                                            LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} suspecteted NACK.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                            LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} taking too long time. Sending back NACK but still waiting for ACK.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                         } else {
                                             LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                             gossips.addAck(indirectAckOrNack);
