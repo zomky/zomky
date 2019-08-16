@@ -410,7 +410,7 @@ class GossipProbeTest {
                 .setDirect(true)
                 .setCounter(1)
                 .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(15)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -435,7 +435,7 @@ class GossipProbeTest {
         ).willReturn(Flux.error(new TimeoutException()));
 
         given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
-        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(30));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(100));
 
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))
                 .expectSubscription()

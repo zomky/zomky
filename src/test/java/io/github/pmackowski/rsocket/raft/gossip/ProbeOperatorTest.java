@@ -94,13 +94,13 @@ class ProbeOperatorTest {
     @Test
     void successfulDirectAfterRoundTripTimeAndIndirectPartiallySuccessful2() {
         Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
-        Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2).delayElement(Duration.ofMillis(25)));
+        Flux<Integer> indirect = Flux.mergeDelayError(2, Mono.error(new RuntimeException()), Mono.just(2).delayElement(Duration.ofMillis(50)));
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(100));
 
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()
-                .thenAwait(Duration.ofMillis(50))
+                .thenAwait(Duration.ofMillis(100))
                 .assertNext(o -> {
                     ProbeOperatorResult<Integer> probeOperatorResult = (ProbeOperatorResult<Integer>) o;
                     assertThat(probeOperatorResult.isIndirect()).isTrue();

@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -48,7 +49,18 @@ class DefaultNode implements InnerNode {
         this.cluster = cluster; // at the beginning must always contain only this node
 
         this.receiver = new Receiver(this);
-        this.gossipProtocol = new GossipProtocol(this);
+        this.gossipProtocol =  GossipProtocol.builder()
+                .node(this)
+                .baseProbeTimeout(Duration.ofMillis(500))
+                .baseProbeInterval(Duration.ofMillis(1000))
+                .subgroupSize(2)
+                .maxGossips(10)
+                .lambdaGossipSharedMultiplier(1.5f)
+                .indirectDelayRatio(0.3f)
+                .nackRatio(0.6f)
+                .maxLocalHealthMultiplier(8)
+                .build();
+
         this.senders = new Senders(this);
         this.raftProtocol = new RaftProtocol(this);
 

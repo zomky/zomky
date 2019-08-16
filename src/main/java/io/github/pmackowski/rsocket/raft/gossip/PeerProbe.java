@@ -1,8 +1,9 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class PeerProbe {
+class PeerProbe {
 
     static final PeerProbe NO_PEER_PROBE = new PeerProbe();
 
@@ -12,7 +13,11 @@ public class PeerProbe {
     private PeerProbe() {
     }
 
-    public PeerProbe(Integer destinationNodeId, List<Integer> proxyNodeIds) {
+    PeerProbe(Integer destinationNodeId) {
+        this(destinationNodeId, new ArrayList<>());
+    }
+
+    PeerProbe(Integer destinationNodeId, List<Integer> proxyNodeIds) {
         this.destinationNodeId = destinationNodeId;
         this.proxyNodeIds = proxyNodeIds;
     }

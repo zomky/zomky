@@ -15,7 +15,7 @@ import reactor.netty.udp.UdpOutbound;
 import reactor.retry.Retry;
 
 import java.time.Duration;
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.pmackowski.rsocket.raft.gossip.AckUtils.nack;
 import static io.github.pmackowski.rsocket.raft.gossip.PingUtils.toPing;
@@ -24,47 +24,14 @@ public class GossipProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipProtocol.class);
 
-    private Duration indirectDelay = Duration.ofMillis(400);
-    private Duration baseProbeInterval = Duration.ofSeconds(2);
-    private Duration baseProbeTimeout = Duration.ofSeconds(2);
-    private int subgroupSize = 2;
-    private int maxGossips = 10;
-    private float lambdaGossipSharedMultiplier = 1.5f;
-
-    private GossipOnPingDelay onPingDelay;
-    private BooleanSupplier REPEAT_PROBE = () -> true;
-
     private InnerNode node;
     private Cluster cluster;
     private Peers peers;
     private Gossips gossips;
-    private Disposable disposable;
-    private GossipProbe gossipProbe;
+    private RandomGossipProbe randomGossipProbe;
     private GossipTransport gossipTransport;
-
-    // for testing
-    GossipProtocol(InnerNode node, Peers peers, Gossips gossips, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
-        this.node = node;
-        this.peers = peers;
-        this.gossips = gossips;
-        this.gossipTransport = gossipTransport;
-        this.onPingDelay = onPingDelay;
-    }
-
-    public GossipProtocol(InnerNode node) {
-        this.node = node;
-        this.cluster = new Cluster(node.getNodeId());
-        this.gossipTransport = new GossipTransport();
-        this.peers = new Peers();
-        this.gossips = Gossips.builder()
-                .nodeId(node.getNodeId())
-                .maxGossips(maxGossips)
-                .maxLocalHealthMultiplier(8)
-                .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
-                .build();
-        this.onPingDelay = GossipOnPingDelay.NO_DELAY;
-        this.gossipProbe = new GossipProbe(node.getNodeId(), gossipTransport);
-    }
+    private GossipOnPingDelay onPingDelay;
+    private Disposable disposable;
 
     public void dispose() {
         disposable.dispose();
@@ -76,31 +43,17 @@ public class GossipProtocol {
 
     // visible for testing
     Flux<ProbeResult> probeNodes() {
-        return Flux.defer(() -> {
-                PeerProbe peerProbe = peers.nextPeerProbe(subgroupSize);
-                PeerProbeTimeouts peerProbeTimeouts = PeerProbeTimeouts.builder()
-                        .baseProbeTimeout(baseProbeTimeout)
-                        .nackRatio(0.6f)
-                        .localHealthMultiplier(gossips.localHealthMultiplier())
-                        .build();
+        AtomicBoolean wasFirstSubscription = new AtomicBoolean(false);
 
-                if (peerProbe.getDestinationNodeId() == null) {
-                    LOGGER.info("[Node {}][ping] No probing for one-node cluster", node.getNodeId());
-                } else {
-                    LOGGER.info("[Node {}][ping] Probing {} ...", node.getNodeId(), peerProbe.getDestinationNodeId());
+        return Mono.defer(() -> randomGossipProbe.randomProbe())
+            .doOnNext(probeResult -> randomGossipProbe.probeCompleted(probeResult))
+            .delaySubscription(Mono.defer(() -> {
+                if (wasFirstSubscription.compareAndSet(false, true)) {
+                    return Mono.empty();
                 }
-                return gossipProbe.probeNode(peerProbe, gossips.chooseHotGossips(peers.count()), peerProbeTimeouts);
-            })
-            .doOnNext(probeResult -> {
-                gossips.probeCompleted(probeResult);
-                gossips.updateLocalHealthMultiplier(probeResult);
-                LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeResult.getDestinationNodeId());
-            })
-            .doOnComplete(() -> {
-                Duration suspicionTimeout = Duration.ofMillis(1000);
-                gossips.markDead(suspicionTimeout);
-            })
-            .repeat(REPEAT_PROBE)
+                return Mono.delay(randomGossipProbe.probeInterval());
+            }))
+            .repeat()
             .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", node.getNodeId(), throwable));
     }
 
@@ -241,6 +194,113 @@ public class GossipProtocol {
         } else {
             LOGGER.info("[Node {}][onPing] Probing {} on behalf of {} ...", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
         }
+    }
+
+    private GossipProtocol() {}
+
+    public static GossipProtocol.Builder builder() {
+        return new GossipProtocol.Builder();
+    }
+
+    public static class Builder {
+
+        private InnerNode node;
+        private Duration baseProbeInterval;
+        private Duration baseProbeTimeout;
+        private int subgroupSize;
+        private int maxGossips;
+        private float lambdaGossipSharedMultiplier;
+        private float indirectDelayRatio;
+        private float nackRatio;
+        private int maxLocalHealthMultiplier;
+
+        private Builder() {
+        }
+
+        public GossipProtocol.Builder node(InnerNode node) {
+            this.node = node;
+            return this;
+        }
+
+        public GossipProtocol.Builder baseProbeTimeout(Duration baseProbeTimeout) {
+            this.baseProbeTimeout = baseProbeTimeout;
+            return this;
+        }
+
+        public GossipProtocol.Builder baseProbeInterval(Duration baseProbeInterval) {
+            this.baseProbeInterval = baseProbeInterval;
+            return this;
+        }
+
+        public GossipProtocol.Builder subgroupSize(int subgroupSize) {
+            this.subgroupSize = subgroupSize;
+            return this;
+        }
+
+        public GossipProtocol.Builder maxGossips(int maxGossips) {
+            this.maxGossips = maxGossips;
+            return this;
+        }
+
+        public GossipProtocol.Builder lambdaGossipSharedMultiplier(float lambdaGossipSharedMultiplier) {
+            this.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
+            return this;
+        }
+
+        public GossipProtocol.Builder indirectDelayRatio(float indirectDelayRatio) {
+            this.indirectDelayRatio = indirectDelayRatio;
+            return this;
+        }
+
+        public GossipProtocol.Builder nackRatio(float nackRatio) {
+            this.nackRatio = nackRatio;
+            return this;
+        }
+
+        public GossipProtocol.Builder maxLocalHealthMultiplier(int maxLocalHealthMultiplier) {
+            this.maxLocalHealthMultiplier = maxLocalHealthMultiplier;
+            return this;
+        }
+
+        public GossipProtocol build() {
+            GossipProtocol gossipProtocol = new GossipProtocol();
+            gossipProtocol.node = node;
+            gossipProtocol.cluster = new Cluster(node.getNodeId());
+            gossipProtocol.gossipTransport = new GossipTransport();
+            gossipProtocol.peers = new Peers();
+            gossipProtocol.gossips = Gossips.builder()
+                    .nodeId(node.getNodeId())
+                    .maxGossips(maxGossips)
+                    .maxLocalHealthMultiplier(maxLocalHealthMultiplier)
+                    .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
+                    .build();
+            gossipProtocol.onPingDelay = GossipOnPingDelay.NO_DELAY;
+
+            gossipProtocol.randomGossipProbe = RandomGossipProbe.builder()
+                    .nodeId(node.getNodeId())
+                    .peers(gossipProtocol.peers)
+                    .gossips(gossipProtocol.gossips)
+                    .gossipProbe(new GossipProbe(node.getNodeId(), gossipProtocol.gossipTransport))
+                    .baseProbeInterval(baseProbeInterval)
+                    .baseProbeTimeout(baseProbeTimeout)
+                    .subgroupSize(subgroupSize)
+                    .indirectDelayRatio(indirectDelayRatio)
+                    .nackRatio(nackRatio)
+                    .build();
+
+            return gossipProtocol;
+        }
+
+    }
+
+    // for testing
+    GossipProtocol(InnerNode node, Peers peers, Gossips gossips, RandomGossipProbe randomGossipProbe, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
+        this.node = node;
+        this.peers = peers;
+        this.gossips = gossips;
+        this.randomGossipProbe = randomGossipProbe;
+        this.gossipTransport = gossipTransport;
+        this.onPingDelay = onPingDelay;
     }
 
 }
