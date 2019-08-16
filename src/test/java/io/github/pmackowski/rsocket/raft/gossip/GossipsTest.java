@@ -101,7 +101,6 @@ class GossipsTest {
         assertThat(gossips.count()).isEqualTo(1);
     }
 
-
     @Test
     void probeCompletedMultipleAcks() {
         // given
@@ -240,6 +239,7 @@ class GossipsTest {
         // merged
         assertThat(gossips.getGossip(INITIATOR_NODE_ID)).hasValue(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(1).build());
         assertThat(gossips.count()).isEqualTo(2);
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(1);
     }
 
     @Test
@@ -269,6 +269,7 @@ class GossipsTest {
         // produced by probeCompleted
         assertThat(gossips.getGossip(DESTINATION_NODE_ID)).hasValue(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build());
         assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 
     @Test
@@ -324,8 +325,8 @@ class GossipsTest {
                 .hasValue(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(1).build());
         assertThat(gossips.incarnation()).isEqualTo(1);
         assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(1); // suspicion about itself increases LHM
     }
-
 
     @Test
     void addSuspectGossipAboutItselfWithDifferentIncarnationNumber() {
@@ -341,6 +342,7 @@ class GossipsTest {
         // then
         assertThat(gossips.incarnation()).isEqualTo(1);
         assertThat(gossips.count()).isEqualTo(0);
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 
     @Test
@@ -862,4 +864,73 @@ class GossipsTest {
         // then
         assertThat(actual).isEqualTo(expectedGossips);
     }
+
+    @Test
+    void updateLocalHealthMultiplier() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(0)
+                .probeResult(new ProbeOperatorResult<>(false,
+                                Ack.newBuilder()
+                                        .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(0).build())
+                                        .addGossips(Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build())
+                                        .build()
+                        )
+                )
+                .build();
+
+        // when
+        gossips.updateLocalHealthMultiplier(probeResult);
+
+        // then
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
+    }
+
+    @Test
+    void updateLocalHealthMultiplierNoAcks() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(2)
+                .probeResult(new ProbeOperatorResult<>(true))
+                .build();
+
+        // when
+        gossips.updateLocalHealthMultiplier(probeResult);
+
+        // then
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(1);
+    }
+
+
+    @Test
+    void updateLocalHealthMultiplierNoAcksAndMissedNack() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(2)
+                .missedNack(true)
+                .probeResult(new ProbeOperatorResult<>(true))
+                .build();
+
+        // when
+        gossips.updateLocalHealthMultiplier(probeResult);
+
+        // then
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(2);
+    }
+
 }

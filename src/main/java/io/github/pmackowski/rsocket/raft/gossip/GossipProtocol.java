@@ -59,6 +59,7 @@ public class GossipProtocol {
         this.gossips = Gossips.builder()
                 .nodeId(node.getNodeId())
                 .maxGossips(maxGossips)
+                .maxLocalHealthMultiplier(8)
                 .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
                 .build();
         this.onPingDelay = GossipOnPingDelay.NO_DELAY;
@@ -92,6 +93,7 @@ public class GossipProtocol {
             })
             .doOnNext(probeResult -> {
                 gossips.probeCompleted(probeResult);
+                gossips.updateLocalHealthMultiplier(probeResult);
                 LOGGER.info("[Node {}][ping] Probing {} finished.", node.getNodeId(), probeResult.getDestinationNodeId());
             })
             .doOnComplete(() -> {

@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 class Gossips {
@@ -20,8 +19,7 @@ class Gossips {
     private int maxGossips;
     private volatile int incarnation;
     private float gossipDisseminationMultiplier;
-    private int maxLocalHealthMultiplier;
-    private AtomicInteger localHealthMultiplier = new AtomicInteger(0);
+    private LocalHealthMultiplier localHealthMultiplier;
     private Map<Integer, GossipDissemination> gossips = new ConcurrentHashMap<>();
 
     synchronized void probeCompleted(ProbeResult probeResult) {
@@ -63,27 +61,19 @@ class Gossips {
                 });
     }
 
-    // TODO just started
     void updateLocalHealthMultiplier(ProbeResult probeResult) {
         if (probeResult.hasAck()) {
-            localHealthMultiplier.decrementAndGet();
+            localHealthMultiplier.dec();
         } else {
-            localHealthMultiplier.incrementAndGet();
+            localHealthMultiplier.inc();
         }
         if (probeResult.hasMissedNack()) {
-            localHealthMultiplier.incrementAndGet();
+            localHealthMultiplier.inc();
         }
-    }
-    void refuteSuspectMessageAboutItself() {
-        localHealthMultiplier.incrementAndGet();
-    }
-
-    private void decrementLocalHealthMultiplier() {
-
     }
 
     int localHealthMultiplier() {
-        return localHealthMultiplier.intValue();
+        return localHealthMultiplier.value();
     }
 
     // visible for testing
@@ -159,7 +149,7 @@ class Gossips {
                     LOGGER.info("[Node {}] I am suspected!", this.nodeId);
                     this.incarnation++;
                     addGossipInternal(gossip(this.nodeId, this.incarnation, Gossip.Suspicion.ALIVE));
-                    refuteSuspectMessageAboutItself();
+                    localHealthMultiplier.inc();
                 } else {
                     LOGGER.info("[Node {}] Ignoring suspicion about itself due to stale incarnation number", this.nodeId);
                 }
@@ -281,7 +271,7 @@ class Gossips {
             gossips.maxGossips = maxGossips;
             gossips.incarnation = incarnation;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
-            gossips.maxLocalHealthMultiplier = maxLocalHealthMultiplier;
+            gossips.localHealthMultiplier = new LocalHealthMultiplier(maxLocalHealthMultiplier);
             gossipDisseminations.forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
                 LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
