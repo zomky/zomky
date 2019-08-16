@@ -29,6 +29,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -272,6 +273,73 @@ class GossipProtocolTest {
     }
 
     @Test
+    void onPingIndirectSendNackThenAck() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(PROXY_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(false)
+                .setNackTimeout(10)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, NUMBER_OF_PEERS, ping))
+                .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
+        // ACK will come later than NACK
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()).delayElements(Duration.ofMillis(100)));
+
+        gossipProtocol = new GossipProtocol(node, peers, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertAcks(
+            Ack.newBuilder().setNodeId(node.getNodeId()).setNack(true).addAllGossips(gossipList).build(),
+            Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(gossipList).build()
+        );
+    }
+
+    @Test
+    void onPingIndirectSendAckBeforeNack() { // nack is ignored
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(PROXY_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(false)
+                .setNackTimeout(100)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, NUMBER_OF_PEERS, ping))
+                .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
+        // ACK will come earlier than NACK
+        BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()).delayElements(Duration.ofMillis(10)));
+
+        gossipProtocol = new GossipProtocol(node, peers, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertAcks(
+                Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(gossipList).build()
+        );
+    }
+
+    @Test
     void onPingIndirectError() {
         // given
         BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
@@ -306,6 +374,42 @@ class GossipProtocolTest {
         );
     }
 
+    @Test
+    void onPingIndirectDelayError() {
+        // given
+        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
+        List<Gossip> gossipList = new ArrayList<>();
+        Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(SENDER_NODE_ID)
+                .setRequestorNodeId(PROXY_NODE_ID)
+                .setDestinationNodeId(RECIPIENT_NODE_ID)
+                .setDirect(false)
+                .addAllGossips(gossipList)
+                .build();
+        givenPing(ping);
+
+        BDDMockito.given(udpOutbound.sendObject(any(DatagramPacket.class))).willReturn(nettyOutbound);
+        BDDMockito.given(gossips.onPing(PROXY_NODE_ID, NUMBER_OF_PEERS, ping))
+                .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
+
+        BDDMockito.given(gossipTransport.ping(any(Ping.class)))
+                .willReturn(Mono.delay(Duration.ofMillis(100)).thenMany(Flux.error(new RuntimeException("peer unavailable"))));
+
+        gossipProtocol = new GossipProtocol(node, peers, gossips, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+
+        // then
+        StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
+                .expectSubscription()
+                .verifyComplete();
+
+        assertAck(Ack.newBuilder()
+                .setNodeId(node.getNodeId())
+                .setNack(true)
+                .addAllGossips(gossipList)
+                .build()
+        );
+    }
+
     private void givenPing(Ping ping) {
         DatagramPacket datagramPacket = new DatagramPacket(Unpooled.copiedBuffer(ping.toByteArray()), RECIPIENT, SENDER);
         BDDMockito.<Flux<?>>given(udpInbound.receiveObject()).willReturn(Flux.just(datagramPacket));
@@ -316,6 +420,16 @@ class GossipProtocolTest {
         verify(udpOutbound).sendObject(datagramPacketCapture.capture());
         DatagramPacket datagramPacket = datagramPacketCapture.getValue();
         assertThat(datagramPacket.content()).isEqualTo(Unpooled.copiedBuffer(ack.toByteArray()));
+    }
+
+    private void assertAcks(Ack ...acks) {
+        ArgumentCaptor<DatagramPacket> datagramPacketCapture = ArgumentCaptor.forClass(DatagramPacket.class);
+        verify(udpOutbound, times(acks.length)).sendObject(datagramPacketCapture.capture());
+        List<DatagramPacket> datagramPackets = datagramPacketCapture.getAllValues();
+        for (int i=0; i < acks.length; i++) {
+            DatagramPacket datagramPacket = datagramPackets.get(i);
+            assertThat(datagramPacket.content()).isEqualTo(Unpooled.copiedBuffer(acks[i].toByteArray()));
+        }
     }
 
     private void assertError(Class<?> exceptionType, String expectedErrorMessage) {

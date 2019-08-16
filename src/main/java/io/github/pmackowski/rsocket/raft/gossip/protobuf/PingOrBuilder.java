@@ -33,9 +33,9 @@ public interface PingOrBuilder extends
   long getCounter();
 
   /**
-   * <code>optional int32 indirect_ping_timeout = 6;</code>
+   * <code>optional int32 nack_timeout = 6;</code>
    */
-  int getIndirectPingTimeout();
+  int getNackTimeout();
 
   /**
    * <code>repeated .Gossip gossips = 7;</code>

@@ -20,7 +20,7 @@ public  final class Ping extends
     destinationNodeId_ = 0;
     direct_ = false;
     counter_ = 0L;
-    indirectPingTimeout_ = 0;
+    nackTimeout_ = 0;
     gossips_ = java.util.Collections.emptyList();
   }
 
@@ -76,7 +76,7 @@ public  final class Ping extends
           }
           case 48: {
 
-            indirectPingTimeout_ = input.readInt32();
+            nackTimeout_ = input.readInt32();
             break;
           }
           case 58: {
@@ -160,13 +160,13 @@ public  final class Ping extends
     return counter_;
   }
 
-  public static final int INDIRECT_PING_TIMEOUT_FIELD_NUMBER = 6;
-  private int indirectPingTimeout_;
+  public static final int NACK_TIMEOUT_FIELD_NUMBER = 6;
+  private int nackTimeout_;
   /**
-   * <code>optional int32 indirect_ping_timeout = 6;</code>
+   * <code>optional int32 nack_timeout = 6;</code>
    */
-  public int getIndirectPingTimeout() {
-    return indirectPingTimeout_;
+  public int getNackTimeout() {
+    return nackTimeout_;
   }
 
   public static final int GOSSIPS_FIELD_NUMBER = 7;
@@ -231,8 +231,8 @@ public  final class Ping extends
     if (counter_ != 0L) {
       output.writeInt64(5, counter_);
     }
-    if (indirectPingTimeout_ != 0) {
-      output.writeInt32(6, indirectPingTimeout_);
+    if (nackTimeout_ != 0) {
+      output.writeInt32(6, nackTimeout_);
     }
     for (int i = 0; i < gossips_.size(); i++) {
       output.writeMessage(7, gossips_.get(i));
@@ -264,9 +264,9 @@ public  final class Ping extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(5, counter_);
     }
-    if (indirectPingTimeout_ != 0) {
+    if (nackTimeout_ != 0) {
       size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(6, indirectPingTimeout_);
+        .computeInt32Size(6, nackTimeout_);
     }
     for (int i = 0; i < gossips_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
@@ -298,8 +298,8 @@ public  final class Ping extends
         == other.getDirect());
     result = result && (getCounter()
         == other.getCounter());
-    result = result && (getIndirectPingTimeout()
-        == other.getIndirectPingTimeout());
+    result = result && (getNackTimeout()
+        == other.getNackTimeout());
     result = result && getGossipsList()
         .equals(other.getGossipsList());
     return result;
@@ -324,8 +324,8 @@ public  final class Ping extends
     hash = (37 * hash) + COUNTER_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
         getCounter());
-    hash = (37 * hash) + INDIRECT_PING_TIMEOUT_FIELD_NUMBER;
-    hash = (53 * hash) + getIndirectPingTimeout();
+    hash = (37 * hash) + NACK_TIMEOUT_FIELD_NUMBER;
+    hash = (53 * hash) + getNackTimeout();
     if (getGossipsCount() > 0) {
       hash = (37 * hash) + GOSSIPS_FIELD_NUMBER;
       hash = (53 * hash) + getGossipsList().hashCode();
@@ -459,7 +459,7 @@ public  final class Ping extends
 
       counter_ = 0L;
 
-      indirectPingTimeout_ = 0;
+      nackTimeout_ = 0;
 
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
@@ -496,7 +496,7 @@ public  final class Ping extends
       result.destinationNodeId_ = destinationNodeId_;
       result.direct_ = direct_;
       result.counter_ = counter_;
-      result.indirectPingTimeout_ = indirectPingTimeout_;
+      result.nackTimeout_ = nackTimeout_;
       if (gossipsBuilder_ == null) {
         if (((bitField0_ & 0x00000040) == 0x00000040)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
@@ -563,8 +563,8 @@ public  final class Ping extends
       if (other.getCounter() != 0L) {
         setCounter(other.getCounter());
       }
-      if (other.getIndirectPingTimeout() != 0) {
-        setIndirectPingTimeout(other.getIndirectPingTimeout());
+      if (other.getNackTimeout() != 0) {
+        setNackTimeout(other.getNackTimeout());
       }
       if (gossipsBuilder_ == null) {
         if (!other.gossips_.isEmpty()) {
@@ -749,28 +749,28 @@ public  final class Ping extends
       return this;
     }
 
-    private int indirectPingTimeout_ ;
+    private int nackTimeout_ ;
     /**
-     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     * <code>optional int32 nack_timeout = 6;</code>
      */
-    public int getIndirectPingTimeout() {
-      return indirectPingTimeout_;
+    public int getNackTimeout() {
+      return nackTimeout_;
     }
     /**
-     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     * <code>optional int32 nack_timeout = 6;</code>
      */
-    public Builder setIndirectPingTimeout(int value) {
+    public Builder setNackTimeout(int value) {
       
-      indirectPingTimeout_ = value;
+      nackTimeout_ = value;
       onChanged();
       return this;
     }
     /**
-     * <code>optional int32 indirect_ping_timeout = 6;</code>
+     * <code>optional int32 nack_timeout = 6;</code>
      */
-    public Builder clearIndirectPingTimeout() {
+    public Builder clearNackTimeout() {
       
-      indirectPingTimeout_ = 0;
+      nackTimeout_ = 0;
       onChanged();
       return this;
     }

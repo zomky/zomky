@@ -603,11 +603,13 @@ class GossipProbeTest {
                 .setDirect(false)
                 .setCounter(0)
                 .build())
-        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build(), Ack.newBuilder().setNodeId(7003).build())
-                         .delayElements(Duration.ofMillis(70))
+        ).willReturn(Flux.merge(
+                Flux.just(Ack.newBuilder().setNodeId(7003).setNack(true).build()),
+                Flux.just(Ack.newBuilder().setNodeId(7003).build()).delayElements(Duration.ofMillis(120))
+                )
         );
 
-        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(200)))
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, Duration.ofMillis(10), Duration.ofMillis(300)))
                 .expectSubscription()
                 .assertNext(probeResult -> {
                     assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);

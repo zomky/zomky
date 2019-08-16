@@ -27,7 +27,7 @@ class PingUtils {
     }
 
     public static Ping direct(Ping ping, List<Gossip> gossips) {
-        return Ping.newBuilder(ping).setDirect(true).setIndirectPingTimeout(0).clearGossips().addAllGossips(gossips).build();
+        return Ping.newBuilder(ping).setDirect(true).setNackTimeout(0).clearGossips().addAllGossips(gossips).build();
     }
 
     public static Ping indirect(Ping ping) {

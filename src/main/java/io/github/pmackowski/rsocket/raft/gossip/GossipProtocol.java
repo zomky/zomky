@@ -150,26 +150,34 @@ public class GossipProtocol {
                         Ack ack = gossips.onPing(node.getNodeId(), peers.count(), ping);
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
-                        Mono<?> publisher;
+                        Flux<?> publisher;
                         if (ping.getDirect()) {
                             publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter())
                                     .thenReturn(ackDatagram).cast(Object.class)
-                                    .onErrorReturn(Mono.error(new GossipException("onPing direct ping error")));
+                                    .onErrorReturn(Mono.error(new GossipException("onPing direct ping error")))
+                                    .flux();
                         } else {
                             Ping pingOnBehalf = PingUtils.direct(ping, ack.getGossipsList());
-                            publisher = gossipTransport.ping(pingOnBehalf)
-                                    .next()
-                                    .doOnNext(indirectAck -> {
-                                        LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
-                                        gossips.addAck(indirectAck);
+                            Mono<Ack> nackMono = Mono.just(nack(ack)).delayElement(Duration.ofMillis(ping.getNackTimeout()));
+                            DatagramPacket nackDatagram = AckUtils.toDatagram(nack(ack), datagramPacket.sender());
+
+                            publisher = Flux.merge(gossipTransport.ping(pingOnBehalf), nackMono)
+                                    .takeUntil(indirectAckOrNack -> !indirectAckOrNack.getNack())
+                                    .doOnNext(indirectAckOrNack -> {
+                                        if (indirectAckOrNack.getNack()) {
+                                            LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} suspecteted NACK.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                        } else {
+                                            LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                            gossips.addAck(indirectAckOrNack);
+                                        }
                                     })
-                                    //.timeout(Duration.ofMillis(ping.getIndirectPingTimeout()))
                                     .doOnError(throwable -> {
                                         LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
                                     })
-                                    .thenReturn(ackDatagram)
+                                    .map(indirectAckOrNack -> indirectAckOrNack.getNack() ?  nackDatagram : ackDatagram)
                                     // if proxy is available and cannot reach destination then nack is returned
-                                    .onErrorReturn(AckUtils.toDatagram(nack(ack), datagramPacket.sender()))
+                                    .onErrorReturn(nackDatagram)
+                                    .distinct()
                                     .cast(Object.class)
                                     .onErrorReturn(Mono.error(new GossipException("onPing indirect ping error")));
                         }
