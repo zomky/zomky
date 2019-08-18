@@ -72,7 +72,7 @@ class GossipProtocolTest {
                 .willReturn(Duration.ofMillis(1000))
                 .willReturn(Duration.ofMillis(2000));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.withVirtualTime(() -> gossipProtocol.probeNodes().log())
@@ -101,7 +101,7 @@ class GossipProtocolTest {
 
         BDDMockito.given(randomGossipProbe.probeInterval()).willReturn(Duration.ofMillis(1000));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.withVirtualTime(() -> gossipProtocol.probeNodes().log())
@@ -120,7 +120,7 @@ class GossipProtocolTest {
         DatagramPacket datagramPacket = new DatagramPacket(Unpooled.copiedBuffer("broken".getBytes()), RECIPIENT, SENDER);
         BDDMockito.<Flux<?>>given(udpInbound.receiveObject()).willReturn(Flux.just(datagramPacket));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -133,7 +133,6 @@ class GossipProtocolTest {
     @Test
     void onPingDirect() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -147,7 +146,7 @@ class GossipProtocolTest {
         BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, NUMBER_OF_PEERS, ping))
                   .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -155,7 +154,7 @@ class GossipProtocolTest {
                     .verifyComplete();
 
         assertAck(Ack.newBuilder()
-                .setNodeId(node.getNodeId())
+                .setNodeId(RECIPIENT_NODE_ID)
                 .addAllGossips(gossipList)
                 .build()
         );
@@ -164,8 +163,6 @@ class GossipProtocolTest {
     @Test
     void onPingError() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
-
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
                 .setRequestorNodeId(SENDER_NODE_ID)
@@ -175,7 +172,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
         BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, NUMBER_OF_PEERS, ping)).willReturn(null);
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -188,8 +185,6 @@ class GossipProtocolTest {
     @Test
     void onPingErrorNodeIsNotADestination() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(8888);
-
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
                 .setRequestorNodeId(SENDER_NODE_ID)
@@ -199,7 +194,7 @@ class GossipProtocolTest {
                 .build();
         givenPing(ping);
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(8888, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -212,7 +207,6 @@ class GossipProtocolTest {
     @Test
     void onPingDirectDelayError() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -225,7 +219,7 @@ class GossipProtocolTest {
         BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, NUMBER_OF_PEERS, ping))
                 .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.error(new RuntimeException()).cast(Long.class));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.error(new RuntimeException()).cast(Long.class));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -238,7 +232,6 @@ class GossipProtocolTest {
     @Test
     void onPingDirectDelay() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(RECIPIENT_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -252,7 +245,7 @@ class GossipProtocolTest {
         BDDMockito.given(gossips.onPing(RECIPIENT_NODE_ID, NUMBER_OF_PEERS, ping))
                 .willReturn(Ack.newBuilder().setNodeId(RECIPIENT_NODE_ID).addAllGossips(gossipList).build());
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ofMillis(100)));
+        gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ofMillis(100)));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -261,7 +254,7 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAck(Ack.newBuilder()
-                .setNodeId(node.getNodeId())
+                .setNodeId(RECIPIENT_NODE_ID)
                 .addAllGossips(gossipList)
                 .build()
         );
@@ -270,7 +263,6 @@ class GossipProtocolTest {
     @Test
     void onPingIndirect() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -286,7 +278,7 @@ class GossipProtocolTest {
                 .willReturn(Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build());
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(PROXY_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -294,7 +286,7 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAck(Ack.newBuilder()
-                .setNodeId(node.getNodeId())
+                .setNodeId(PROXY_NODE_ID)
                 .addAllGossips(gossipList)
                 .build()
         );
@@ -303,7 +295,6 @@ class GossipProtocolTest {
     @Test
     void onPingIndirectSendNackThenAck() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -321,7 +312,7 @@ class GossipProtocolTest {
         // ACK will come later than NACK
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()).delayElements(Duration.ofMillis(100)));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(PROXY_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -329,15 +320,14 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAcks(
-            Ack.newBuilder().setNodeId(node.getNodeId()).setNack(true).addAllGossips(gossipList).build(),
-            Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(gossipList).build()
+            Ack.newBuilder().setNodeId(PROXY_NODE_ID).setNack(true).addAllGossips(gossipList).build(),
+            Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build()
         );
     }
 
     @Test
     void onPingIndirectSendAckBeforeNack() { // nack is ignored
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -355,7 +345,7 @@ class GossipProtocolTest {
         // ACK will come earlier than NACK
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.just(Ack.newBuilder().build()).delayElements(Duration.ofMillis(10)));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(PROXY_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -363,14 +353,13 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAcks(
-                Ack.newBuilder().setNodeId(node.getNodeId()).addAllGossips(gossipList).build()
+                Ack.newBuilder().setNodeId(PROXY_NODE_ID).addAllGossips(gossipList).build()
         );
     }
 
     @Test
     void onPingIndirectError() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -387,7 +376,7 @@ class GossipProtocolTest {
 
         BDDMockito.given(gossipTransport.ping(any(Ping.class))).willReturn(Flux.error(new RuntimeException("peer unavailable")));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(PROXY_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -395,7 +384,7 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAck(Ack.newBuilder()
-                .setNodeId(node.getNodeId())
+                .setNodeId(PROXY_NODE_ID)
                 .setNack(true)
                 .addAllGossips(gossipList)
                 .build()
@@ -405,7 +394,6 @@ class GossipProtocolTest {
     @Test
     void onPingIndirectDelayError() {
         // given
-        BDDMockito.given(node.getNodeId()).willReturn(PROXY_NODE_ID);
         List<Gossip> gossipList = new ArrayList<>();
         Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(SENDER_NODE_ID)
@@ -423,7 +411,7 @@ class GossipProtocolTest {
         BDDMockito.given(gossipTransport.ping(any(Ping.class)))
                 .willReturn(Mono.delay(Duration.ofMillis(100)).thenMany(Flux.error(new RuntimeException("peer unavailable"))));
 
-        gossipProtocol = new GossipProtocol(node, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
+        gossipProtocol = new GossipProtocol(PROXY_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
         // then
         StepVerifier.create(gossipProtocol.onPing(udpInbound, udpOutbound))
@@ -431,7 +419,7 @@ class GossipProtocolTest {
                 .verifyComplete();
 
         assertAck(Ack.newBuilder()
-                .setNodeId(node.getNodeId())
+                .setNodeId(PROXY_NODE_ID)
                 .setNack(true)
                 .addAllGossips(gossipList)
                 .build()

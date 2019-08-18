@@ -103,7 +103,7 @@ class Gossips {
         });
     }
 
-    List<Gossip> allGossips() {
+    List<Gossip> allGossips() { // TODO inc dissemination ?
         return gossips.values().stream().map(GossipDissemination::getGossip).collect(Collectors.toList());
     }
 
@@ -269,13 +269,13 @@ class Gossips {
             return this;
         }
 
-        public Gossips.Builder maxGossips(int maxGossips) {
-            this.maxGossips = maxGossips;
+        public Gossips.Builder incarnation(int incarnation) {
+            this.incarnation = incarnation;
             return this;
         }
 
-        public Gossips.Builder incarnation(int incarnation) {
-            this.incarnation = incarnation;
+        public Gossips.Builder maxGossips(int maxGossips) {
+            this.maxGossips = maxGossips;
             return this;
         }
 

@@ -51,7 +51,7 @@ class DefaultNode implements InnerNode {
 
         this.receiver = new Receiver(this);
         this.gossipProtocol =  GossipProtocol.builder()
-                .node(this)
+                .nodeId(nodeId)
                 .baseProbeTimeout(baseProbeTimeout)
                 .baseProbeInterval(Duration.ofMillis(2000))
                 .subgroupSize(2)
@@ -141,28 +141,6 @@ class DefaultNode implements InnerNode {
     @Override
     public void senderUnavailable(Sender sender) {
         senderUnavailableListeners.forEach(senderUnavailableListener -> senderUnavailableListener.handle(sender));
-    }
-
-    @Override
-    public void onNodeJoined(NodeJoinedListener nodeJoinedListener) {
-        nodeJoinedListeners.add(nodeJoinedListener);
-    }
-
-    @Override
-    public void onNodeLeftGracefully(NodeLeftGracefullyListener nodeLeftGracefullyListener) {
-        nodeLeftGracefullyListeners.add(nodeLeftGracefullyListener);
-    }
-
-    @Override
-    public void nodeJoined(int nodeId) {
-        // TODO use one of reactor processors instead
-        nodeJoinedListeners.forEach(nodeJoinedListener -> nodeJoinedListener.handle(nodeId));
-    }
-
-    @Override
-    public void nodeLeftGracefully(int nodeId) {
-        // TODO use one of reactor processors instead
-        nodeLeftGracefullyListeners.forEach(nodeLeftGracefullyListener -> nodeLeftGracefullyListener.handle(nodeId));
     }
 
     @Override

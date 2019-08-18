@@ -29,6 +29,10 @@ public class RaftProtocol {
     private ScheduledExecutorService stateMachineExecutor;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
 
+    public RaftProtocol(int nodeId) {
+        // TODO after InnerNode removal this constructor should be used
+    }
+
     public RaftProtocol(InnerNode node) {
         this.node = node;
         // TODO initialize from storage

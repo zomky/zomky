@@ -1,6 +1,5 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
-import io.github.pmackowski.rsocket.raft.InnerNode;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.*;
 import io.github.pmackowski.rsocket.raft.gossip.transport.GossipTcpTransport;
 import io.netty.channel.socket.DatagramPacket;
@@ -24,7 +23,7 @@ public class GossipProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipProtocol.class);
 
-    private InnerNode node;
+    private int nodeId;
     private Cluster cluster;
     private Peers peers;
     private Gossips gossips;
@@ -47,7 +46,7 @@ public class GossipProtocol {
                         cluster.addMember(suspicion.getNodeId());
                     }
                 }, throwable -> {
-                    LOGGER.info("[Node {}] unrecoverable error", node.getNodeId());
+                    LOGGER.info("[Node {}] unrecoverable error", nodeId);
                 });
         probeNodesDisposable = probeNodes().subscribe();
     }
@@ -65,7 +64,7 @@ public class GossipProtocol {
                 return Mono.delay(randomGossipProbe.probeInterval());
             }))
             .repeat()
-            .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", node.getNodeId(), throwable));
+            .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", nodeId, throwable));
     }
 
     public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
@@ -80,7 +79,7 @@ public class GossipProtocol {
             .retryWhen(Retry
                     .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
                     .fixedBackoff(Duration.ofSeconds(1))
-                    .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", node.getNodeId(), initJoinRequest.getPort()))
+                    .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", nodeId, initJoinRequest.getPort()))
             )
             .thenReturn(InitJoinResponse.newBuilder()
                     .setStatus(true)
@@ -118,7 +117,7 @@ public class GossipProtocol {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
                         checkPing(ping);
-                        Ack ack = gossips.onPing(node.getNodeId(), peers.count(), ping);
+                        Ack ack = gossips.onPing(nodeId, peers.count(), ping);
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
                         Flux<?> publisher;
@@ -167,7 +166,7 @@ public class GossipProtocol {
                                 .then()
                         );
                     } catch (Exception e) {
-                        LOGGER.warn("[Node {}][onPing] error while processing datagram!", node.getNodeId(), e);
+                        LOGGER.warn("[Node {}][onPing] error while processing datagram!", nodeId, e);
                         return Mono.empty();
                     }
                 });
@@ -182,8 +181,8 @@ public class GossipProtocol {
     }
 
     private void checkDirectPing(Ping ping) {
-        if (ping.getDestinationNodeId() != node.getNodeId()) {
-            throw new GossipException(String.format("This node is not a destination node! [%s,%s]", ping.getDestinationNodeId(), node.getNodeId()));
+        if (ping.getDestinationNodeId() != nodeId) {
+            throw new GossipException(String.format("This node is not a destination node! [%s,%s]", ping.getDestinationNodeId(), nodeId));
         }
     }
 
@@ -191,8 +190,8 @@ public class GossipProtocol {
         if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
             throw new GossipException(String.format("Initiator and requestor node must not be the same! [%s,%s]", ping.getInitiatorNodeId(), ping.getRequestorNodeId()));
         }
-        if (ping.getRequestorNodeId() != node.getNodeId()) {
-            throw new GossipException(String.format("This node is not a proxy node! [%s,%s]", ping.getRequestorNodeId(), node.getNodeId()));
+        if (ping.getRequestorNodeId() != nodeId) {
+            throw new GossipException(String.format("This node is not a proxy node! [%s,%s]", ping.getRequestorNodeId(), nodeId));
         }
     }
 
@@ -216,7 +215,7 @@ public class GossipProtocol {
 
     public static class Builder {
 
-        private InnerNode node;
+        private int nodeId;
         private Duration baseProbeInterval;
         private Duration baseProbeTimeout;
         private int subgroupSize;
@@ -229,8 +228,8 @@ public class GossipProtocol {
         private Builder() {
         }
 
-        public GossipProtocol.Builder node(InnerNode node) {
-            this.node = node;
+        public GossipProtocol.Builder nodeId(int nodeId) {
+            this.nodeId = nodeId;
             return this;
         }
 
@@ -276,12 +275,12 @@ public class GossipProtocol {
 
         public GossipProtocol build() {
             GossipProtocol gossipProtocol = new GossipProtocol();
-            gossipProtocol.node = node;
-            gossipProtocol.cluster = new Cluster(node.getNodeId());
+            gossipProtocol.nodeId = nodeId;
+            gossipProtocol.cluster = new Cluster(nodeId);
             gossipProtocol.gossipTransport = new GossipTransport();
-            gossipProtocol.peers = new Peers(node.getNodeId());
+            gossipProtocol.peers = new Peers(nodeId);
             gossipProtocol.gossips = Gossips.builder()
-                    .nodeId(node.getNodeId())
+                    .nodeId(nodeId)
                     .addAliveGossipAboutItself()
                     .maxGossips(maxGossips)
                     .maxLocalHealthMultiplier(maxLocalHealthMultiplier)
@@ -290,10 +289,10 @@ public class GossipProtocol {
             gossipProtocol.onPingDelay = GossipOnPingDelay.NO_DELAY;
 
             gossipProtocol.randomGossipProbe = RandomGossipProbe.builder()
-                    .nodeId(node.getNodeId())
+                    .nodeId(nodeId)
                     .peers(gossipProtocol.peers)
                     .gossips(gossipProtocol.gossips)
-                    .gossipProbe(new GossipProbe(node.getNodeId(), gossipProtocol.gossipTransport))
+                    .gossipProbe(new GossipProbe(nodeId, gossipProtocol.gossipTransport))
                     .baseProbeInterval(baseProbeInterval)
                     .baseProbeTimeout(baseProbeTimeout)
                     .subgroupSize(subgroupSize)
@@ -307,8 +306,8 @@ public class GossipProtocol {
     }
 
     // for testing
-    GossipProtocol(InnerNode node, Peers peers, Gossips gossips, RandomGossipProbe randomGossipProbe, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
-        this.node = node;
+    GossipProtocol(int nodeId, Peers peers, Gossips gossips, RandomGossipProbe randomGossipProbe, GossipTransport gossipTransport, GossipOnPingDelay onPingDelay) {
+        this.nodeId = nodeId;
         this.peers = peers;
         this.gossips = gossips;
         this.randomGossipProbe = randomGossipProbe;
