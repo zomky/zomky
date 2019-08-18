@@ -7,6 +7,7 @@ import io.github.pmackowski.rsocket.raft.gossip.GossipProtocol;
 import io.github.pmackowski.rsocket.raft.gossip.listener.NodeJoinedListener;
 import io.github.pmackowski.rsocket.raft.gossip.listener.NodeLeftGracefullyListener;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest;
+import io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinResponse;
 import io.github.pmackowski.rsocket.raft.listener.SenderAvailableListener;
 import io.github.pmackowski.rsocket.raft.listener.SenderUnavailableListener;
 import io.github.pmackowski.rsocket.raft.raft.RaftProtocol;
@@ -42,7 +43,7 @@ class DefaultNode implements InnerNode {
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
 
-    DefaultNode(NodeStorage nodeStorage, String nodeName, int nodeId, Cluster cluster) {
+    DefaultNode(NodeStorage nodeStorage, String nodeName, int nodeId, Cluster cluster, Duration baseProbeTimeout) {
         this.nodeStorage = nodeStorage;
         this.nodeName = nodeName;
         this.nodeId = nodeId;
@@ -51,11 +52,11 @@ class DefaultNode implements InnerNode {
         this.receiver = new Receiver(this);
         this.gossipProtocol =  GossipProtocol.builder()
                 .node(this)
-                .baseProbeTimeout(Duration.ofMillis(500))
-                .baseProbeInterval(Duration.ofMillis(1000))
+                .baseProbeTimeout(baseProbeTimeout)
+                .baseProbeInterval(Duration.ofMillis(2000))
                 .subgroupSize(2)
                 .maxGossips(10)
-                .lambdaGossipSharedMultiplier(1.5f)
+                .lambdaGossipSharedMultiplier(1.2f)
                 .indirectDelayRatio(0.3f)
                 .nackRatio(0.6f)
                 .maxLocalHealthMultiplier(8)
@@ -114,13 +115,12 @@ class DefaultNode implements InnerNode {
     }
 
     @Override
-    public Mono<Void> join(Integer joinPort, boolean retry) {
+    public Mono<InitJoinResponse> join(Integer joinPort, boolean retry) {
         return gossipProtocol.join(InitJoinRequest.newBuilder()
                 .setRequesterPort(nodeId)
                 .setPort(joinPort)
                 .setRetry(retry)
-                .build()
-        ).then();
+                .build());
     }
 
     @Override

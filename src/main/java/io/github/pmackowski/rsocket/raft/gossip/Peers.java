@@ -1,33 +1,42 @@
 package io.github.pmackowski.rsocket.raft.gossip;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
 class Peers {
 
-    private List<Integer> peers = new ArrayList<>();
+    private static final Logger LOGGER = LoggerFactory.getLogger(Peers.class);
+
+    private int nodeId;
+    private Set<Integer> peers = new HashSet<>();
     private BlockingQueue<Integer> shuffledPeers = new LinkedBlockingDeque<>();
 
-    public Peers() {}
-
-    public Peers(List<Integer> peers) {
+    public Peers(Set<Integer> peers) {
         this.peers = peers;
     }
 
-    public void add(int nodeId) {
-        peers.add(nodeId);
-        List<Integer> n = new ArrayList<>();
-        int r = (int) Math.ceil(Math.random() * shuffledPeers.size());
-        shuffledPeers.drainTo(n, r);
-        n.add(nodeId);
-        shuffledPeers.drainTo(n);
+    Peers(int nodeId) {
+        this.nodeId = nodeId;
     }
 
-    public void remove(int nodeId) {
+    public synchronized void add(int peerId) {
+        boolean added = peers.add(peerId);
+        if (added) {
+            LOGGER.info("[Node {}] Adding new peer {}", nodeId, peerId);
+            List<Integer> n = new ArrayList<>();
+            int r = (int) Math.ceil(Math.random() * shuffledPeers.size());
+            shuffledPeers.drainTo(n, r);
+            n.add(nodeId);
+            shuffledPeers.drainTo(n);
+        }
+    }
+
+    public synchronized void remove(int nodeId) {
         peers.remove(nodeId);
     }
 
@@ -36,7 +45,7 @@ class Peers {
             return PeerProbe.NO_PEER_PROBE;
         }
         final Integer peerId = nextRandomPeerId();
-        return new PeerProbe(nextRandomPeerId(), selectCompanions(peerId, subgroupSize));
+        return new PeerProbe(peerId, selectCompanions(peerId, subgroupSize));
     }
 
     public List<Integer> selectCompanions(int nodeId, int numberOfCompanions) {

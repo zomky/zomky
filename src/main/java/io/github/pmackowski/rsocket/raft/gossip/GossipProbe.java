@@ -79,7 +79,9 @@ class GossipProbe {
                 .ping(ping)
                 .next()
                 .doOnNext(ack -> log(ping, ack))
-                .doOnError(throwable -> logError(ping, throwable));
+                .doOnError(throwable -> {
+                    LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                });
     }
 
     private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, Duration nackTimeout, List<Gossip> gossips) {
@@ -98,7 +100,7 @@ class GossipProbe {
                             .doOnNext(ack -> log(ping, ack))
                             .onErrorResume(throwable -> {
                                 // cannot connect to proxy
-                                logError(ping, throwable);
+                                LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
                                 return Mono.empty();
                             });
                 });
@@ -113,14 +115,6 @@ class GossipProbe {
             } else {
                 LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
             }
-        }
-    }
-
-    private void logError(Ping ping, Throwable throwable) {
-        if (ping.getDirect()) {
-            LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
-        } else {
-            LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
         }
     }
 

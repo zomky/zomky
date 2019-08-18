@@ -5,11 +5,16 @@ import io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip;
 import io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.ReplayProcessor;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Suspicion.UNKNOWN;
 
 class Gossips {
 
@@ -21,6 +26,8 @@ class Gossips {
     private float gossipDisseminationMultiplier;
     private LocalHealthMultiplier localHealthMultiplier;
     private Map<Integer, GossipDissemination> gossips = new ConcurrentHashMap<>();
+    private ReplayProcessor<Gossip> processor;
+    private FluxSink<Gossip> sink;
 
     synchronized void probeCompleted(ProbeResult probeResult) {
         makeGossipsLessHot(probeResult.getHotGossips());
@@ -53,12 +60,20 @@ class Gossips {
         ack.getGossipsList().forEach(this::addGossip);
     }
 
+    synchronized void addGossips(List<Gossip> gossips) {
+        gossips.forEach(this::addGossipInternal);
+    }
+
     synchronized void markDead(Duration suspicionTimeout) {
         gossips.values().stream()
                 .filter(gossipDissemination -> gossipDissemination.getGossip().getSuspicion() == Gossip.Suspicion.SUSPECT)
                 .forEach(gossipDissemination -> {
 
                 });
+    }
+
+    Flux<Gossip> peerChanges() {
+        return processor.filter(gossip -> gossip.getNodeId() != nodeId);
     }
 
     void updateLocalHealthMultiplier(ProbeResult probeResult) {
@@ -84,8 +99,12 @@ class Gossips {
                 .map(GossipDissemination::getDisseminatedCount)
                 .orElse(0);
 
-            gossips.put(gossip.getNodeId(), new GossipDissemination(gossip, disseminatedCount + 1));
+            addGossipInternal(gossip, disseminatedCount + 1);
         });
+    }
+
+    List<Gossip> allGossips() {
+        return gossips.values().stream().map(GossipDissemination::getGossip).collect(Collectors.toList());
     }
 
     List<Gossip> chooseHotGossips(int noPeers) {
@@ -188,8 +207,21 @@ class Gossips {
     }
 
     private void addGossipInternal(Gossip gossip) {
-        LOGGER.info("[Node {}] New gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
-        gossips.put(gossip.getNodeId(), new GossipDissemination(gossip,0));
+        addGossipInternal(gossip, 0);
+    }
+
+    private void addGossipInternal(Gossip gossip, int disseminatedCount) {
+        LOGGER.info("[Node {}] Gossip [{} is {}, inc: {}, disseminated: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation(), disseminatedCount);
+        Gossip.Suspicion currentSuspicion = Optional.ofNullable(gossips.get(gossip.getNodeId()))
+                .map(GossipDissemination::getGossip)
+                .map(Gossip::getSuspicion)
+                .orElse(UNKNOWN);
+        Gossip.Suspicion newSuspicion = gossip.getSuspicion();
+        if (currentSuspicion != newSuspicion && gossip.getNodeId() != this.nodeId) {
+            sink.next(gossip);
+        }
+
+        gossips.put(gossip.getNodeId(), new GossipDissemination(gossip,disseminatedCount));
     }
 
     private static class GossipDissemination {
@@ -227,6 +259,7 @@ class Gossips {
         private float gossipDisseminationMultiplier = 1f;
         private int maxLocalHealthMultiplier = 8;
         private List<GossipDissemination> gossipDisseminations = new ArrayList<>();
+        private boolean addAliveGossipAboutItself;
 
         private Builder() {
         }
@@ -256,6 +289,11 @@ class Gossips {
             return this;
         }
 
+        public Gossips.Builder addAliveGossipAboutItself() {
+            this.addAliveGossipAboutItself = true;
+            return this;
+        }
+
         public Gossips.Builder addGossip(Gossip gossip) {
             return addGossip(gossip, 0);
         }
@@ -272,11 +310,16 @@ class Gossips {
             gossips.incarnation = incarnation;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
             gossips.localHealthMultiplier = new LocalHealthMultiplier(maxLocalHealthMultiplier);
+            if (addAliveGossipAboutItself) {
+                addGossip(Gossip.newBuilder().setIncarnation(0).setNodeId(nodeId).setSuspicion(Gossip.Suspicion.ALIVE).build());
+            }
             gossipDisseminations.forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
                 LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
                 gossips.gossips.put(gossip.getNodeId(), gossipDissemination);
             });
+            gossips.processor = ReplayProcessor.createTimeout(Duration.ofHours(1));
+            gossips.sink = gossips.processor.sink(FluxSink.OverflowStrategy.DROP);
             return gossips;
         }
     }

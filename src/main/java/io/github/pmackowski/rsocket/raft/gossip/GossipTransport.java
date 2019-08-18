@@ -27,7 +27,6 @@ class GossipTransport {
                                     .inbound()
                                     .receiveObject()
                                     .cast(DatagramPacket.class)
-//                                    .next()
                                     .map(this::toAck)
                             )
                 );
@@ -39,7 +38,7 @@ class GossipTransport {
                 .runOn(LoopResources.create("gossip-" + ping.getRequestorNodeId()))
                 .connect()
                 .doOnCancel(() -> {
-                    LOGGER.info("[Node {}] Probe to {} has been cancelled", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+                    LOGGER.debug("[Node {}] Probe to {} has been cancelled", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
                 })
                 .doOnError(throwable -> {
                     LOGGER.warn("Cannot connect!");

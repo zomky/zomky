@@ -4,9 +4,9 @@ import io.github.pmackowski.rsocket.raft.gossip.Cluster;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 public class NodeFactory {
 
@@ -46,6 +46,7 @@ public class NodeFactory {
         private Integer joinPort;
         private boolean retryJoin;
         private Cluster cluster;
+        private Duration baseProbeTimeout;
 
         public ServerNodeFactory storage(NodeStorage nodeStorage) {
             this.nodeStorage = nodeStorage;
@@ -78,6 +79,11 @@ public class NodeFactory {
             return this;
         }
 
+        public ServerNodeFactory baseProbeTimeout(Duration baseProbeTimeout) {
+            this.baseProbeTimeout = baseProbeTimeout;
+            return this;
+        }
+
         // only for testing purposes // TODO should be removed
         public ServerNodeFactory cluster(Cluster cluster) {
             this.cluster = cluster;
@@ -89,7 +95,7 @@ public class NodeFactory {
                 if (cluster == null) {
                     this.cluster = new Cluster(port);
                 }
-                DefaultNode node = new DefaultNode(nodeStorage, nodeName, port, cluster);
+                DefaultNode node = new DefaultNode(nodeStorage, nodeName, port, cluster, baseProbeTimeout);
                 node.startReceiver();
 
                 return Mono.justOrEmpty(joinPort)

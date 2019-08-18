@@ -18,6 +18,7 @@ public  final class JoinRequest extends
     requesterPort_ = 0;
     host_ = "";
     port_ = 0;
+    gossips_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -61,6 +62,15 @@ public  final class JoinRequest extends
             port_ = input.readInt32();
             break;
           }
+          case 34: {
+            if (!((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
+              gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>();
+              mutable_bitField0_ |= 0x00000008;
+            }
+            gossips_.add(
+                input.readMessage(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.parser(), extensionRegistry));
+            break;
+          }
         }
       }
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -69,6 +79,9 @@ public  final class JoinRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      if (((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
+        gossips_ = java.util.Collections.unmodifiableList(gossips_);
+      }
       makeExtensionsImmutable();
     }
   }
@@ -84,6 +97,7 @@ public  final class JoinRequest extends
             io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest.class, io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest.Builder.class);
   }
 
+  private int bitField0_;
   public static final int REQUESTER_PORT_FIELD_NUMBER = 1;
   private int requesterPort_;
   /**
@@ -136,6 +150,41 @@ public  final class JoinRequest extends
     return port_;
   }
 
+  public static final int GOSSIPS_FIELD_NUMBER = 4;
+  private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_;
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
+    return gossips_;
+  }
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
+      getGossipsOrBuilderList() {
+    return gossips_;
+  }
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  public int getGossipsCount() {
+    return gossips_.size();
+  }
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
+    return gossips_.get(index);
+  }
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
+      int index) {
+    return gossips_.get(index);
+  }
+
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
@@ -157,6 +206,9 @@ public  final class JoinRequest extends
     if (port_ != 0) {
       output.writeInt32(3, port_);
     }
+    for (int i = 0; i < gossips_.size(); i++) {
+      output.writeMessage(4, gossips_.get(i));
+    }
   }
 
   public int getSerializedSize() {
@@ -174,6 +226,10 @@ public  final class JoinRequest extends
     if (port_ != 0) {
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(3, port_);
+    }
+    for (int i = 0; i < gossips_.size(); i++) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(4, gossips_.get(i));
     }
     memoizedSize = size;
     return size;
@@ -197,6 +253,8 @@ public  final class JoinRequest extends
         .equals(other.getHost());
     result = result && (getPort()
         == other.getPort());
+    result = result && getGossipsList()
+        .equals(other.getGossipsList());
     return result;
   }
 
@@ -213,6 +271,10 @@ public  final class JoinRequest extends
     hash = (53 * hash) + getHost().hashCode();
     hash = (37 * hash) + PORT_FIELD_NUMBER;
     hash = (53 * hash) + getPort();
+    if (getGossipsCount() > 0) {
+      hash = (37 * hash) + GOSSIPS_FIELD_NUMBER;
+      hash = (53 * hash) + getGossipsList().hashCode();
+    }
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -327,6 +389,7 @@ public  final class JoinRequest extends
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
+        getGossipsFieldBuilder();
       }
     }
     public Builder clear() {
@@ -337,6 +400,12 @@ public  final class JoinRequest extends
 
       port_ = 0;
 
+      if (gossipsBuilder_ == null) {
+        gossips_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000008);
+      } else {
+        gossipsBuilder_.clear();
+      }
       return this;
     }
 
@@ -359,9 +428,21 @@ public  final class JoinRequest extends
 
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest result = new io.github.pmackowski.rsocket.raft.gossip.protobuf.JoinRequest(this);
+      int from_bitField0_ = bitField0_;
+      int to_bitField0_ = 0;
       result.requesterPort_ = requesterPort_;
       result.host_ = host_;
       result.port_ = port_;
+      if (gossipsBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) == 0x00000008)) {
+          gossips_ = java.util.Collections.unmodifiableList(gossips_);
+          bitField0_ = (bitField0_ & ~0x00000008);
+        }
+        result.gossips_ = gossips_;
+      } else {
+        result.gossips_ = gossipsBuilder_.build();
+      }
+      result.bitField0_ = to_bitField0_;
       onBuilt();
       return result;
     }
@@ -413,6 +494,32 @@ public  final class JoinRequest extends
       if (other.getPort() != 0) {
         setPort(other.getPort());
       }
+      if (gossipsBuilder_ == null) {
+        if (!other.gossips_.isEmpty()) {
+          if (gossips_.isEmpty()) {
+            gossips_ = other.gossips_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+          } else {
+            ensureGossipsIsMutable();
+            gossips_.addAll(other.gossips_);
+          }
+          onChanged();
+        }
+      } else {
+        if (!other.gossips_.isEmpty()) {
+          if (gossipsBuilder_.isEmpty()) {
+            gossipsBuilder_.dispose();
+            gossipsBuilder_ = null;
+            gossips_ = other.gossips_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+            gossipsBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getGossipsFieldBuilder() : null;
+          } else {
+            gossipsBuilder_.addAllMessages(other.gossips_);
+          }
+        }
+      }
       onChanged();
       return this;
     }
@@ -438,6 +545,7 @@ public  final class JoinRequest extends
       }
       return this;
     }
+    private int bitField0_;
 
     private int requesterPort_ ;
     /**
@@ -558,6 +666,246 @@ public  final class JoinRequest extends
       port_ = 0;
       onChanged();
       return this;
+    }
+
+    private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_ =
+      java.util.Collections.emptyList();
+    private void ensureGossipsIsMutable() {
+      if (!((bitField0_ & 0x00000008) == 0x00000008)) {
+        gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>(gossips_);
+        bitField0_ |= 0x00000008;
+       }
+    }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> gossipsBuilder_;
+
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> getGossipsList() {
+      if (gossipsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(gossips_);
+      } else {
+        return gossipsBuilder_.getMessageList();
+      }
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public int getGossipsCount() {
+      if (gossipsBuilder_ == null) {
+        return gossips_.size();
+      } else {
+        return gossipsBuilder_.getCount();
+      }
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index) {
+      if (gossipsBuilder_ == null) {
+        return gossips_.get(index);
+      } else {
+        return gossipsBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder setGossips(
+        int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
+      if (gossipsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureGossipsIsMutable();
+        gossips_.set(index, value);
+        onChanged();
+      } else {
+        gossipsBuilder_.setMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder setGossips(
+        int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
+      if (gossipsBuilder_ == null) {
+        ensureGossipsIsMutable();
+        gossips_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        gossipsBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder addGossips(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
+      if (gossipsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureGossipsIsMutable();
+        gossips_.add(value);
+        onChanged();
+      } else {
+        gossipsBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder addGossips(
+        int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip value) {
+      if (gossipsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureGossipsIsMutable();
+        gossips_.add(index, value);
+        onChanged();
+      } else {
+        gossipsBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder addGossips(
+        io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
+      if (gossipsBuilder_ == null) {
+        ensureGossipsIsMutable();
+        gossips_.add(builderForValue.build());
+        onChanged();
+      } else {
+        gossipsBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder addGossips(
+        int index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder builderForValue) {
+      if (gossipsBuilder_ == null) {
+        ensureGossipsIsMutable();
+        gossips_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        gossipsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder addAllGossips(
+        java.lang.Iterable<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> values) {
+      if (gossipsBuilder_ == null) {
+        ensureGossipsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, gossips_);
+        onChanged();
+      } else {
+        gossipsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder clearGossips() {
+      if (gossipsBuilder_ == null) {
+        gossips_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000008);
+        onChanged();
+      } else {
+        gossipsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public Builder removeGossips(int index) {
+      if (gossipsBuilder_ == null) {
+        ensureGossipsIsMutable();
+        gossips_.remove(index);
+        onChanged();
+      } else {
+        gossipsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder getGossipsBuilder(
+        int index) {
+      return getGossipsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
+        int index) {
+      if (gossipsBuilder_ == null) {
+        return gossips_.get(index);  } else {
+        return gossipsBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
+         getGossipsOrBuilderList() {
+      if (gossipsBuilder_ != null) {
+        return gossipsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(gossips_);
+      }
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder() {
+      return getGossipsFieldBuilder().addBuilder(
+          io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder addGossipsBuilder(
+        int index) {
+      return getGossipsFieldBuilder().addBuilder(
+          index, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.getDefaultInstance());
+    }
+    /**
+     * <code>repeated .Gossip gossips = 4;</code>
+     */
+    public java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder> 
+         getGossipsBuilderList() {
+      return getGossipsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
+        getGossipsFieldBuilder() {
+      if (gossipsBuilder_ == null) {
+        gossipsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder>(
+                gossips_,
+                ((bitField0_ & 0x00000008) == 0x00000008),
+                getParentForChildren(),
+                isClean());
+        gossips_ = null;
+      }
+      return gossipsBuilder_;
     }
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {

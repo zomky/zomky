@@ -31,14 +31,25 @@ public class GossipProtocol {
     private RandomGossipProbe randomGossipProbe;
     private GossipTransport gossipTransport;
     private GossipOnPingDelay onPingDelay;
-    private Disposable disposable;
+    private Disposable probeNodesDisposable;
+    private Disposable peerChangesDisposable;
 
     public void dispose() {
-        disposable.dispose();
+        probeNodesDisposable.dispose();
+        peerChangesDisposable.dispose();
     }
 
     public void start() {
-        disposable = probeNodes().subscribe();
+        peerChangesDisposable = gossips.peerChanges()
+                .subscribe(suspicion -> {
+                    if (suspicion.getSuspicion() == Gossip.Suspicion.ALIVE) {
+                        peers.add(suspicion.getNodeId());
+                        cluster.addMember(suspicion.getNodeId());
+                    }
+                }, throwable -> {
+                    LOGGER.info("[Node {}] unrecoverable error", node.getNodeId());
+                });
+        probeNodesDisposable = probeNodes().subscribe();
     }
 
     // visible for testing
@@ -59,33 +70,33 @@ public class GossipProtocol {
 
     public Mono<InitJoinResponse> join(InitJoinRequest initJoinRequest) {
         // trying to join other node
-        JoinRequest joinRequest = JoinRequest.newBuilder().setPort(initJoinRequest.getPort()).setRequesterPort(initJoinRequest.getRequesterPort()).build();
+        JoinRequest joinRequest = JoinRequest.newBuilder()
+                .setPort(initJoinRequest.getPort())
+                .setRequesterPort(initJoinRequest.getRequesterPort())
+                .addAllGossips(gossips.allGossips())
+                .build();
         return Mono.defer(() -> GossipTcpTransport.join(joinRequest))
-            .doOnNext(joinResponse -> {
-                LOGGER.info("[Node {}] add member {}", node.getNodeId(), initJoinRequest.getPort());
-                peers.add(initJoinRequest.getPort());
-                cluster.addMember(initJoinRequest.getPort());
-                node.nodeJoined(initJoinRequest.getPort());
-            })
+            .doOnNext(joinResponse -> gossips.addGossips(joinResponse.getGossipsList()))
             .retryWhen(Retry
                     .onlyIf(objectRetryContext -> initJoinRequest.getRetry())
                     .fixedBackoff(Duration.ofSeconds(1))
                     .doOnRetry(context -> LOGGER.warn("[Node {}] Join {} failed. Retrying ...", node.getNodeId(), initJoinRequest.getPort()))
             )
-            .thenReturn(InitJoinResponse.newBuilder().setStatus(true).build());
+            .thenReturn(InitJoinResponse.newBuilder()
+                    .setStatus(true)
+                    .build()
+            );
     }
 
     public Mono<JoinResponse> onJoinRequest(JoinRequest joinRequest) {
         // other node asked me to join
-        return Mono.just(joinRequest)
+        return Mono.fromRunnable(() -> gossips.addGossips(joinRequest.getGossipsList()))
                    // TODO check credentials
-                   .doOnNext(joinRequest1 -> {
-                       LOGGER.info("[Node {}] add member {}", node.getNodeId(), joinRequest1.getRequesterPort());
-                       peers.add(joinRequest1.getRequesterPort());
-                       cluster.addMember(joinRequest1.getRequesterPort());
-                       node.nodeJoined(joinRequest1.getRequesterPort());
-                   })
-                   .thenReturn(JoinResponse.newBuilder().setStatus(true).build());
+                   .thenReturn(JoinResponse.newBuilder()
+                           .setStatus(true)
+                           .addAllGossips(gossips.allGossips())
+                           .build()
+                   );
     }
 
     public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
@@ -112,9 +123,13 @@ public class GossipProtocol {
 
                         Flux<?> publisher;
                         if (ping.getDirect()) {
-                            publisher = onPingDelay.apply(ping.getRequestorNodeId(), ping.getCounter())
-                                    .thenReturn(ackDatagram).cast(Object.class)
-                                    .onErrorReturn(Mono.error(new GossipException("onPing direct ping error")))
+                            publisher = onPingDelay
+                                    .apply(ping.getRequestorNodeId(), ping.getCounter())
+                                    .thenReturn(ackDatagram)
+                                    .onErrorResume(throwable -> {
+                                        LOGGER.warn("[Node {}][onPing] Internal error caused by 'onPingDelay'", ping.getRequestorNodeId());
+                                        return Mono.empty();
+                                    })
                                     .flux();
                         } else {
                             Ping pingOnBehalf = PingUtils.direct(ping, ack.getGossipsList());
@@ -137,23 +152,23 @@ public class GossipProtocol {
                                     .map(indirectAckOrNack -> indirectAckOrNack.getNack() ?  nackDatagram : ackDatagram)
                                     // if proxy is available and cannot reach destination then nack is returned
                                     .onErrorReturn(nackDatagram)
-                                    .distinct()
-                                    .cast(Object.class)
-                                    .onErrorReturn(Mono.error(new GossipException("onPing indirect ping error")));
+                                    .distinct();
                         }
-                        return publisher.flatMap(ackDatagramOrMonoError -> {
-                            if (ackDatagramOrMonoError instanceof Publisher) {
-                                Mono monoError = (Mono) ackDatagramOrMonoError;
-                                return udpOutbound.sendObject(monoError).then();
-                            } else {
-                                return udpOutbound.sendObject(ackDatagramOrMonoError).then();
-                            }
-                        });
-                    } catch (GossipException e) {
-                        return udpOutbound.sendObject(Mono.error(e)).then();
+                        return publisher.flatMap(datagram -> udpOutbound.sendObject(datagram)
+                                .then()
+                                .onErrorResume(throwable -> {
+                                    if (ping.getDirect()) {
+                                        LOGGER.warn("[Node {}][onPing] Cannot send ack back to {}!", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                                    } else {
+                                        LOGGER.warn("[Node {}][onPing] Cannot send ack back to {}!", ping.getRequestorNodeId(), ping.getInitiatorNodeId());
+                                    }
+                                    return Mono.empty();
+                                })
+                                .then()
+                        );
                     } catch (Exception e) {
-                        String errorMessage = e.getMessage() != null ? e.getMessage() : "onPing unexpected error";
-                        return udpOutbound.sendObject(Mono.error(new GossipException(errorMessage, e))).then();
+                        LOGGER.warn("[Node {}][onPing] error while processing datagram!", node.getNodeId(), e);
+                        return Mono.empty();
                     }
                 });
     }
@@ -167,9 +182,6 @@ public class GossipProtocol {
     }
 
     private void checkDirectPing(Ping ping) {
-        if (ping.getInitiatorNodeId() != ping.getRequestorNodeId()) {
-            throw new GossipException(String.format("Initiator and requestor node must be the same! [%s,%s]", ping.getInitiatorNodeId(), ping.getRequestorNodeId()));
-        }
         if (ping.getDestinationNodeId() != node.getNodeId()) {
             throw new GossipException(String.format("This node is not a destination node! [%s,%s]", ping.getDestinationNodeId(), node.getNodeId()));
         }
@@ -267,9 +279,10 @@ public class GossipProtocol {
             gossipProtocol.node = node;
             gossipProtocol.cluster = new Cluster(node.getNodeId());
             gossipProtocol.gossipTransport = new GossipTransport();
-            gossipProtocol.peers = new Peers();
+            gossipProtocol.peers = new Peers(node.getNodeId());
             gossipProtocol.gossips = Gossips.builder()
                     .nodeId(node.getNodeId())
+                    .addAliveGossipAboutItself()
                     .maxGossips(maxGossips)
                     .maxLocalHealthMultiplier(maxLocalHealthMultiplier)
                     .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)

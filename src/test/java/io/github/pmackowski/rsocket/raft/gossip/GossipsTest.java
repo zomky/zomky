@@ -296,6 +296,20 @@ class GossipsTest {
     }
 
     @Test
+    void addAliveGossipAboutItself() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addAliveGossipAboutItself()
+                .build();
+
+        // then
+        assertThat(gossips.getGossip(INITIATOR_NODE_ID))
+                .hasValue(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(0).build());
+        assertThat(gossips.count()).isEqualTo(1);
+    }
+
+    @Test
     void addDeadGossipAboutItself() { // incarnation number does not matter
         // given
         Gossips gossips = Gossips.builder()

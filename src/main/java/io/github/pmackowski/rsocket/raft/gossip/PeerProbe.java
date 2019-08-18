@@ -33,4 +33,9 @@ class PeerProbe {
     public int getSubgroupSize() {
         return proxyNodeIds.size();
     }
+
+    @Override
+    public String toString() {
+        return "[destinationNodeId=" + destinationNodeId + ", proxyNodeIds=" + proxyNodeIds + ']';
+    }
 }

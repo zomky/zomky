@@ -45,6 +45,9 @@ public class Receiver {
         gossipReceiver = UdpServer.create()
                 .port(node.getNodeId()+20000)
                 .handle(node.getGossipProtocol()::onPing)
+                .doOnUnbound(c -> {
+                    LOGGER.error("[Node {}] Gossip server is down!", node.getNodeId());
+                })
                 .bindNow(Duration.ofSeconds(1));
 
         raftReceiver = RSocketFactory.receive()

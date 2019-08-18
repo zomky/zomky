@@ -27,7 +27,7 @@ class RandomGossipProbe {
         if (peerProbe.getDestinationNodeId() == null) {
             LOGGER.info("[Node {}][ping] No probing for one-node cluster", nodeId);
         } else {
-            LOGGER.info("[Node {}][ping] Probing {} ...", nodeId, peerProbe.getDestinationNodeId());
+            LOGGER.info("[Node {}][ping] Probing {} ...", nodeId, peerProbe);
         }
         PeerProbeTimeouts peerProbeTimeouts = PeerProbeTimeouts.builder()
                 .baseProbeTimeout(baseProbeTimeout)

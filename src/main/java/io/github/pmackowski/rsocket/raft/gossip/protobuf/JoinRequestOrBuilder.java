@@ -26,4 +26,28 @@ public interface JoinRequestOrBuilder extends
    * <code>optional int32 port = 3;</code>
    */
   int getPort();
+
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> 
+      getGossipsList();
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip getGossips(int index);
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  int getGossipsCount();
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  java.util.List<? extends io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder> 
+      getGossipsOrBuilderList();
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
+   */
+  io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
+      int index);
 }
