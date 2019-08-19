@@ -181,7 +181,7 @@ public class Receiver {
                         case INIT_LEAVE:
                             return Mono.just(payload)
                                     .map(this::toInitLeaveRequest)
-                                    .flatMap(gossipProtocol::onInitLeaveRequest)
+                                    .flatMap(gossipProtocol::leave)
                                     .map(this::toPayload);
 
                         case LEAVE:

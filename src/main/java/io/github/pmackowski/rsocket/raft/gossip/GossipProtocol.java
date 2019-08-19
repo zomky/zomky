@@ -98,8 +98,15 @@ public class GossipProtocol {
                    );
     }
 
-    public Mono<InitLeaveResponse> onInitLeaveRequest(InitLeaveRequest initLeaveRequest) {
-        return null;
+    public Mono<InitLeaveResponse> leave(InitLeaveRequest initLeaveRequest) {
+        // I am leaving, lets inform other nodes
+        LOGGER.info("[Node {}] Leaving cluster ...");
+        return Mono.fromRunnable(() -> gossips.addGossip(Gossip.newBuilder().setSuspicion(Gossip.Suspicion.DEAD).build()))
+                // TODO check credentials
+                .then(Mono.delay(Duration.ofSeconds(5)).doOnSuccess(l -> System.exit(0)))
+                .thenReturn(InitLeaveResponse.newBuilder()
+                        .build()
+                );
     }
 
     public Mono<LeaveResponse> onLeaveRequest(LeaveRequest leaveRequest) {

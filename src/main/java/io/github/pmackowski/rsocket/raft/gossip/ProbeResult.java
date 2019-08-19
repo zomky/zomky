@@ -8,8 +8,6 @@ import java.util.stream.Collectors;
 
 public class ProbeResult {
 
-    static final ProbeResult NO_PROBE_ACKS = new ProbeResult();
-
     private int destinationNodeId;
     private ProbeOperatorResult<Ack> probeOperatorResult;
     private int subgroupSize;

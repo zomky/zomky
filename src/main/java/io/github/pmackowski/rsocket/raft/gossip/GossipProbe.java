@@ -31,7 +31,7 @@ class GossipProbe {
     Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, PeerProbeTimeouts peerProbeTimeouts) {
         Integer destinationNodeId = peerProbe.getDestinationNodeId();
         if (destinationNodeId == null) {
-            return Mono.delay(peerProbeTimeouts.probeTimeout()).thenReturn(ProbeResult.NO_PROBE_ACKS);
+            return Mono.delay(peerProbeTimeouts.probeTimeout()).then(Mono.empty());
         }
 
         Publisher<?> indirectDelayPublisher = Mono.delay(peerProbeTimeouts.indirectDelay());

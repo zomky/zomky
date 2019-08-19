@@ -33,10 +33,10 @@ class ProbeOperatorTest {
 
     @Test
     void successfulDirectAfterRoundTripTime() {
-        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(30));
+        Mono<Integer> direct = Mono.just(1).delayElement(Duration.ofMillis(40));
         Flux<Integer> indirect = Flux.just(2, 3);
         Mono<Long> indirectStart = Mono.delay(Duration.ofMillis(10));
-        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(50));
+        Mono<Long> probeTimeout = Mono.delay(Duration.ofMillis(100));
 
         StepVerifier.create(new ProbeOperator<>(direct, indirect, indirectStart, probeTimeout))
                 .expectSubscription()

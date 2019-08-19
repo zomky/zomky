@@ -57,7 +57,6 @@ class GossipProbeTest {
         StepVerifier.create(gossipProbe.probeNode(PeerProbe.NO_PEER_PROBE, gossips, peerProbeTimeouts))
                 .expectSubscription()
                 .thenAwait(Duration.ofMillis(30))
-                .assertNext(probeResult -> assertThat(probeResult).isEqualTo(ProbeResult.NO_PROBE_ACKS))
                 .verifyComplete();
 
         verify(gossipTransport, never()).ping(any());

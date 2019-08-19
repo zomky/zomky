@@ -155,15 +155,19 @@ public class NodeFactory {
             return this;
         }
 
-        public ExperimentalServerNodeFactory join(int joinPort) {
-            this.joinPort = joinPort;
-            this.retryJoin = false;
+        public ExperimentalServerNodeFactory join(Integer joinPort) {
+            if (joinPort != null) {
+                this.joinPort = joinPort;
+                this.retryJoin = false;
+            }
             return this;
         }
 
-        public ExperimentalServerNodeFactory retryJoin(int joinPort) {
-            this.joinPort = joinPort;
-            this.retryJoin = true;
+        public ExperimentalServerNodeFactory retryJoin(Integer joinPort) {
+            if (joinPort != null) {
+                this.joinPort = joinPort;
+                this.retryJoin = true;
+            }
             return this;
         }
 
