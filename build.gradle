@@ -197,6 +197,11 @@ configure(rootProject) {
             excludeTags 'integration'
         }
 
+        jacoco {
+            destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
+            classDumpDir = file("$buildDir/jacoco/classpathdumps")
+        }
+
         failFast = false
 
         afterSuite { desc, result ->

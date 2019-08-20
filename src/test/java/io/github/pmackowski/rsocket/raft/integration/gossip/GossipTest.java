@@ -2,6 +2,7 @@ package io.github.pmackowski.rsocket.raft.integration.gossip;
 
 import io.github.pmackowski.rsocket.raft.Node;
 import io.github.pmackowski.rsocket.raft.NodeFactory;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ class GossipTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipTest.class);
 
     @Test
+    @Disabled
     void names() throws InterruptedException {
         Hooks.onOperatorDebug();
 
