@@ -91,10 +91,22 @@ configure(allprojects) { project ->
     apply plugin: 'maven'
     apply plugin: 'eclipse'
     apply plugin: 'idea'
+    apply plugin: 'jacoco'
     apply plugin: 'propdeps'
     apply plugin: 'java'
 
     sourceCompatibility = targetCompatibility = 1.8
+
+    jacoco {
+        toolVersion = '0.8.2'
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled = true
+            html.enabled = true
+        }
+    }
 
     [compileJava, compileTestJava]*.options*.compilerArgs = ["-Xlint:varargs",
                                                              "-Xlint:cast",
