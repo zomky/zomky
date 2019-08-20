@@ -9,6 +9,7 @@ import io.github.pmackowski.rsocket.raft.transport.protobuf.AddServerRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest;
 import io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -159,6 +160,7 @@ class LeaderRoleTest {
 
     @Test
     @DisplayName("Joining server log is empty")
+    @Disabled
     void onAddServers() {
         // given
         given(raftGroup.getSenderById(7003)).willReturn(Mono.just(sender1));
