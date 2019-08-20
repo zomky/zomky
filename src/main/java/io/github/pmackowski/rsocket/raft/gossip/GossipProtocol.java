@@ -124,7 +124,7 @@ public class GossipProtocol {
                         Ping ping = toPing(datagramPacket);
                         logOnPing(ping);
                         checkPing(ping);
-                        Ack ack = gossips.onPing(nodeId, peers.count(), ping);
+                        Ack ack = gossips.onPing(nodeId, ping);
                         DatagramPacket ackDatagram = AckUtils.toDatagram(ack, datagramPacket.sender());
 
                         Flux<?> publisher;

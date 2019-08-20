@@ -35,7 +35,10 @@ class RandomGossipProbe {
                 .indirectDelayRatio(indirectDelayRatio)
                 .localHealthMultiplier(gossips.localHealthMultiplier())
                 .build();
-        List<Gossip> hotGossips = gossips.chooseHotGossips(peers.count());
+        if (PeerProbe.NO_PEER_PROBE.equals(peerProbe)) {
+            return Mono.delay(peerProbeTimeouts.probeTimeout()).then(Mono.empty());
+        }
+        List<Gossip> hotGossips = gossips.chooseHotGossips();
         return gossipProbe.probeNode(peerProbe, hotGossips, peerProbeTimeouts);
     }
 

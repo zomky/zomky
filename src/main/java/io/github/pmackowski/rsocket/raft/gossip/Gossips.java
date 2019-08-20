@@ -46,10 +46,10 @@ class Gossips {
         );
     }
 
-    synchronized Ack onPing(int nodeId, int noPeers, Ping ping) {
+    synchronized Ack onPing(int nodeId, Ping ping) {
         List<Gossip> gossipsList = ping.getGossipsList();
         gossipsList.forEach(this::addGossip);
-        List<Gossip> hotGossips = chooseHotGossips(noPeers, gossipsList);
+        List<Gossip> hotGossips = chooseHotGossips(gossipsList);
         makeGossipsLessHot(hotGossips);
 
         return Ack.newBuilder()
@@ -109,13 +109,13 @@ class Gossips {
         return gossips.values().stream().map(GossipDissemination::getGossip).collect(Collectors.toList());
     }
 
-    List<Gossip> chooseHotGossips(int noPeers) {
-        return chooseHotGossips(noPeers, new ArrayList<>());
+    List<Gossip> chooseHotGossips() {
+        return chooseHotGossips(new ArrayList<>());
     }
 
-    List<Gossip> chooseHotGossips(int noPeers, List<Gossip> ignoreGossips) {
+    List<Gossip> chooseHotGossips(List<Gossip> ignoreGossips) {
         Set<Gossip> filterOut = new HashSet<>(ignoreGossips);
-        int maxGossipDissemination = maxGossipDissemination(noPeers);
+        int maxGossipDissemination = maxGossipDissemination();
         return gossips.values()
                 .stream()
                 .filter(gossipDissemination -> gossipDissemination.getDisseminatedCount() < maxGossipDissemination)
@@ -127,11 +127,15 @@ class Gossips {
     }
 
     // visible for testing
-    int maxGossipDissemination(int noPeers) {
-        if (noPeers == 0) {
+    int maxGossipDissemination() {
+        return maxGossipDissemination(gossips.size());
+    }
+
+    int maxGossipDissemination(int gossipsCount) {
+        if (gossipsCount == 0) {
             return 0;
         }
-        int log2Ceiling = Long.SIZE - Long.numberOfLeadingZeros(noPeers-1);
+        int log2Ceiling = Long.SIZE - Long.numberOfLeadingZeros(gossipsCount-1);
         return Math.round(gossipDisseminationMultiplier * (log2Ceiling+1));
     }
 

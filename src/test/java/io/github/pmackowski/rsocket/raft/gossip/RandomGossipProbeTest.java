@@ -11,14 +11,14 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +29,6 @@ class RandomGossipProbeTest {
     private static final Duration BASE_PROBE_TIMEOUT = Duration.ofMillis(500);
     private static final Duration BASE_PROBE_INTERVAL = Duration.ofMillis(1000);
 
-    private static final int PEERS_COUNT = 5;
     private static final int SUBGROUP_SIZE = 2;
     private static final float INDIRECT_DELAY_RATIO = 0.3f;
     private static final float NACK_RATIO = 0.6f;
@@ -63,18 +62,32 @@ class RandomGossipProbeTest {
     }
 
     @Test
+    void randomProbeOneNodeCluster() {
+        // given
+        given(peers.nextPeerProbe(SUBGROUP_SIZE)).willReturn(PeerProbe.NO_PEER_PROBE);
+        given(gossips.localHealthMultiplier()).willReturn(LOCAL_HEALTH_MULTIPLIER);
+
+        // when
+        StepVerifier.create(randomGossipProbe.randomProbe())
+                .expectSubscription()
+                .verifyComplete();
+
+        verify(gossips, never()).chooseHotGossips();
+        verify(gossipProbe, never()).probeNode(any(), any(), any());
+    }
+
+    @Test
     void randomProbe() {
         // given
-        given(peers.count()).willReturn(PEERS_COUNT);
         given(peers.nextPeerProbe(SUBGROUP_SIZE)).willReturn(peerProbe);
         given(gossips.localHealthMultiplier()).willReturn(LOCAL_HEALTH_MULTIPLIER);
-        given(gossips.chooseHotGossips(PEERS_COUNT)).willReturn(hotGossips);
+        given(gossips.chooseHotGossips()).willReturn(hotGossips);
         ArgumentCaptor<PeerProbeTimeouts> argumentCaptor = ArgumentCaptor.forClass(PeerProbeTimeouts.class);
         given(gossipProbe.probeNode(eq(peerProbe), eq(hotGossips), argumentCaptor.capture()))
                 .willReturn(Mono.just(probeResult));
 
         // when
-        StepVerifier.create(randomGossipProbe.randomProbe())
+        StepVerifier.withVirtualTime(() -> randomGossipProbe.randomProbe())
                 .expectNext(probeResult)
                 .verifyComplete();
 

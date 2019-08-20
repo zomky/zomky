@@ -53,11 +53,9 @@ class GossipProbeTest {
 
     @Test
     void noPeers() { // cluster with one node
-        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(30));
         StepVerifier.create(gossipProbe.probeNode(PeerProbe.NO_PEER_PROBE, gossips, peerProbeTimeouts))
                 .expectSubscription()
-                .thenAwait(Duration.ofMillis(30))
-                .verifyComplete();
+                .verifyErrorMessage("Internal error. Cannot probe NO_PEER_PROBE!");
 
         verify(gossipTransport, never()).ping(any());
     }

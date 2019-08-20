@@ -29,11 +29,11 @@ class GossipProbe {
     }
 
     Mono<ProbeResult> probeNode(PeerProbe peerProbe, List<Gossip> hotGossips, PeerProbeTimeouts peerProbeTimeouts) {
-        Integer destinationNodeId = peerProbe.getDestinationNodeId();
-        if (destinationNodeId == null) {
-            return Mono.delay(peerProbeTimeouts.probeTimeout()).then(Mono.empty());
+        if (PeerProbe.NO_PEER_PROBE.equals(peerProbe)) {
+            return Mono.error(new GossipException("Internal error. Cannot probe NO_PEER_PROBE!"));
         }
 
+        int destinationNodeId = peerProbe.getDestinationNodeId();
         Publisher<?> indirectDelayPublisher = Mono.delay(peerProbeTimeouts.indirectDelay());
         Publisher<?> probeTimeoutPublisher = Mono.delay(peerProbeTimeouts.probeTimeout());
 
