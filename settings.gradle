@@ -1,1 +1,3 @@
 include 'rsocket-raft-samples'
+
+project.gradle.startParameter.excludedTaskNames.add('integrationTest')
