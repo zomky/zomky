@@ -29,6 +29,7 @@ buildscript {
                   'org.junit.platform:junit-platform-gradle-plugin:1.2.0'
     }
 }
+
 plugins {
     id 'com.gradle.build-scan' version '2.4.1'
     
@@ -36,6 +37,11 @@ plugins {
     id 'me.champeau.gradle.jmh' version '0.4.8'
     id 'com.google.protobuf' version '0.8.10'
     id 'com.github.johnrengelman.shadow' version '5.1.0'
+}
+
+buildScan {
+    termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+    termsOfServiceAgree = 'yes'
 }
 
 ext {
