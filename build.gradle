@@ -203,7 +203,7 @@ configure(rootProject) {
             includeTags 'integration'
         }
         failFast = true
-        
+
         check.dependsOn it
         shouldRunAfter test
     }
@@ -215,6 +215,8 @@ configure(rootProject) {
     }
 
 }
+
+integrationTest.enabled = false
 
 project(':rsocket-raft-samples') {
     archivesBaseName = ':rsocket-raft-samples'
