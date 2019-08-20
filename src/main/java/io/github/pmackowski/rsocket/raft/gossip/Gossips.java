@@ -30,7 +30,9 @@ class Gossips {
     private FluxSink<Gossip> sink;
 
     synchronized void probeCompleted(ProbeResult probeResult) {
-        makeGossipsLessHot(probeResult.getHotGossips());
+        if (probeResult.hasAck()) {
+            makeGossipsLessHot(probeResult.getHotGossips());
+        }
         probeResult.getDistinctAcks().forEach(this::addAck);
 
         Gossip.Suspicion suspicion = probeResult.hasAck() ? Gossip.Suspicion.ALIVE : Gossip.Suspicion.SUSPECT;

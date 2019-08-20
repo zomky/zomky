@@ -8,6 +8,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Suspicion.*;
@@ -81,7 +82,6 @@ class GossipsTest {
         assertThat(gossips.count()).isEqualTo(4);
     }
 
-
     @Test
     void probeCompletedNoAcks() {
         // given
@@ -99,6 +99,58 @@ class GossipsTest {
         // then
         assertThat(gossips.getGossip(DESTINATION_NODE_ID)).hasValue(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build());
         assertThat(gossips.count()).isEqualTo(1);
+    }
+
+    @Test
+    void probeCompletedNoAcksThenDoNotIncreaseDisseminationCount() {
+        // given
+        Gossip hotGossip = Gossip.newBuilder().setIncarnation(0).setNodeId(7004).setSuspicion(SUSPECT).build();
+
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addGossip(hotGossip)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(1)
+                .probeResult(new ProbeOperatorResult<>(true))
+                .hotGossips(Collections.singletonList(hotGossip))
+                .build();
+
+        // when
+        gossips.probeCompleted(probeResult);
+
+        // then
+        assertThat(gossips.getGossip(DESTINATION_NODE_ID)).hasValue(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build());
+        assertThat(gossips.count()).isEqualTo(2);
+        assertThat(gossips.getDisseminatedCount(7004)).isEqualTo(0); // not increased dissemination count
+    }
+
+    @Test
+    void probeCompletedHasAcksThenIncreaseDisseminationCount() {
+        // given
+        Gossip hotGossip = Gossip.newBuilder().setIncarnation(0).setNodeId(7004).setSuspicion(SUSPECT).build();
+
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addGossip(hotGossip)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(1)
+                .probeResult(new ProbeOperatorResult<>(true, Ack.newBuilder().build()))
+                .hotGossips(Collections.singletonList(hotGossip))
+                .build();
+
+        // when
+        gossips.probeCompleted(probeResult);
+
+        // then
+        assertThat(gossips.getGossip(DESTINATION_NODE_ID)).hasValue(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(0).build());
+        assertThat(gossips.count()).isEqualTo(2);
+        assertThat(gossips.getDisseminatedCount(7004)).isEqualTo(1); // increased dissemination count
     }
 
     @Test
