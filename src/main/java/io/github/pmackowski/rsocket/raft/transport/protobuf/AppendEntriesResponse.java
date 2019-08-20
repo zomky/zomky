@@ -10,27 +10,36 @@ public  final class AppendEntriesResponse extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:AppendEntriesResponse)
     AppendEntriesResponseOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use AppendEntriesResponse.newBuilder() to construct.
   private AppendEntriesResponse(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private AppendEntriesResponse() {
-    term_ = 0;
-    success_ = false;
-    lastLogIndex_ = 0L;
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new AppendEntriesResponse();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private AppendEntriesResponse(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
-    int mutable_bitField0_ = 0;
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -39,12 +48,6 @@ public  final class AppendEntriesResponse extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             term_ = input.readInt32();
@@ -60,6 +63,13 @@ public  final class AppendEntriesResponse extends
             lastLogIndex_ = input.readInt64();
             break;
           }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
+            break;
+          }
         }
       }
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -68,6 +78,7 @@ public  final class AppendEntriesResponse extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -76,6 +87,7 @@ public  final class AppendEntriesResponse extends
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesResponse_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesResponse_fieldAccessorTable
@@ -90,7 +102,7 @@ public  final class AppendEntriesResponse extends
    * currentTerm, for leader to update itself
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   public int getTerm() {
     return term_;
@@ -99,7 +111,7 @@ public  final class AppendEntriesResponse extends
   public static final int SUCCESS_FIELD_NUMBER = 2;
   private boolean success_;
   /**
-   * <code>optional bool success = 2;</code>
+   * <code>bool success = 2;</code>
    */
   public boolean getSuccess() {
     return success_;
@@ -112,13 +124,14 @@ public  final class AppendEntriesResponse extends
    * last log index, set only if success equals to false (extension to Raft)
    * </pre>
    *
-   * <code>optional int64 last_log_index = 3;</code>
+   * <code>int64 last_log_index = 3;</code>
    */
   public long getLastLogIndex() {
     return lastLogIndex_;
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -128,6 +141,7 @@ public  final class AppendEntriesResponse extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (term_ != 0) {
@@ -139,8 +153,10 @@ public  final class AppendEntriesResponse extends
     if (lastLogIndex_ != 0L) {
       output.writeInt64(3, lastLogIndex_);
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -158,11 +174,11 @@ public  final class AppendEntriesResponse extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(3, lastLogIndex_);
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -173,14 +189,14 @@ public  final class AppendEntriesResponse extends
     }
     io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse other = (io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse) obj;
 
-    boolean result = true;
-    result = result && (getTerm()
-        == other.getTerm());
-    result = result && (getSuccess()
-        == other.getSuccess());
-    result = result && (getLastLogIndex()
-        == other.getLastLogIndex());
-    return result;
+    if (getTerm()
+        != other.getTerm()) return false;
+    if (getSuccess()
+        != other.getSuccess()) return false;
+    if (getLastLogIndex()
+        != other.getLastLogIndex()) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -189,7 +205,7 @@ public  final class AppendEntriesResponse extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + TERM_FIELD_NUMBER;
     hash = (53 * hash) + getTerm();
     hash = (37 * hash) + SUCCESS_FIELD_NUMBER;
@@ -203,6 +219,17 @@ public  final class AppendEntriesResponse extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -262,6 +289,7 @@ public  final class AppendEntriesResponse extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -269,6 +297,7 @@ public  final class AppendEntriesResponse extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -292,6 +321,7 @@ public  final class AppendEntriesResponse extends
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesResponse_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesResponse_fieldAccessorTable
@@ -314,6 +344,7 @@ public  final class AppendEntriesResponse extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       term_ = 0;
@@ -325,15 +356,18 @@ public  final class AppendEntriesResponse extends
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesResponse_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse build() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse result = buildPartial();
       if (!result.isInitialized()) {
@@ -342,6 +376,7 @@ public  final class AppendEntriesResponse extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse buildPartial() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse result = new io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse(this);
       result.term_ = term_;
@@ -351,32 +386,39 @@ public  final class AppendEntriesResponse extends
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse)other);
@@ -397,14 +439,17 @@ public  final class AppendEntriesResponse extends
       if (other.getLastLogIndex() != 0L) {
         setLastLogIndex(other.getLastLogIndex());
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -429,7 +474,7 @@ public  final class AppendEntriesResponse extends
      * currentTerm, for leader to update itself
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public int getTerm() {
       return term_;
@@ -439,7 +484,7 @@ public  final class AppendEntriesResponse extends
      * currentTerm, for leader to update itself
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public Builder setTerm(int value) {
       
@@ -452,7 +497,7 @@ public  final class AppendEntriesResponse extends
      * currentTerm, for leader to update itself
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public Builder clearTerm() {
       
@@ -463,13 +508,13 @@ public  final class AppendEntriesResponse extends
 
     private boolean success_ ;
     /**
-     * <code>optional bool success = 2;</code>
+     * <code>bool success = 2;</code>
      */
     public boolean getSuccess() {
       return success_;
     }
     /**
-     * <code>optional bool success = 2;</code>
+     * <code>bool success = 2;</code>
      */
     public Builder setSuccess(boolean value) {
       
@@ -478,7 +523,7 @@ public  final class AppendEntriesResponse extends
       return this;
     }
     /**
-     * <code>optional bool success = 2;</code>
+     * <code>bool success = 2;</code>
      */
     public Builder clearSuccess() {
       
@@ -493,7 +538,7 @@ public  final class AppendEntriesResponse extends
      * last log index, set only if success equals to false (extension to Raft)
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public long getLastLogIndex() {
       return lastLogIndex_;
@@ -503,7 +548,7 @@ public  final class AppendEntriesResponse extends
      * last log index, set only if success equals to false (extension to Raft)
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public Builder setLastLogIndex(long value) {
       
@@ -516,7 +561,7 @@ public  final class AppendEntriesResponse extends
      * last log index, set only if success equals to false (extension to Raft)
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public Builder clearLastLogIndex() {
       
@@ -524,14 +569,16 @@ public  final class AppendEntriesResponse extends
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -550,11 +597,12 @@ public  final class AppendEntriesResponse extends
 
   private static final com.google.protobuf.Parser<AppendEntriesResponse>
       PARSER = new com.google.protobuf.AbstractParser<AppendEntriesResponse>() {
+    @java.lang.Override
     public AppendEntriesResponse parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new AppendEntriesResponse(input, extensionRegistry);
+      return new AppendEntriesResponse(input, extensionRegistry);
     }
   };
 
@@ -567,6 +615,7 @@ public  final class AppendEntriesResponse extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesResponse getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

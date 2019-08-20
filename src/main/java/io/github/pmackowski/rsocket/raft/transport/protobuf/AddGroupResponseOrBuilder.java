@@ -12,7 +12,7 @@ public interface AddGroupResponseOrBuilder extends
    * OK if group was added successfully
    * </pre>
    *
-   * <code>optional bool status = 1;</code>
+   * <code>bool status = 1;</code>
    */
   boolean getStatus();
 }

@@ -8,27 +8,27 @@ public interface CommandRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional string key = 1;</code>
+   * <code>string key = 1;</code>
    */
   java.lang.String getKey();
   /**
-   * <code>optional string key = 1;</code>
+   * <code>string key = 1;</code>
    */
   com.google.protobuf.ByteString
       getKeyBytes();
 
   /**
-   * <code>optional string value = 2;</code>
+   * <code>string value = 2;</code>
    */
   java.lang.String getValue();
   /**
-   * <code>optional string value = 2;</code>
+   * <code>string value = 2;</code>
    */
   com.google.protobuf.ByteString
       getValueBytes();
 
   /**
-   * <code>optional bool set_operation = 3;</code>
+   * <code>bool set_operation = 3;</code>
    */
   boolean getSetOperation();
 }

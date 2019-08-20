@@ -12,7 +12,7 @@ public interface InstallSnapshotResponseOrBuilder extends
    * currentTerm, for leader to update itself
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   int getTerm();
 }

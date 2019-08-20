@@ -10,27 +10,38 @@ public  final class Ack extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:Ack)
     AckOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use Ack.newBuilder() to construct.
   private Ack(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private Ack() {
-    nodeId_ = 0;
-    nack_ = false;
     gossips_ = java.util.Collections.emptyList();
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new Ack();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private Ack(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
     int mutable_bitField0_ = 0;
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -39,12 +50,6 @@ public  final class Ack extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             nodeId_ = input.readInt32();
@@ -56,12 +61,19 @@ public  final class Ack extends
             break;
           }
           case 26: {
-            if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+            if (!((mutable_bitField0_ & 0x00000001) != 0)) {
               gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>();
-              mutable_bitField0_ |= 0x00000004;
+              mutable_bitField0_ |= 0x00000001;
             }
             gossips_.add(
                 input.readMessage(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.parser(), extensionRegistry));
+            break;
+          }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
             break;
           }
         }
@@ -72,9 +84,10 @@ public  final class Ack extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+      if (((mutable_bitField0_ & 0x00000001) != 0)) {
         gossips_ = java.util.Collections.unmodifiableList(gossips_);
       }
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -83,6 +96,7 @@ public  final class Ack extends
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ack_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ack_fieldAccessorTable
@@ -90,11 +104,10 @@ public  final class Ack extends
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack.class, io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack.Builder.class);
   }
 
-  private int bitField0_;
   public static final int NODE_ID_FIELD_NUMBER = 1;
   private int nodeId_;
   /**
-   * <code>optional int32 node_id = 1;</code>
+   * <code>int32 node_id = 1;</code>
    */
   public int getNodeId() {
     return nodeId_;
@@ -103,7 +116,7 @@ public  final class Ack extends
   public static final int NACK_FIELD_NUMBER = 2;
   private boolean nack_;
   /**
-   * <code>optional bool nack = 2;</code>
+   * <code>bool nack = 2;</code>
    */
   public boolean getNack() {
     return nack_;
@@ -145,6 +158,7 @@ public  final class Ack extends
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -154,6 +168,7 @@ public  final class Ack extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (nodeId_ != 0) {
@@ -165,8 +180,10 @@ public  final class Ack extends
     for (int i = 0; i < gossips_.size(); i++) {
       output.writeMessage(3, gossips_.get(i));
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -184,11 +201,11 @@ public  final class Ack extends
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(3, gossips_.get(i));
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -199,14 +216,14 @@ public  final class Ack extends
     }
     io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack other = (io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack) obj;
 
-    boolean result = true;
-    result = result && (getNodeId()
-        == other.getNodeId());
-    result = result && (getNack()
-        == other.getNack());
-    result = result && getGossipsList()
-        .equals(other.getGossipsList());
-    return result;
+    if (getNodeId()
+        != other.getNodeId()) return false;
+    if (getNack()
+        != other.getNack()) return false;
+    if (!getGossipsList()
+        .equals(other.getGossipsList())) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -215,7 +232,7 @@ public  final class Ack extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + NODE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getNodeId();
     hash = (37 * hash) + NACK_FIELD_NUMBER;
@@ -230,6 +247,17 @@ public  final class Ack extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -289,6 +317,7 @@ public  final class Ack extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -296,6 +325,7 @@ public  final class Ack extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -319,6 +349,7 @@ public  final class Ack extends
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ack_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ack_fieldAccessorTable
@@ -342,6 +373,7 @@ public  final class Ack extends
         getGossipsFieldBuilder();
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       nodeId_ = 0;
@@ -350,22 +382,25 @@ public  final class Ack extends
 
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000001);
       } else {
         gossipsBuilder_.clear();
       }
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ack_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack build() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack result = buildPartial();
       if (!result.isInitialized()) {
@@ -374,52 +409,58 @@ public  final class Ack extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack buildPartial() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack result = new io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack(this);
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       result.nodeId_ = nodeId_;
       result.nack_ = nack_;
       if (gossipsBuilder_ == null) {
-        if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        if (((bitField0_ & 0x00000001) != 0)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
-          bitField0_ = (bitField0_ & ~0x00000004);
+          bitField0_ = (bitField0_ & ~0x00000001);
         }
         result.gossips_ = gossips_;
       } else {
         result.gossips_ = gossipsBuilder_.build();
       }
-      result.bitField0_ = to_bitField0_;
       onBuilt();
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack)other);
@@ -441,7 +482,7 @@ public  final class Ack extends
         if (!other.gossips_.isEmpty()) {
           if (gossips_.isEmpty()) {
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000001);
           } else {
             ensureGossipsIsMutable();
             gossips_.addAll(other.gossips_);
@@ -454,7 +495,7 @@ public  final class Ack extends
             gossipsBuilder_.dispose();
             gossipsBuilder_ = null;
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000001);
             gossipsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getGossipsFieldBuilder() : null;
@@ -463,14 +504,17 @@ public  final class Ack extends
           }
         }
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -492,13 +536,13 @@ public  final class Ack extends
 
     private int nodeId_ ;
     /**
-     * <code>optional int32 node_id = 1;</code>
+     * <code>int32 node_id = 1;</code>
      */
     public int getNodeId() {
       return nodeId_;
     }
     /**
-     * <code>optional int32 node_id = 1;</code>
+     * <code>int32 node_id = 1;</code>
      */
     public Builder setNodeId(int value) {
       
@@ -507,7 +551,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>optional int32 node_id = 1;</code>
+     * <code>int32 node_id = 1;</code>
      */
     public Builder clearNodeId() {
       
@@ -518,13 +562,13 @@ public  final class Ack extends
 
     private boolean nack_ ;
     /**
-     * <code>optional bool nack = 2;</code>
+     * <code>bool nack = 2;</code>
      */
     public boolean getNack() {
       return nack_;
     }
     /**
-     * <code>optional bool nack = 2;</code>
+     * <code>bool nack = 2;</code>
      */
     public Builder setNack(boolean value) {
       
@@ -533,7 +577,7 @@ public  final class Ack extends
       return this;
     }
     /**
-     * <code>optional bool nack = 2;</code>
+     * <code>bool nack = 2;</code>
      */
     public Builder clearNack() {
       
@@ -545,9 +589,9 @@ public  final class Ack extends
     private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_ =
       java.util.Collections.emptyList();
     private void ensureGossipsIsMutable() {
-      if (!((bitField0_ & 0x00000004) == 0x00000004)) {
+      if (!((bitField0_ & 0x00000001) != 0)) {
         gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>(gossips_);
-        bitField0_ |= 0x00000004;
+        bitField0_ |= 0x00000001;
        }
     }
 
@@ -697,7 +741,7 @@ public  final class Ack extends
     public Builder clearGossips() {
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000001);
         onChanged();
       } else {
         gossipsBuilder_.clear();
@@ -774,21 +818,23 @@ public  final class Ack extends
         gossipsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder>(
                 gossips_,
-                ((bitField0_ & 0x00000004) == 0x00000004),
+                ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),
                 isClean());
         gossips_ = null;
       }
       return gossipsBuilder_;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -807,11 +853,12 @@ public  final class Ack extends
 
   private static final com.google.protobuf.Parser<Ack>
       PARSER = new com.google.protobuf.AbstractParser<Ack>() {
+    @java.lang.Override
     public Ack parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Ack(input, extensionRegistry);
+      return new Ack(input, extensionRegistry);
     }
   };
 
@@ -824,6 +871,7 @@ public  final class Ack extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ack getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

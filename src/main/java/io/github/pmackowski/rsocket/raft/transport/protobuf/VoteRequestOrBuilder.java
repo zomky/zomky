@@ -12,7 +12,7 @@ public interface VoteRequestOrBuilder extends
    * candidate’s term
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   int getTerm();
 
@@ -21,7 +21,7 @@ public interface VoteRequestOrBuilder extends
    * candidate requesting vote
    * </pre>
    *
-   * <code>optional int32 candidate_id = 2;</code>
+   * <code>int32 candidate_id = 2;</code>
    */
   int getCandidateId();
 
@@ -30,7 +30,7 @@ public interface VoteRequestOrBuilder extends
    * index of candidate’s last log entry
    * </pre>
    *
-   * <code>optional int64 last_log_index = 3;</code>
+   * <code>int64 last_log_index = 3;</code>
    */
   long getLastLogIndex();
 
@@ -39,7 +39,7 @@ public interface VoteRequestOrBuilder extends
    * term of candidate’s last log entry
    * </pre>
    *
-   * <code>optional int64 last_log_term = 4;</code>
+   * <code>int64 last_log_term = 4;</code>
    */
   long getLastLogTerm();
 }

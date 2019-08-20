@@ -8,7 +8,7 @@ public interface LeaveRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 requester_port = 1;</code>
+   * <code>int32 requester_port = 1;</code>
    */
   int getRequesterPort();
 }

@@ -8,12 +8,12 @@ public interface PreVoteResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   int getTerm();
 
   /**
-   * <code>optional bool vote_granted = 2;</code>
+   * <code>bool vote_granted = 2;</code>
    */
   boolean getVoteGranted();
 }

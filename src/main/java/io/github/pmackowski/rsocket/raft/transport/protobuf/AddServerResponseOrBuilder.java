@@ -12,7 +12,7 @@ public interface AddServerResponseOrBuilder extends
    * OK if server was added successfully
    * </pre>
    *
-   * <code>optional bool status = 1;</code>
+   * <code>bool status = 1;</code>
    */
   boolean getStatus();
 
@@ -21,7 +21,7 @@ public interface AddServerResponseOrBuilder extends
    * address of recent leader, if known
    * </pre>
    *
-   * <code>optional int32 leader_hint = 2;</code>
+   * <code>int32 leader_hint = 2;</code>
    */
   int getLeaderHint();
 }

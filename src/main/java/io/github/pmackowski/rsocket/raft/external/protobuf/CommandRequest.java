@@ -10,6 +10,7 @@ public  final class CommandRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:CommandRequest)
     CommandRequestOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use CommandRequest.newBuilder() to construct.
   private CommandRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
@@ -17,20 +18,30 @@ public  final class CommandRequest extends
   private CommandRequest() {
     key_ = "";
     value_ = "";
-    setOperation_ = false;
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new CommandRequest();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private CommandRequest(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
-    int mutable_bitField0_ = 0;
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -39,12 +50,6 @@ public  final class CommandRequest extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 10: {
             java.lang.String s = input.readStringRequireUtf8();
 
@@ -62,6 +67,13 @@ public  final class CommandRequest extends
             setOperation_ = input.readBool();
             break;
           }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
+            break;
+          }
         }
       }
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -70,6 +82,7 @@ public  final class CommandRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -78,6 +91,7 @@ public  final class CommandRequest extends
     return io.github.pmackowski.rsocket.raft.external.protobuf.External.internal_static_CommandRequest_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.external.protobuf.External.internal_static_CommandRequest_fieldAccessorTable
@@ -88,7 +102,7 @@ public  final class CommandRequest extends
   public static final int KEY_FIELD_NUMBER = 1;
   private volatile java.lang.Object key_;
   /**
-   * <code>optional string key = 1;</code>
+   * <code>string key = 1;</code>
    */
   public java.lang.String getKey() {
     java.lang.Object ref = key_;
@@ -103,7 +117,7 @@ public  final class CommandRequest extends
     }
   }
   /**
-   * <code>optional string key = 1;</code>
+   * <code>string key = 1;</code>
    */
   public com.google.protobuf.ByteString
       getKeyBytes() {
@@ -122,7 +136,7 @@ public  final class CommandRequest extends
   public static final int VALUE_FIELD_NUMBER = 2;
   private volatile java.lang.Object value_;
   /**
-   * <code>optional string value = 2;</code>
+   * <code>string value = 2;</code>
    */
   public java.lang.String getValue() {
     java.lang.Object ref = value_;
@@ -137,7 +151,7 @@ public  final class CommandRequest extends
     }
   }
   /**
-   * <code>optional string value = 2;</code>
+   * <code>string value = 2;</code>
    */
   public com.google.protobuf.ByteString
       getValueBytes() {
@@ -156,13 +170,14 @@ public  final class CommandRequest extends
   public static final int SET_OPERATION_FIELD_NUMBER = 3;
   private boolean setOperation_;
   /**
-   * <code>optional bool set_operation = 3;</code>
+   * <code>bool set_operation = 3;</code>
    */
   public boolean getSetOperation() {
     return setOperation_;
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -172,6 +187,7 @@ public  final class CommandRequest extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (!getKeyBytes().isEmpty()) {
@@ -183,8 +199,10 @@ public  final class CommandRequest extends
     if (setOperation_ != false) {
       output.writeBool(3, setOperation_);
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -200,11 +218,11 @@ public  final class CommandRequest extends
       size += com.google.protobuf.CodedOutputStream
         .computeBoolSize(3, setOperation_);
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -215,14 +233,14 @@ public  final class CommandRequest extends
     }
     io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest other = (io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest) obj;
 
-    boolean result = true;
-    result = result && getKey()
-        .equals(other.getKey());
-    result = result && getValue()
-        .equals(other.getValue());
-    result = result && (getSetOperation()
-        == other.getSetOperation());
-    return result;
+    if (!getKey()
+        .equals(other.getKey())) return false;
+    if (!getValue()
+        .equals(other.getValue())) return false;
+    if (getSetOperation()
+        != other.getSetOperation()) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -231,7 +249,7 @@ public  final class CommandRequest extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + KEY_FIELD_NUMBER;
     hash = (53 * hash) + getKey().hashCode();
     hash = (37 * hash) + VALUE_FIELD_NUMBER;
@@ -244,6 +262,17 @@ public  final class CommandRequest extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -303,6 +332,7 @@ public  final class CommandRequest extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -310,6 +340,7 @@ public  final class CommandRequest extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -333,6 +364,7 @@ public  final class CommandRequest extends
       return io.github.pmackowski.rsocket.raft.external.protobuf.External.internal_static_CommandRequest_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.external.protobuf.External.internal_static_CommandRequest_fieldAccessorTable
@@ -355,6 +387,7 @@ public  final class CommandRequest extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       key_ = "";
@@ -366,15 +399,18 @@ public  final class CommandRequest extends
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.external.protobuf.External.internal_static_CommandRequest_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest build() {
       io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest result = buildPartial();
       if (!result.isInitialized()) {
@@ -383,6 +419,7 @@ public  final class CommandRequest extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest result = new io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest(this);
       result.key_ = key_;
@@ -392,32 +429,39 @@ public  final class CommandRequest extends
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest)other);
@@ -440,14 +484,17 @@ public  final class CommandRequest extends
       if (other.getSetOperation() != false) {
         setSetOperation(other.getSetOperation());
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -468,7 +515,7 @@ public  final class CommandRequest extends
 
     private java.lang.Object key_ = "";
     /**
-     * <code>optional string key = 1;</code>
+     * <code>string key = 1;</code>
      */
     public java.lang.String getKey() {
       java.lang.Object ref = key_;
@@ -483,7 +530,7 @@ public  final class CommandRequest extends
       }
     }
     /**
-     * <code>optional string key = 1;</code>
+     * <code>string key = 1;</code>
      */
     public com.google.protobuf.ByteString
         getKeyBytes() {
@@ -499,7 +546,7 @@ public  final class CommandRequest extends
       }
     }
     /**
-     * <code>optional string key = 1;</code>
+     * <code>string key = 1;</code>
      */
     public Builder setKey(
         java.lang.String value) {
@@ -512,7 +559,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional string key = 1;</code>
+     * <code>string key = 1;</code>
      */
     public Builder clearKey() {
       
@@ -521,7 +568,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional string key = 1;</code>
+     * <code>string key = 1;</code>
      */
     public Builder setKeyBytes(
         com.google.protobuf.ByteString value) {
@@ -537,7 +584,7 @@ public  final class CommandRequest extends
 
     private java.lang.Object value_ = "";
     /**
-     * <code>optional string value = 2;</code>
+     * <code>string value = 2;</code>
      */
     public java.lang.String getValue() {
       java.lang.Object ref = value_;
@@ -552,7 +599,7 @@ public  final class CommandRequest extends
       }
     }
     /**
-     * <code>optional string value = 2;</code>
+     * <code>string value = 2;</code>
      */
     public com.google.protobuf.ByteString
         getValueBytes() {
@@ -568,7 +615,7 @@ public  final class CommandRequest extends
       }
     }
     /**
-     * <code>optional string value = 2;</code>
+     * <code>string value = 2;</code>
      */
     public Builder setValue(
         java.lang.String value) {
@@ -581,7 +628,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional string value = 2;</code>
+     * <code>string value = 2;</code>
      */
     public Builder clearValue() {
       
@@ -590,7 +637,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional string value = 2;</code>
+     * <code>string value = 2;</code>
      */
     public Builder setValueBytes(
         com.google.protobuf.ByteString value) {
@@ -606,13 +653,13 @@ public  final class CommandRequest extends
 
     private boolean setOperation_ ;
     /**
-     * <code>optional bool set_operation = 3;</code>
+     * <code>bool set_operation = 3;</code>
      */
     public boolean getSetOperation() {
       return setOperation_;
     }
     /**
-     * <code>optional bool set_operation = 3;</code>
+     * <code>bool set_operation = 3;</code>
      */
     public Builder setSetOperation(boolean value) {
       
@@ -621,7 +668,7 @@ public  final class CommandRequest extends
       return this;
     }
     /**
-     * <code>optional bool set_operation = 3;</code>
+     * <code>bool set_operation = 3;</code>
      */
     public Builder clearSetOperation() {
       
@@ -629,14 +676,16 @@ public  final class CommandRequest extends
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -655,11 +704,12 @@ public  final class CommandRequest extends
 
   private static final com.google.protobuf.Parser<CommandRequest>
       PARSER = new com.google.protobuf.AbstractParser<CommandRequest>() {
+    @java.lang.Override
     public CommandRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new CommandRequest(input, extensionRegistry);
+      return new CommandRequest(input, extensionRegistry);
     }
   };
 
@@ -672,6 +722,7 @@ public  final class CommandRequest extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.external.protobuf.CommandRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

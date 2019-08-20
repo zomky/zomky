@@ -8,32 +8,32 @@ public interface PingOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 initiator_node_id = 1;</code>
+   * <code>int32 initiator_node_id = 1;</code>
    */
   int getInitiatorNodeId();
 
   /**
-   * <code>optional int32 requestor_node_id = 2;</code>
+   * <code>int32 requestor_node_id = 2;</code>
    */
   int getRequestorNodeId();
 
   /**
-   * <code>optional int32 destination_node_id = 3;</code>
+   * <code>int32 destination_node_id = 3;</code>
    */
   int getDestinationNodeId();
 
   /**
-   * <code>optional bool direct = 4;</code>
+   * <code>bool direct = 4;</code>
    */
   boolean getDirect();
 
   /**
-   * <code>optional int64 counter = 5;</code>
+   * <code>int64 counter = 5;</code>
    */
   long getCounter();
 
   /**
-   * <code>optional int32 nack_timeout = 6;</code>
+   * <code>int32 nack_timeout = 6;</code>
    */
   int getNackTimeout();
 

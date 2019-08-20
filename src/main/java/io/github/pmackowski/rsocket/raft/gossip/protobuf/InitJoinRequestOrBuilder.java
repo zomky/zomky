@@ -8,27 +8,27 @@ public interface InitJoinRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 requester_port = 1;</code>
+   * <code>int32 requester_port = 1;</code>
    */
   int getRequesterPort();
 
   /**
-   * <code>optional bool retry = 2;</code>
+   * <code>bool retry = 2;</code>
    */
   boolean getRetry();
 
   /**
-   * <code>optional string host = 3;</code>
+   * <code>string host = 3;</code>
    */
   java.lang.String getHost();
   /**
-   * <code>optional string host = 3;</code>
+   * <code>string host = 3;</code>
    */
   com.google.protobuf.ByteString
       getHostBytes();
 
   /**
-   * <code>optional int32 port = 4;</code>
+   * <code>int32 port = 4;</code>
    */
   int getPort();
 }

@@ -10,28 +10,36 @@ public  final class PreVoteRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:PreVoteRequest)
     PreVoteRequestOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use PreVoteRequest.newBuilder() to construct.
   private PreVoteRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private PreVoteRequest() {
-    nextTerm_ = 0;
-    candidateId_ = 0;
-    lastLogIndex_ = 0L;
-    lastLogTerm_ = 0L;
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new PreVoteRequest();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private PreVoteRequest(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
-    int mutable_bitField0_ = 0;
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -40,12 +48,6 @@ public  final class PreVoteRequest extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             nextTerm_ = input.readInt32();
@@ -66,6 +68,13 @@ public  final class PreVoteRequest extends
             lastLogTerm_ = input.readInt64();
             break;
           }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
+            break;
+          }
         }
       }
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -74,6 +83,7 @@ public  final class PreVoteRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -82,6 +92,7 @@ public  final class PreVoteRequest extends
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_PreVoteRequest_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_PreVoteRequest_fieldAccessorTable
@@ -96,7 +107,7 @@ public  final class PreVoteRequest extends
    * candidate’s term + 1
    * </pre>
    *
-   * <code>optional int32 next_term = 1;</code>
+   * <code>int32 next_term = 1;</code>
    */
   public int getNextTerm() {
     return nextTerm_;
@@ -109,7 +120,7 @@ public  final class PreVoteRequest extends
    * candidate requesting vote
    * </pre>
    *
-   * <code>optional int32 candidate_id = 2;</code>
+   * <code>int32 candidate_id = 2;</code>
    */
   public int getCandidateId() {
     return candidateId_;
@@ -122,7 +133,7 @@ public  final class PreVoteRequest extends
    * index of candidate’s last log entry
    * </pre>
    *
-   * <code>optional int64 last_log_index = 3;</code>
+   * <code>int64 last_log_index = 3;</code>
    */
   public long getLastLogIndex() {
     return lastLogIndex_;
@@ -135,13 +146,14 @@ public  final class PreVoteRequest extends
    * term of candidate’s last log entry
    * </pre>
    *
-   * <code>optional int64 last_log_term = 4;</code>
+   * <code>int64 last_log_term = 4;</code>
    */
   public long getLastLogTerm() {
     return lastLogTerm_;
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -151,6 +163,7 @@ public  final class PreVoteRequest extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (nextTerm_ != 0) {
@@ -165,8 +178,10 @@ public  final class PreVoteRequest extends
     if (lastLogTerm_ != 0L) {
       output.writeInt64(4, lastLogTerm_);
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -188,11 +203,11 @@ public  final class PreVoteRequest extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(4, lastLogTerm_);
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -203,16 +218,16 @@ public  final class PreVoteRequest extends
     }
     io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest other = (io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest) obj;
 
-    boolean result = true;
-    result = result && (getNextTerm()
-        == other.getNextTerm());
-    result = result && (getCandidateId()
-        == other.getCandidateId());
-    result = result && (getLastLogIndex()
-        == other.getLastLogIndex());
-    result = result && (getLastLogTerm()
-        == other.getLastLogTerm());
-    return result;
+    if (getNextTerm()
+        != other.getNextTerm()) return false;
+    if (getCandidateId()
+        != other.getCandidateId()) return false;
+    if (getLastLogIndex()
+        != other.getLastLogIndex()) return false;
+    if (getLastLogTerm()
+        != other.getLastLogTerm()) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -221,7 +236,7 @@ public  final class PreVoteRequest extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + NEXT_TERM_FIELD_NUMBER;
     hash = (53 * hash) + getNextTerm();
     hash = (37 * hash) + CANDIDATE_ID_FIELD_NUMBER;
@@ -237,6 +252,17 @@ public  final class PreVoteRequest extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -296,6 +322,7 @@ public  final class PreVoteRequest extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -303,6 +330,7 @@ public  final class PreVoteRequest extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -326,6 +354,7 @@ public  final class PreVoteRequest extends
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_PreVoteRequest_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_PreVoteRequest_fieldAccessorTable
@@ -348,6 +377,7 @@ public  final class PreVoteRequest extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       nextTerm_ = 0;
@@ -361,15 +391,18 @@ public  final class PreVoteRequest extends
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_PreVoteRequest_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest build() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest result = buildPartial();
       if (!result.isInitialized()) {
@@ -378,6 +411,7 @@ public  final class PreVoteRequest extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest result = new io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest(this);
       result.nextTerm_ = nextTerm_;
@@ -388,32 +422,39 @@ public  final class PreVoteRequest extends
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest)other);
@@ -437,14 +478,17 @@ public  final class PreVoteRequest extends
       if (other.getLastLogTerm() != 0L) {
         setLastLogTerm(other.getLastLogTerm());
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -469,7 +513,7 @@ public  final class PreVoteRequest extends
      * candidate’s term + 1
      * </pre>
      *
-     * <code>optional int32 next_term = 1;</code>
+     * <code>int32 next_term = 1;</code>
      */
     public int getNextTerm() {
       return nextTerm_;
@@ -479,7 +523,7 @@ public  final class PreVoteRequest extends
      * candidate’s term + 1
      * </pre>
      *
-     * <code>optional int32 next_term = 1;</code>
+     * <code>int32 next_term = 1;</code>
      */
     public Builder setNextTerm(int value) {
       
@@ -492,7 +536,7 @@ public  final class PreVoteRequest extends
      * candidate’s term + 1
      * </pre>
      *
-     * <code>optional int32 next_term = 1;</code>
+     * <code>int32 next_term = 1;</code>
      */
     public Builder clearNextTerm() {
       
@@ -507,7 +551,7 @@ public  final class PreVoteRequest extends
      * candidate requesting vote
      * </pre>
      *
-     * <code>optional int32 candidate_id = 2;</code>
+     * <code>int32 candidate_id = 2;</code>
      */
     public int getCandidateId() {
       return candidateId_;
@@ -517,7 +561,7 @@ public  final class PreVoteRequest extends
      * candidate requesting vote
      * </pre>
      *
-     * <code>optional int32 candidate_id = 2;</code>
+     * <code>int32 candidate_id = 2;</code>
      */
     public Builder setCandidateId(int value) {
       
@@ -530,7 +574,7 @@ public  final class PreVoteRequest extends
      * candidate requesting vote
      * </pre>
      *
-     * <code>optional int32 candidate_id = 2;</code>
+     * <code>int32 candidate_id = 2;</code>
      */
     public Builder clearCandidateId() {
       
@@ -545,7 +589,7 @@ public  final class PreVoteRequest extends
      * index of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public long getLastLogIndex() {
       return lastLogIndex_;
@@ -555,7 +599,7 @@ public  final class PreVoteRequest extends
      * index of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public Builder setLastLogIndex(long value) {
       
@@ -568,7 +612,7 @@ public  final class PreVoteRequest extends
      * index of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_index = 3;</code>
+     * <code>int64 last_log_index = 3;</code>
      */
     public Builder clearLastLogIndex() {
       
@@ -583,7 +627,7 @@ public  final class PreVoteRequest extends
      * term of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_term = 4;</code>
+     * <code>int64 last_log_term = 4;</code>
      */
     public long getLastLogTerm() {
       return lastLogTerm_;
@@ -593,7 +637,7 @@ public  final class PreVoteRequest extends
      * term of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_term = 4;</code>
+     * <code>int64 last_log_term = 4;</code>
      */
     public Builder setLastLogTerm(long value) {
       
@@ -606,7 +650,7 @@ public  final class PreVoteRequest extends
      * term of candidate’s last log entry
      * </pre>
      *
-     * <code>optional int64 last_log_term = 4;</code>
+     * <code>int64 last_log_term = 4;</code>
      */
     public Builder clearLastLogTerm() {
       
@@ -614,14 +658,16 @@ public  final class PreVoteRequest extends
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -640,11 +686,12 @@ public  final class PreVoteRequest extends
 
   private static final com.google.protobuf.Parser<PreVoteRequest>
       PARSER = new com.google.protobuf.AbstractParser<PreVoteRequest>() {
+    @java.lang.Override
     public PreVoteRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new PreVoteRequest(input, extensionRegistry);
+      return new PreVoteRequest(input, extensionRegistry);
     }
   };
 
@@ -657,6 +704,7 @@ public  final class PreVoteRequest extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.transport.protobuf.PreVoteRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

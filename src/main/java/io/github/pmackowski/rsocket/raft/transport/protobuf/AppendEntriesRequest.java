@@ -10,30 +10,38 @@ public  final class AppendEntriesRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:AppendEntriesRequest)
     AppendEntriesRequestOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use AppendEntriesRequest.newBuilder() to construct.
   private AppendEntriesRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private AppendEntriesRequest() {
-    term_ = 0;
-    leaderId_ = 0;
-    prevLogIndex_ = 0L;
-    prevLogTerm_ = 0L;
     entries_ = java.util.Collections.emptyList();
-    leaderCommit_ = 0L;
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new AppendEntriesRequest();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private AppendEntriesRequest(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
     int mutable_bitField0_ = 0;
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -42,12 +50,6 @@ public  final class AppendEntriesRequest extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             term_ = input.readInt32();
@@ -69,9 +71,9 @@ public  final class AppendEntriesRequest extends
             break;
           }
           case 42: {
-            if (!((mutable_bitField0_ & 0x00000010) == 0x00000010)) {
+            if (!((mutable_bitField0_ & 0x00000001) != 0)) {
               entries_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
-              mutable_bitField0_ |= 0x00000010;
+              mutable_bitField0_ |= 0x00000001;
             }
             entries_.add(input.readBytes());
             break;
@@ -79,6 +81,13 @@ public  final class AppendEntriesRequest extends
           case 48: {
 
             leaderCommit_ = input.readInt64();
+            break;
+          }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
             break;
           }
         }
@@ -89,9 +98,10 @@ public  final class AppendEntriesRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000010) == 0x00000010)) {
-        entries_ = java.util.Collections.unmodifiableList(entries_);
+      if (((mutable_bitField0_ & 0x00000001) != 0)) {
+        entries_ = java.util.Collections.unmodifiableList(entries_); // C
       }
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -100,6 +110,7 @@ public  final class AppendEntriesRequest extends
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesRequest_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesRequest_fieldAccessorTable
@@ -107,7 +118,6 @@ public  final class AppendEntriesRequest extends
             io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest.class, io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest.Builder.class);
   }
 
-  private int bitField0_;
   public static final int TERM_FIELD_NUMBER = 1;
   private int term_;
   /**
@@ -115,7 +125,7 @@ public  final class AppendEntriesRequest extends
    * set leader’s term
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   public int getTerm() {
     return term_;
@@ -128,7 +138,7 @@ public  final class AppendEntriesRequest extends
    * leaderId so follower can redirect clients
    * </pre>
    *
-   * <code>optional int32 leader_id = 2;</code>
+   * <code>int32 leader_id = 2;</code>
    */
   public int getLeaderId() {
     return leaderId_;
@@ -141,7 +151,7 @@ public  final class AppendEntriesRequest extends
    * index of log entry immediately preceding new ones
    * </pre>
    *
-   * <code>optional int64 prev_log_index = 3;</code>
+   * <code>int64 prev_log_index = 3;</code>
    */
   public long getPrevLogIndex() {
     return prevLogIndex_;
@@ -154,7 +164,7 @@ public  final class AppendEntriesRequest extends
    * term of prevLogIndex entry
    * </pre>
    *
-   * <code>optional int64 prev_log_term = 4;</code>
+   * <code>int64 prev_log_term = 4;</code>
    */
   public long getPrevLogTerm() {
     return prevLogTerm_;
@@ -201,13 +211,14 @@ public  final class AppendEntriesRequest extends
    * leader’s commitIndex
    * </pre>
    *
-   * <code>optional int64 leader_commit = 6;</code>
+   * <code>int64 leader_commit = 6;</code>
    */
   public long getLeaderCommit() {
     return leaderCommit_;
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -217,6 +228,7 @@ public  final class AppendEntriesRequest extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (term_ != 0) {
@@ -237,8 +249,10 @@ public  final class AppendEntriesRequest extends
     if (leaderCommit_ != 0L) {
       output.writeInt64(6, leaderCommit_);
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -273,11 +287,11 @@ public  final class AppendEntriesRequest extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt64Size(6, leaderCommit_);
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -288,20 +302,20 @@ public  final class AppendEntriesRequest extends
     }
     io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest other = (io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest) obj;
 
-    boolean result = true;
-    result = result && (getTerm()
-        == other.getTerm());
-    result = result && (getLeaderId()
-        == other.getLeaderId());
-    result = result && (getPrevLogIndex()
-        == other.getPrevLogIndex());
-    result = result && (getPrevLogTerm()
-        == other.getPrevLogTerm());
-    result = result && getEntriesList()
-        .equals(other.getEntriesList());
-    result = result && (getLeaderCommit()
-        == other.getLeaderCommit());
-    return result;
+    if (getTerm()
+        != other.getTerm()) return false;
+    if (getLeaderId()
+        != other.getLeaderId()) return false;
+    if (getPrevLogIndex()
+        != other.getPrevLogIndex()) return false;
+    if (getPrevLogTerm()
+        != other.getPrevLogTerm()) return false;
+    if (!getEntriesList()
+        .equals(other.getEntriesList())) return false;
+    if (getLeaderCommit()
+        != other.getLeaderCommit()) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -310,7 +324,7 @@ public  final class AppendEntriesRequest extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + TERM_FIELD_NUMBER;
     hash = (53 * hash) + getTerm();
     hash = (37 * hash) + LEADER_ID_FIELD_NUMBER;
@@ -333,6 +347,17 @@ public  final class AppendEntriesRequest extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -392,6 +417,7 @@ public  final class AppendEntriesRequest extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -399,6 +425,7 @@ public  final class AppendEntriesRequest extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -422,6 +449,7 @@ public  final class AppendEntriesRequest extends
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesRequest_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesRequest_fieldAccessorTable
@@ -444,6 +472,7 @@ public  final class AppendEntriesRequest extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       term_ = 0;
@@ -455,21 +484,24 @@ public  final class AppendEntriesRequest extends
       prevLogTerm_ = 0L;
 
       entries_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000010);
+      bitField0_ = (bitField0_ & ~0x00000001);
       leaderCommit_ = 0L;
 
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.Raft.internal_static_AppendEntriesRequest_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest build() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest result = buildPartial();
       if (!result.isInitialized()) {
@@ -478,51 +510,57 @@ public  final class AppendEntriesRequest extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest result = new io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest(this);
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       result.term_ = term_;
       result.leaderId_ = leaderId_;
       result.prevLogIndex_ = prevLogIndex_;
       result.prevLogTerm_ = prevLogTerm_;
-      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+      if (((bitField0_ & 0x00000001) != 0)) {
         entries_ = java.util.Collections.unmodifiableList(entries_);
-        bitField0_ = (bitField0_ & ~0x00000010);
+        bitField0_ = (bitField0_ & ~0x00000001);
       }
       result.entries_ = entries_;
       result.leaderCommit_ = leaderCommit_;
-      result.bitField0_ = to_bitField0_;
       onBuilt();
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest)other);
@@ -549,7 +587,7 @@ public  final class AppendEntriesRequest extends
       if (!other.entries_.isEmpty()) {
         if (entries_.isEmpty()) {
           entries_ = other.entries_;
-          bitField0_ = (bitField0_ & ~0x00000010);
+          bitField0_ = (bitField0_ & ~0x00000001);
         } else {
           ensureEntriesIsMutable();
           entries_.addAll(other.entries_);
@@ -559,14 +597,17 @@ public  final class AppendEntriesRequest extends
       if (other.getLeaderCommit() != 0L) {
         setLeaderCommit(other.getLeaderCommit());
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -592,7 +633,7 @@ public  final class AppendEntriesRequest extends
      * set leader’s term
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public int getTerm() {
       return term_;
@@ -602,7 +643,7 @@ public  final class AppendEntriesRequest extends
      * set leader’s term
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public Builder setTerm(int value) {
       
@@ -615,7 +656,7 @@ public  final class AppendEntriesRequest extends
      * set leader’s term
      * </pre>
      *
-     * <code>optional int32 term = 1;</code>
+     * <code>int32 term = 1;</code>
      */
     public Builder clearTerm() {
       
@@ -630,7 +671,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>int32 leader_id = 2;</code>
      */
     public int getLeaderId() {
       return leaderId_;
@@ -640,7 +681,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>int32 leader_id = 2;</code>
      */
     public Builder setLeaderId(int value) {
       
@@ -653,7 +694,7 @@ public  final class AppendEntriesRequest extends
      * leaderId so follower can redirect clients
      * </pre>
      *
-     * <code>optional int32 leader_id = 2;</code>
+     * <code>int32 leader_id = 2;</code>
      */
     public Builder clearLeaderId() {
       
@@ -668,7 +709,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prev_log_index = 3;</code>
+     * <code>int64 prev_log_index = 3;</code>
      */
     public long getPrevLogIndex() {
       return prevLogIndex_;
@@ -678,7 +719,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prev_log_index = 3;</code>
+     * <code>int64 prev_log_index = 3;</code>
      */
     public Builder setPrevLogIndex(long value) {
       
@@ -691,7 +732,7 @@ public  final class AppendEntriesRequest extends
      * index of log entry immediately preceding new ones
      * </pre>
      *
-     * <code>optional int64 prev_log_index = 3;</code>
+     * <code>int64 prev_log_index = 3;</code>
      */
     public Builder clearPrevLogIndex() {
       
@@ -706,7 +747,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prev_log_term = 4;</code>
+     * <code>int64 prev_log_term = 4;</code>
      */
     public long getPrevLogTerm() {
       return prevLogTerm_;
@@ -716,7 +757,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prev_log_term = 4;</code>
+     * <code>int64 prev_log_term = 4;</code>
      */
     public Builder setPrevLogTerm(long value) {
       
@@ -729,7 +770,7 @@ public  final class AppendEntriesRequest extends
      * term of prevLogIndex entry
      * </pre>
      *
-     * <code>optional int64 prev_log_term = 4;</code>
+     * <code>int64 prev_log_term = 4;</code>
      */
     public Builder clearPrevLogTerm() {
       
@@ -740,9 +781,9 @@ public  final class AppendEntriesRequest extends
 
     private java.util.List<com.google.protobuf.ByteString> entries_ = java.util.Collections.emptyList();
     private void ensureEntriesIsMutable() {
-      if (!((bitField0_ & 0x00000010) == 0x00000010)) {
+      if (!((bitField0_ & 0x00000001) != 0)) {
         entries_ = new java.util.ArrayList<com.google.protobuf.ByteString>(entries_);
-        bitField0_ |= 0x00000010;
+        bitField0_ |= 0x00000001;
        }
     }
     /**
@@ -754,7 +795,8 @@ public  final class AppendEntriesRequest extends
      */
     public java.util.List<com.google.protobuf.ByteString>
         getEntriesList() {
-      return java.util.Collections.unmodifiableList(entries_);
+      return ((bitField0_ & 0x00000001) != 0) ?
+               java.util.Collections.unmodifiableList(entries_) : entries_;
     }
     /**
      * <pre>
@@ -833,7 +875,7 @@ public  final class AppendEntriesRequest extends
      */
     public Builder clearEntries() {
       entries_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000010);
+      bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
@@ -844,7 +886,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leader_commit = 6;</code>
+     * <code>int64 leader_commit = 6;</code>
      */
     public long getLeaderCommit() {
       return leaderCommit_;
@@ -854,7 +896,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leader_commit = 6;</code>
+     * <code>int64 leader_commit = 6;</code>
      */
     public Builder setLeaderCommit(long value) {
       
@@ -867,7 +909,7 @@ public  final class AppendEntriesRequest extends
      * leader’s commitIndex
      * </pre>
      *
-     * <code>optional int64 leader_commit = 6;</code>
+     * <code>int64 leader_commit = 6;</code>
      */
     public Builder clearLeaderCommit() {
       
@@ -875,14 +917,16 @@ public  final class AppendEntriesRequest extends
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -901,11 +945,12 @@ public  final class AppendEntriesRequest extends
 
   private static final com.google.protobuf.Parser<AppendEntriesRequest>
       PARSER = new com.google.protobuf.AbstractParser<AppendEntriesRequest>() {
+    @java.lang.Override
     public AppendEntriesRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new AppendEntriesRequest(input, extensionRegistry);
+      return new AppendEntriesRequest(input, extensionRegistry);
     }
   };
 
@@ -918,6 +963,7 @@ public  final class AppendEntriesRequest extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.transport.protobuf.AppendEntriesRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

@@ -8,16 +8,16 @@ public interface MetadataRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 message_type = 1;</code>
+   * <code>int32 message_type = 1;</code>
    */
   int getMessageType();
 
   /**
-   * <code>optional string group_name = 2;</code>
+   * <code>string group_name = 2;</code>
    */
   java.lang.String getGroupName();
   /**
-   * <code>optional string group_name = 2;</code>
+   * <code>string group_name = 2;</code>
    */
   com.google.protobuf.ByteString
       getGroupNameBytes();

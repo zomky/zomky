@@ -12,7 +12,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * leader’s term
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   int getTerm();
 
@@ -21,7 +21,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * so follower can redirect clients
    * </pre>
    *
-   * <code>optional int32 leader_id = 2;</code>
+   * <code>int32 leader_id = 2;</code>
    */
   int getLeaderId();
 
@@ -30,7 +30,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * the snapshot replaces all entries up through and including this index
    * </pre>
    *
-   * <code>optional int64 last_included_index = 3;</code>
+   * <code>int64 last_included_index = 3;</code>
    */
   long getLastIncludedIndex();
 
@@ -39,7 +39,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * lastIncludedTerm term of lastIncludedIndex offset byte offset where chunk is positioned in the snapshot file
    * </pre>
    *
-   * <code>optional int64 last_included_term = 4;</code>
+   * <code>int64 last_included_term = 4;</code>
    */
   long getLastIncludedTerm();
 
@@ -48,7 +48,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * raw bytes of the snapshot chunk, starting at offset
    * </pre>
    *
-   * <code>optional bytes data = 5;</code>
+   * <code>bytes data = 5;</code>
    */
   com.google.protobuf.ByteString getData();
 
@@ -57,7 +57,7 @@ public interface InstallSnapshotRequestOrBuilder extends
    * true if this is the last chunk
    * </pre>
    *
-   * <code>optional bool done = 6;</code>
+   * <code>bool done = 6;</code>
    */
   boolean getDone();
 }

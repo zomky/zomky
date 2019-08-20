@@ -10,28 +10,37 @@ public  final class InitJoinRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:InitJoinRequest)
     InitJoinRequestOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use InitJoinRequest.newBuilder() to construct.
   private InitJoinRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private InitJoinRequest() {
-    requesterPort_ = 0;
-    retry_ = false;
     host_ = "";
-    port_ = 0;
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new InitJoinRequest();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private InitJoinRequest(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
-    int mutable_bitField0_ = 0;
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -40,12 +49,6 @@ public  final class InitJoinRequest extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             requesterPort_ = input.readInt32();
@@ -67,6 +70,13 @@ public  final class InitJoinRequest extends
             port_ = input.readInt32();
             break;
           }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
+            break;
+          }
         }
       }
     } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -75,6 +85,7 @@ public  final class InitJoinRequest extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -83,6 +94,7 @@ public  final class InitJoinRequest extends
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_InitJoinRequest_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_InitJoinRequest_fieldAccessorTable
@@ -93,7 +105,7 @@ public  final class InitJoinRequest extends
   public static final int REQUESTER_PORT_FIELD_NUMBER = 1;
   private int requesterPort_;
   /**
-   * <code>optional int32 requester_port = 1;</code>
+   * <code>int32 requester_port = 1;</code>
    */
   public int getRequesterPort() {
     return requesterPort_;
@@ -102,7 +114,7 @@ public  final class InitJoinRequest extends
   public static final int RETRY_FIELD_NUMBER = 2;
   private boolean retry_;
   /**
-   * <code>optional bool retry = 2;</code>
+   * <code>bool retry = 2;</code>
    */
   public boolean getRetry() {
     return retry_;
@@ -111,7 +123,7 @@ public  final class InitJoinRequest extends
   public static final int HOST_FIELD_NUMBER = 3;
   private volatile java.lang.Object host_;
   /**
-   * <code>optional string host = 3;</code>
+   * <code>string host = 3;</code>
    */
   public java.lang.String getHost() {
     java.lang.Object ref = host_;
@@ -126,7 +138,7 @@ public  final class InitJoinRequest extends
     }
   }
   /**
-   * <code>optional string host = 3;</code>
+   * <code>string host = 3;</code>
    */
   public com.google.protobuf.ByteString
       getHostBytes() {
@@ -145,13 +157,14 @@ public  final class InitJoinRequest extends
   public static final int PORT_FIELD_NUMBER = 4;
   private int port_;
   /**
-   * <code>optional int32 port = 4;</code>
+   * <code>int32 port = 4;</code>
    */
   public int getPort() {
     return port_;
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -161,6 +174,7 @@ public  final class InitJoinRequest extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (requesterPort_ != 0) {
@@ -175,8 +189,10 @@ public  final class InitJoinRequest extends
     if (port_ != 0) {
       output.writeInt32(4, port_);
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -197,11 +213,11 @@ public  final class InitJoinRequest extends
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(4, port_);
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -212,16 +228,16 @@ public  final class InitJoinRequest extends
     }
     io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest other = (io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest) obj;
 
-    boolean result = true;
-    result = result && (getRequesterPort()
-        == other.getRequesterPort());
-    result = result && (getRetry()
-        == other.getRetry());
-    result = result && getHost()
-        .equals(other.getHost());
-    result = result && (getPort()
-        == other.getPort());
-    return result;
+    if (getRequesterPort()
+        != other.getRequesterPort()) return false;
+    if (getRetry()
+        != other.getRetry()) return false;
+    if (!getHost()
+        .equals(other.getHost())) return false;
+    if (getPort()
+        != other.getPort()) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -230,7 +246,7 @@ public  final class InitJoinRequest extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + REQUESTER_PORT_FIELD_NUMBER;
     hash = (53 * hash) + getRequesterPort();
     hash = (37 * hash) + RETRY_FIELD_NUMBER;
@@ -245,6 +261,17 @@ public  final class InitJoinRequest extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -304,6 +331,7 @@ public  final class InitJoinRequest extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -311,6 +339,7 @@ public  final class InitJoinRequest extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -334,6 +363,7 @@ public  final class InitJoinRequest extends
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_InitJoinRequest_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_InitJoinRequest_fieldAccessorTable
@@ -356,6 +386,7 @@ public  final class InitJoinRequest extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       requesterPort_ = 0;
@@ -369,15 +400,18 @@ public  final class InitJoinRequest extends
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_InitJoinRequest_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest build() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest result = buildPartial();
       if (!result.isInitialized()) {
@@ -386,6 +420,7 @@ public  final class InitJoinRequest extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest buildPartial() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest result = new io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest(this);
       result.requesterPort_ = requesterPort_;
@@ -396,32 +431,39 @@ public  final class InitJoinRequest extends
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest)other);
@@ -446,14 +488,17 @@ public  final class InitJoinRequest extends
       if (other.getPort() != 0) {
         setPort(other.getPort());
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -474,13 +519,13 @@ public  final class InitJoinRequest extends
 
     private int requesterPort_ ;
     /**
-     * <code>optional int32 requester_port = 1;</code>
+     * <code>int32 requester_port = 1;</code>
      */
     public int getRequesterPort() {
       return requesterPort_;
     }
     /**
-     * <code>optional int32 requester_port = 1;</code>
+     * <code>int32 requester_port = 1;</code>
      */
     public Builder setRequesterPort(int value) {
       
@@ -489,7 +534,7 @@ public  final class InitJoinRequest extends
       return this;
     }
     /**
-     * <code>optional int32 requester_port = 1;</code>
+     * <code>int32 requester_port = 1;</code>
      */
     public Builder clearRequesterPort() {
       
@@ -500,13 +545,13 @@ public  final class InitJoinRequest extends
 
     private boolean retry_ ;
     /**
-     * <code>optional bool retry = 2;</code>
+     * <code>bool retry = 2;</code>
      */
     public boolean getRetry() {
       return retry_;
     }
     /**
-     * <code>optional bool retry = 2;</code>
+     * <code>bool retry = 2;</code>
      */
     public Builder setRetry(boolean value) {
       
@@ -515,7 +560,7 @@ public  final class InitJoinRequest extends
       return this;
     }
     /**
-     * <code>optional bool retry = 2;</code>
+     * <code>bool retry = 2;</code>
      */
     public Builder clearRetry() {
       
@@ -526,7 +571,7 @@ public  final class InitJoinRequest extends
 
     private java.lang.Object host_ = "";
     /**
-     * <code>optional string host = 3;</code>
+     * <code>string host = 3;</code>
      */
     public java.lang.String getHost() {
       java.lang.Object ref = host_;
@@ -541,7 +586,7 @@ public  final class InitJoinRequest extends
       }
     }
     /**
-     * <code>optional string host = 3;</code>
+     * <code>string host = 3;</code>
      */
     public com.google.protobuf.ByteString
         getHostBytes() {
@@ -557,7 +602,7 @@ public  final class InitJoinRequest extends
       }
     }
     /**
-     * <code>optional string host = 3;</code>
+     * <code>string host = 3;</code>
      */
     public Builder setHost(
         java.lang.String value) {
@@ -570,7 +615,7 @@ public  final class InitJoinRequest extends
       return this;
     }
     /**
-     * <code>optional string host = 3;</code>
+     * <code>string host = 3;</code>
      */
     public Builder clearHost() {
       
@@ -579,7 +624,7 @@ public  final class InitJoinRequest extends
       return this;
     }
     /**
-     * <code>optional string host = 3;</code>
+     * <code>string host = 3;</code>
      */
     public Builder setHostBytes(
         com.google.protobuf.ByteString value) {
@@ -595,13 +640,13 @@ public  final class InitJoinRequest extends
 
     private int port_ ;
     /**
-     * <code>optional int32 port = 4;</code>
+     * <code>int32 port = 4;</code>
      */
     public int getPort() {
       return port_;
     }
     /**
-     * <code>optional int32 port = 4;</code>
+     * <code>int32 port = 4;</code>
      */
     public Builder setPort(int value) {
       
@@ -610,7 +655,7 @@ public  final class InitJoinRequest extends
       return this;
     }
     /**
-     * <code>optional int32 port = 4;</code>
+     * <code>int32 port = 4;</code>
      */
     public Builder clearPort() {
       
@@ -618,14 +663,16 @@ public  final class InitJoinRequest extends
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -644,11 +691,12 @@ public  final class InitJoinRequest extends
 
   private static final com.google.protobuf.Parser<InitJoinRequest>
       PARSER = new com.google.protobuf.AbstractParser<InitJoinRequest>() {
+    @java.lang.Override
     public InitJoinRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new InitJoinRequest(input, extensionRegistry);
+      return new InitJoinRequest(input, extensionRegistry);
     }
   };
 
@@ -661,6 +709,7 @@ public  final class InitJoinRequest extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.InitJoinRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

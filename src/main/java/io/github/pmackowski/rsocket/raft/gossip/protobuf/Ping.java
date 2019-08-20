@@ -10,31 +10,38 @@ public  final class Ping extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:Ping)
     PingOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use Ping.newBuilder() to construct.
   private Ping(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private Ping() {
-    initiatorNodeId_ = 0;
-    requestorNodeId_ = 0;
-    destinationNodeId_ = 0;
-    direct_ = false;
-    counter_ = 0L;
-    nackTimeout_ = 0;
     gossips_ = java.util.Collections.emptyList();
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new Ping();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private Ping(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
     int mutable_bitField0_ = 0;
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -43,12 +50,6 @@ public  final class Ping extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
 
             initiatorNodeId_ = input.readInt32();
@@ -80,12 +81,19 @@ public  final class Ping extends
             break;
           }
           case 58: {
-            if (!((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
+            if (!((mutable_bitField0_ & 0x00000001) != 0)) {
               gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>();
-              mutable_bitField0_ |= 0x00000040;
+              mutable_bitField0_ |= 0x00000001;
             }
             gossips_.add(
                 input.readMessage(io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.parser(), extensionRegistry));
+            break;
+          }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
             break;
           }
         }
@@ -96,9 +104,10 @@ public  final class Ping extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
+      if (((mutable_bitField0_ & 0x00000001) != 0)) {
         gossips_ = java.util.Collections.unmodifiableList(gossips_);
       }
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -107,6 +116,7 @@ public  final class Ping extends
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ping_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ping_fieldAccessorTable
@@ -114,11 +124,10 @@ public  final class Ping extends
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping.class, io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping.Builder.class);
   }
 
-  private int bitField0_;
   public static final int INITIATOR_NODE_ID_FIELD_NUMBER = 1;
   private int initiatorNodeId_;
   /**
-   * <code>optional int32 initiator_node_id = 1;</code>
+   * <code>int32 initiator_node_id = 1;</code>
    */
   public int getInitiatorNodeId() {
     return initiatorNodeId_;
@@ -127,7 +136,7 @@ public  final class Ping extends
   public static final int REQUESTOR_NODE_ID_FIELD_NUMBER = 2;
   private int requestorNodeId_;
   /**
-   * <code>optional int32 requestor_node_id = 2;</code>
+   * <code>int32 requestor_node_id = 2;</code>
    */
   public int getRequestorNodeId() {
     return requestorNodeId_;
@@ -136,7 +145,7 @@ public  final class Ping extends
   public static final int DESTINATION_NODE_ID_FIELD_NUMBER = 3;
   private int destinationNodeId_;
   /**
-   * <code>optional int32 destination_node_id = 3;</code>
+   * <code>int32 destination_node_id = 3;</code>
    */
   public int getDestinationNodeId() {
     return destinationNodeId_;
@@ -145,7 +154,7 @@ public  final class Ping extends
   public static final int DIRECT_FIELD_NUMBER = 4;
   private boolean direct_;
   /**
-   * <code>optional bool direct = 4;</code>
+   * <code>bool direct = 4;</code>
    */
   public boolean getDirect() {
     return direct_;
@@ -154,7 +163,7 @@ public  final class Ping extends
   public static final int COUNTER_FIELD_NUMBER = 5;
   private long counter_;
   /**
-   * <code>optional int64 counter = 5;</code>
+   * <code>int64 counter = 5;</code>
    */
   public long getCounter() {
     return counter_;
@@ -163,7 +172,7 @@ public  final class Ping extends
   public static final int NACK_TIMEOUT_FIELD_NUMBER = 6;
   private int nackTimeout_;
   /**
-   * <code>optional int32 nack_timeout = 6;</code>
+   * <code>int32 nack_timeout = 6;</code>
    */
   public int getNackTimeout() {
     return nackTimeout_;
@@ -205,6 +214,7 @@ public  final class Ping extends
   }
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -214,6 +224,7 @@ public  final class Ping extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     if (initiatorNodeId_ != 0) {
@@ -237,8 +248,10 @@ public  final class Ping extends
     for (int i = 0; i < gossips_.size(); i++) {
       output.writeMessage(7, gossips_.get(i));
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -272,11 +285,11 @@ public  final class Ping extends
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(7, gossips_.get(i));
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -287,22 +300,22 @@ public  final class Ping extends
     }
     io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping other = (io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping) obj;
 
-    boolean result = true;
-    result = result && (getInitiatorNodeId()
-        == other.getInitiatorNodeId());
-    result = result && (getRequestorNodeId()
-        == other.getRequestorNodeId());
-    result = result && (getDestinationNodeId()
-        == other.getDestinationNodeId());
-    result = result && (getDirect()
-        == other.getDirect());
-    result = result && (getCounter()
-        == other.getCounter());
-    result = result && (getNackTimeout()
-        == other.getNackTimeout());
-    result = result && getGossipsList()
-        .equals(other.getGossipsList());
-    return result;
+    if (getInitiatorNodeId()
+        != other.getInitiatorNodeId()) return false;
+    if (getRequestorNodeId()
+        != other.getRequestorNodeId()) return false;
+    if (getDestinationNodeId()
+        != other.getDestinationNodeId()) return false;
+    if (getDirect()
+        != other.getDirect()) return false;
+    if (getCounter()
+        != other.getCounter()) return false;
+    if (getNackTimeout()
+        != other.getNackTimeout()) return false;
+    if (!getGossipsList()
+        .equals(other.getGossipsList())) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -311,7 +324,7 @@ public  final class Ping extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + INITIATOR_NODE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getInitiatorNodeId();
     hash = (37 * hash) + REQUESTOR_NODE_ID_FIELD_NUMBER;
@@ -335,6 +348,17 @@ public  final class Ping extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -394,6 +418,7 @@ public  final class Ping extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -401,6 +426,7 @@ public  final class Ping extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -424,6 +450,7 @@ public  final class Ping extends
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ping_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ping_fieldAccessorTable
@@ -447,6 +474,7 @@ public  final class Ping extends
         getGossipsFieldBuilder();
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
       initiatorNodeId_ = 0;
@@ -463,22 +491,25 @@ public  final class Ping extends
 
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000040);
+        bitField0_ = (bitField0_ & ~0x00000001);
       } else {
         gossipsBuilder_.clear();
       }
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOuterClass.internal_static_Ping_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping build() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping result = buildPartial();
       if (!result.isInitialized()) {
@@ -487,10 +518,10 @@ public  final class Ping extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping buildPartial() {
       io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping result = new io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping(this);
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       result.initiatorNodeId_ = initiatorNodeId_;
       result.requestorNodeId_ = requestorNodeId_;
       result.destinationNodeId_ = destinationNodeId_;
@@ -498,45 +529,51 @@ public  final class Ping extends
       result.counter_ = counter_;
       result.nackTimeout_ = nackTimeout_;
       if (gossipsBuilder_ == null) {
-        if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        if (((bitField0_ & 0x00000001) != 0)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
-          bitField0_ = (bitField0_ & ~0x00000040);
+          bitField0_ = (bitField0_ & ~0x00000001);
         }
         result.gossips_ = gossips_;
       } else {
         result.gossips_ = gossipsBuilder_.build();
       }
-      result.bitField0_ = to_bitField0_;
       onBuilt();
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping)other);
@@ -570,7 +607,7 @@ public  final class Ping extends
         if (!other.gossips_.isEmpty()) {
           if (gossips_.isEmpty()) {
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000040);
+            bitField0_ = (bitField0_ & ~0x00000001);
           } else {
             ensureGossipsIsMutable();
             gossips_.addAll(other.gossips_);
@@ -583,7 +620,7 @@ public  final class Ping extends
             gossipsBuilder_.dispose();
             gossipsBuilder_ = null;
             gossips_ = other.gossips_;
-            bitField0_ = (bitField0_ & ~0x00000040);
+            bitField0_ = (bitField0_ & ~0x00000001);
             gossipsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getGossipsFieldBuilder() : null;
@@ -592,14 +629,17 @@ public  final class Ping extends
           }
         }
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -621,13 +661,13 @@ public  final class Ping extends
 
     private int initiatorNodeId_ ;
     /**
-     * <code>optional int32 initiator_node_id = 1;</code>
+     * <code>int32 initiator_node_id = 1;</code>
      */
     public int getInitiatorNodeId() {
       return initiatorNodeId_;
     }
     /**
-     * <code>optional int32 initiator_node_id = 1;</code>
+     * <code>int32 initiator_node_id = 1;</code>
      */
     public Builder setInitiatorNodeId(int value) {
       
@@ -636,7 +676,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional int32 initiator_node_id = 1;</code>
+     * <code>int32 initiator_node_id = 1;</code>
      */
     public Builder clearInitiatorNodeId() {
       
@@ -647,13 +687,13 @@ public  final class Ping extends
 
     private int requestorNodeId_ ;
     /**
-     * <code>optional int32 requestor_node_id = 2;</code>
+     * <code>int32 requestor_node_id = 2;</code>
      */
     public int getRequestorNodeId() {
       return requestorNodeId_;
     }
     /**
-     * <code>optional int32 requestor_node_id = 2;</code>
+     * <code>int32 requestor_node_id = 2;</code>
      */
     public Builder setRequestorNodeId(int value) {
       
@@ -662,7 +702,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional int32 requestor_node_id = 2;</code>
+     * <code>int32 requestor_node_id = 2;</code>
      */
     public Builder clearRequestorNodeId() {
       
@@ -673,13 +713,13 @@ public  final class Ping extends
 
     private int destinationNodeId_ ;
     /**
-     * <code>optional int32 destination_node_id = 3;</code>
+     * <code>int32 destination_node_id = 3;</code>
      */
     public int getDestinationNodeId() {
       return destinationNodeId_;
     }
     /**
-     * <code>optional int32 destination_node_id = 3;</code>
+     * <code>int32 destination_node_id = 3;</code>
      */
     public Builder setDestinationNodeId(int value) {
       
@@ -688,7 +728,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional int32 destination_node_id = 3;</code>
+     * <code>int32 destination_node_id = 3;</code>
      */
     public Builder clearDestinationNodeId() {
       
@@ -699,13 +739,13 @@ public  final class Ping extends
 
     private boolean direct_ ;
     /**
-     * <code>optional bool direct = 4;</code>
+     * <code>bool direct = 4;</code>
      */
     public boolean getDirect() {
       return direct_;
     }
     /**
-     * <code>optional bool direct = 4;</code>
+     * <code>bool direct = 4;</code>
      */
     public Builder setDirect(boolean value) {
       
@@ -714,7 +754,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional bool direct = 4;</code>
+     * <code>bool direct = 4;</code>
      */
     public Builder clearDirect() {
       
@@ -725,13 +765,13 @@ public  final class Ping extends
 
     private long counter_ ;
     /**
-     * <code>optional int64 counter = 5;</code>
+     * <code>int64 counter = 5;</code>
      */
     public long getCounter() {
       return counter_;
     }
     /**
-     * <code>optional int64 counter = 5;</code>
+     * <code>int64 counter = 5;</code>
      */
     public Builder setCounter(long value) {
       
@@ -740,7 +780,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional int64 counter = 5;</code>
+     * <code>int64 counter = 5;</code>
      */
     public Builder clearCounter() {
       
@@ -751,13 +791,13 @@ public  final class Ping extends
 
     private int nackTimeout_ ;
     /**
-     * <code>optional int32 nack_timeout = 6;</code>
+     * <code>int32 nack_timeout = 6;</code>
      */
     public int getNackTimeout() {
       return nackTimeout_;
     }
     /**
-     * <code>optional int32 nack_timeout = 6;</code>
+     * <code>int32 nack_timeout = 6;</code>
      */
     public Builder setNackTimeout(int value) {
       
@@ -766,7 +806,7 @@ public  final class Ping extends
       return this;
     }
     /**
-     * <code>optional int32 nack_timeout = 6;</code>
+     * <code>int32 nack_timeout = 6;</code>
      */
     public Builder clearNackTimeout() {
       
@@ -778,9 +818,9 @@ public  final class Ping extends
     private java.util.List<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip> gossips_ =
       java.util.Collections.emptyList();
     private void ensureGossipsIsMutable() {
-      if (!((bitField0_ & 0x00000040) == 0x00000040)) {
+      if (!((bitField0_ & 0x00000001) != 0)) {
         gossips_ = new java.util.ArrayList<io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip>(gossips_);
-        bitField0_ |= 0x00000040;
+        bitField0_ |= 0x00000001;
        }
     }
 
@@ -930,7 +970,7 @@ public  final class Ping extends
     public Builder clearGossips() {
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000040);
+        bitField0_ = (bitField0_ & ~0x00000001);
         onChanged();
       } else {
         gossipsBuilder_.clear();
@@ -1007,21 +1047,23 @@ public  final class Ping extends
         gossipsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip, io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Builder, io.github.pmackowski.rsocket.raft.gossip.protobuf.GossipOrBuilder>(
                 gossips_,
-                ((bitField0_ & 0x00000040) == 0x00000040),
+                ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),
                 isClean());
         gossips_ = null;
       }
       return gossipsBuilder_;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -1040,11 +1082,12 @@ public  final class Ping extends
 
   private static final com.google.protobuf.Parser<Ping>
       PARSER = new com.google.protobuf.AbstractParser<Ping>() {
+    @java.lang.Override
     public Ping parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Ping(input, extensionRegistry);
+      return new Ping(input, extensionRegistry);
     }
   };
 
@@ -1057,6 +1100,7 @@ public  final class Ping extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.gossip.protobuf.Ping getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

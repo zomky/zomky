@@ -23,7 +23,7 @@ buildscript {
         maven { url "http://repo.spring.io/plugins-release" }
     }
     dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.8',
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.10',
                   'org.asciidoctor:asciidoctorj-pdf:1.5.0-alpha.11',
                   'io.spring.gradle:propdeps-plugin:0.0.9.RELEASE',
                   'org.junit.platform:junit-platform-gradle-plugin:1.2.0'
@@ -32,17 +32,16 @@ buildscript {
 plugins {
     id 'org.asciidoctor.convert' version '1.5.6'
     id 'me.champeau.gradle.jmh' version '0.4.8'
-    id 'com.google.protobuf' version '0.8.8'
+    id 'com.google.protobuf' version '0.8.10'
     id 'com.github.johnrengelman.shadow' version '5.1.0'
 }
 
 ext {
     gradleScriptDir = "${rootProject.projectDir}/gradle"
 
-//    rsocketVersion = "0.12.1-RC3-SNAPSHOT"
     rsocketVersion = "1.0.0-RC1"
     reactorExtraVersion = "3.2.2.RELEASE"
-    protobufVersion = "3.0.0"
+    protobufVersion = "3.9.1"
     reactorCoreVersion = "3.2.10.RELEASE"
     reflectionsVersion = "0.9.11"
     picocliVersion = "3.9.6"
@@ -148,7 +147,7 @@ configure(allprojects) { project ->
 protobuf {
     protoc {
         // The artifact spec for the Protobuf Compiler
-        artifact = 'com.google.protobuf:protoc:3.0.0'
+        artifact = 'com.google.protobuf:protoc:3.9.1'
     }
 
     generatedFilesBaseDir = 'src'

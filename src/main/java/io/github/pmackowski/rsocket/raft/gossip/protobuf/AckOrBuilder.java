@@ -8,12 +8,12 @@ public interface AckOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 node_id = 1;</code>
+   * <code>int32 node_id = 1;</code>
    */
   int getNodeId();
 
   /**
-   * <code>optional bool nack = 2;</code>
+   * <code>bool nack = 2;</code>
    */
   boolean getNack();
 

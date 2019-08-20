@@ -10,25 +10,38 @@ public  final class InfoResponse extends
     com.google.protobuf.GeneratedMessageV3 implements
     // @@protoc_insertion_point(message_implements:InfoResponse)
     InfoResponseOrBuilder {
+private static final long serialVersionUID = 0L;
   // Use InfoResponse.newBuilder() to construct.
   private InfoResponse(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
   private InfoResponse() {
-    members_ = java.util.Collections.emptyList();
+    members_ = emptyIntList();
+  }
+
+  @java.lang.Override
+  @SuppressWarnings({"unused"})
+  protected java.lang.Object newInstance(
+      UnusedPrivateParameter unused) {
+    return new InfoResponse();
   }
 
   @java.lang.Override
   public final com.google.protobuf.UnknownFieldSet
   getUnknownFields() {
-    return com.google.protobuf.UnknownFieldSet.getDefaultInstance();
+    return this.unknownFields;
   }
   private InfoResponse(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     this();
+    if (extensionRegistry == null) {
+      throw new java.lang.NullPointerException();
+    }
     int mutable_bitField0_ = 0;
+    com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+        com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
       boolean done = false;
       while (!done) {
@@ -37,31 +50,32 @@ public  final class InfoResponse extends
           case 0:
             done = true;
             break;
-          default: {
-            if (!input.skipField(tag)) {
-              done = true;
-            }
-            break;
-          }
           case 8: {
-            if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
-              members_ = new java.util.ArrayList<java.lang.Integer>();
+            if (!((mutable_bitField0_ & 0x00000001) != 0)) {
+              members_ = newIntList();
               mutable_bitField0_ |= 0x00000001;
             }
-            members_.add(input.readInt32());
+            members_.addInt(input.readInt32());
             break;
           }
           case 10: {
             int length = input.readRawVarint32();
             int limit = input.pushLimit(length);
-            if (!((mutable_bitField0_ & 0x00000001) == 0x00000001) && input.getBytesUntilLimit() > 0) {
-              members_ = new java.util.ArrayList<java.lang.Integer>();
+            if (!((mutable_bitField0_ & 0x00000001) != 0) && input.getBytesUntilLimit() > 0) {
+              members_ = newIntList();
               mutable_bitField0_ |= 0x00000001;
             }
             while (input.getBytesUntilLimit() > 0) {
-              members_.add(input.readInt32());
+              members_.addInt(input.readInt32());
             }
             input.popLimit(limit);
+            break;
+          }
+          default: {
+            if (!parseUnknownField(
+                input, unknownFields, extensionRegistry, tag)) {
+              done = true;
+            }
             break;
           }
         }
@@ -72,9 +86,10 @@ public  final class InfoResponse extends
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
-      if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
-        members_ = java.util.Collections.unmodifiableList(members_);
+      if (((mutable_bitField0_ & 0x00000001) != 0)) {
+        members_.makeImmutable(); // C
       }
+      this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
   }
@@ -83,6 +98,7 @@ public  final class InfoResponse extends
     return io.github.pmackowski.rsocket.raft.client.protobuf.Client.internal_static_InfoResponse_descriptor;
   }
 
+  @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
     return io.github.pmackowski.rsocket.raft.client.protobuf.Client.internal_static_InfoResponse_fieldAccessorTable
@@ -91,7 +107,7 @@ public  final class InfoResponse extends
   }
 
   public static final int MEMBERS_FIELD_NUMBER = 1;
-  private java.util.List<java.lang.Integer> members_;
+  private com.google.protobuf.Internal.IntList members_;
   /**
    * <code>repeated int32 members = 1;</code>
    */
@@ -109,11 +125,12 @@ public  final class InfoResponse extends
    * <code>repeated int32 members = 1;</code>
    */
   public int getMembers(int index) {
-    return members_.get(index);
+    return members_.getInt(index);
   }
   private int membersMemoizedSerializedSize = -1;
 
   private byte memoizedIsInitialized = -1;
+  @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
     if (isInitialized == 1) return true;
@@ -123,6 +140,7 @@ public  final class InfoResponse extends
     return true;
   }
 
+  @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
     getSerializedSize();
@@ -131,10 +149,12 @@ public  final class InfoResponse extends
       output.writeUInt32NoTag(membersMemoizedSerializedSize);
     }
     for (int i = 0; i < members_.size(); i++) {
-      output.writeInt32NoTag(members_.get(i));
+      output.writeInt32NoTag(members_.getInt(i));
     }
+    unknownFields.writeTo(output);
   }
 
+  @java.lang.Override
   public int getSerializedSize() {
     int size = memoizedSize;
     if (size != -1) return size;
@@ -144,7 +164,7 @@ public  final class InfoResponse extends
       int dataSize = 0;
       for (int i = 0; i < members_.size(); i++) {
         dataSize += com.google.protobuf.CodedOutputStream
-          .computeInt32SizeNoTag(members_.get(i));
+          .computeInt32SizeNoTag(members_.getInt(i));
       }
       size += dataSize;
       if (!getMembersList().isEmpty()) {
@@ -154,11 +174,11 @@ public  final class InfoResponse extends
       }
       membersMemoizedSerializedSize = dataSize;
     }
+    size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
   }
 
-  private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
@@ -169,10 +189,10 @@ public  final class InfoResponse extends
     }
     io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse other = (io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse) obj;
 
-    boolean result = true;
-    result = result && getMembersList()
-        .equals(other.getMembersList());
-    return result;
+    if (!getMembersList()
+        .equals(other.getMembersList())) return false;
+    if (!unknownFields.equals(other.unknownFields)) return false;
+    return true;
   }
 
   @java.lang.Override
@@ -181,7 +201,7 @@ public  final class InfoResponse extends
       return memoizedHashCode;
     }
     int hash = 41;
-    hash = (19 * hash) + getDescriptorForType().hashCode();
+    hash = (19 * hash) + getDescriptor().hashCode();
     if (getMembersCount() > 0) {
       hash = (37 * hash) + MEMBERS_FIELD_NUMBER;
       hash = (53 * hash) + getMembersList().hashCode();
@@ -191,6 +211,17 @@ public  final class InfoResponse extends
     return hash;
   }
 
+  public static io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse parseFrom(
+      java.nio.ByteBuffer data)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data);
+  }
+  public static io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse parseFrom(
+      java.nio.ByteBuffer data,
+      com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+      throws com.google.protobuf.InvalidProtocolBufferException {
+    return PARSER.parseFrom(data, extensionRegistry);
+  }
   public static io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -250,6 +281,7 @@ public  final class InfoResponse extends
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
+  @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
@@ -257,6 +289,7 @@ public  final class InfoResponse extends
   public static Builder newBuilder(io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
+  @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
         ? new Builder() : new Builder().mergeFrom(this);
@@ -280,6 +313,7 @@ public  final class InfoResponse extends
       return io.github.pmackowski.rsocket.raft.client.protobuf.Client.internal_static_InfoResponse_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return io.github.pmackowski.rsocket.raft.client.protobuf.Client.internal_static_InfoResponse_fieldAccessorTable
@@ -302,22 +336,26 @@ public  final class InfoResponse extends
               .alwaysUseFieldBuilders) {
       }
     }
+    @java.lang.Override
     public Builder clear() {
       super.clear();
-      members_ = java.util.Collections.emptyList();
+      members_ = emptyIntList();
       bitField0_ = (bitField0_ & ~0x00000001);
       return this;
     }
 
+    @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
       return io.github.pmackowski.rsocket.raft.client.protobuf.Client.internal_static_InfoResponse_descriptor;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse getDefaultInstanceForType() {
       return io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse.getDefaultInstance();
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse build() {
       io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse result = buildPartial();
       if (!result.isInitialized()) {
@@ -326,11 +364,12 @@ public  final class InfoResponse extends
       return result;
     }
 
+    @java.lang.Override
     public io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse buildPartial() {
       io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse result = new io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse(this);
       int from_bitField0_ = bitField0_;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        members_ = java.util.Collections.unmodifiableList(members_);
+      if (((bitField0_ & 0x00000001) != 0)) {
+        members_.makeImmutable();
         bitField0_ = (bitField0_ & ~0x00000001);
       }
       result.members_ = members_;
@@ -338,32 +377,39 @@ public  final class InfoResponse extends
       return result;
     }
 
+    @java.lang.Override
     public Builder clone() {
-      return (Builder) super.clone();
+      return super.clone();
     }
+    @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.setField(field, value);
+        java.lang.Object value) {
+      return super.setField(field, value);
     }
+    @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
-      return (Builder) super.clearField(field);
+      return super.clearField(field);
     }
+    @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-      return (Builder) super.clearOneof(oneof);
+      return super.clearOneof(oneof);
     }
+    @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        int index, Object value) {
-      return (Builder) super.setRepeatedField(field, index, value);
+        int index, java.lang.Object value) {
+      return super.setRepeatedField(field, index, value);
     }
+    @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
-        Object value) {
-      return (Builder) super.addRepeatedField(field, value);
+        java.lang.Object value) {
+      return super.addRepeatedField(field, value);
     }
+    @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse) {
         return mergeFrom((io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse)other);
@@ -385,14 +431,17 @@ public  final class InfoResponse extends
         }
         onChanged();
       }
+      this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
     }
 
+    @java.lang.Override
     public final boolean isInitialized() {
       return true;
     }
 
+    @java.lang.Override
     public Builder mergeFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -412,10 +461,10 @@ public  final class InfoResponse extends
     }
     private int bitField0_;
 
-    private java.util.List<java.lang.Integer> members_ = java.util.Collections.emptyList();
+    private com.google.protobuf.Internal.IntList members_ = emptyIntList();
     private void ensureMembersIsMutable() {
-      if (!((bitField0_ & 0x00000001) == 0x00000001)) {
-        members_ = new java.util.ArrayList<java.lang.Integer>(members_);
+      if (!((bitField0_ & 0x00000001) != 0)) {
+        members_ = mutableCopy(members_);
         bitField0_ |= 0x00000001;
        }
     }
@@ -424,7 +473,8 @@ public  final class InfoResponse extends
      */
     public java.util.List<java.lang.Integer>
         getMembersList() {
-      return java.util.Collections.unmodifiableList(members_);
+      return ((bitField0_ & 0x00000001) != 0) ?
+               java.util.Collections.unmodifiableList(members_) : members_;
     }
     /**
      * <code>repeated int32 members = 1;</code>
@@ -436,7 +486,7 @@ public  final class InfoResponse extends
      * <code>repeated int32 members = 1;</code>
      */
     public int getMembers(int index) {
-      return members_.get(index);
+      return members_.getInt(index);
     }
     /**
      * <code>repeated int32 members = 1;</code>
@@ -444,7 +494,7 @@ public  final class InfoResponse extends
     public Builder setMembers(
         int index, int value) {
       ensureMembersIsMutable();
-      members_.set(index, value);
+      members_.setInt(index, value);
       onChanged();
       return this;
     }
@@ -453,7 +503,7 @@ public  final class InfoResponse extends
      */
     public Builder addMembers(int value) {
       ensureMembersIsMutable();
-      members_.add(value);
+      members_.addInt(value);
       onChanged();
       return this;
     }
@@ -472,19 +522,21 @@ public  final class InfoResponse extends
      * <code>repeated int32 members = 1;</code>
      */
     public Builder clearMembers() {
-      members_ = java.util.Collections.emptyList();
+      members_ = emptyIntList();
       bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
+    @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.setUnknownFields(unknownFields);
     }
 
+    @java.lang.Override
     public final Builder mergeUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
-      return this;
+      return super.mergeUnknownFields(unknownFields);
     }
 
 
@@ -503,11 +555,12 @@ public  final class InfoResponse extends
 
   private static final com.google.protobuf.Parser<InfoResponse>
       PARSER = new com.google.protobuf.AbstractParser<InfoResponse>() {
+    @java.lang.Override
     public InfoResponse parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-        return new InfoResponse(input, extensionRegistry);
+      return new InfoResponse(input, extensionRegistry);
     }
   };
 
@@ -520,6 +573,7 @@ public  final class InfoResponse extends
     return PARSER;
   }
 
+  @java.lang.Override
   public io.github.pmackowski.rsocket.raft.client.protobuf.InfoResponse getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }

@@ -87,7 +87,7 @@ public final class GossipOuterClass {
       "ponse\022\016\n\006status\030\001 \001(\010\022\030\n\007gossips\030\002 \003(\0132\007" +
       ".Gossip\"*\n\020InitLeaveRequest\022\026\n\016requester" +
       "_port\030\001 \001(\005\"#\n\021InitLeaveResponse\022\016\n\006stat" +
-      "us\030\001 \001(\010\"&\n\014LeaveRequest\022\026\n\016requester_po",
+      "us\030\001 \001(\010\"&\n\014LeaveRequest\022\026\n\016requester_po" +
       "rt\030\001 \001(\005\"\037\n\rLeaveResponse\022\016\n\006status\030\001 \001(" +
       "\010\"\220\001\n\006Gossip\022$\n\tsuspicion\030\001 \001(\0162\021.Gossip" +
       ".Suspicion\022\023\n\013incarnation\030\002 \001(\005\022\017\n\007node_" +
@@ -97,23 +97,15 @@ public final class GossipOuterClass {
       "de_id\030\002 \001(\005\022\033\n\023destination_node_id\030\003 \001(\005" +
       "\022\016\n\006direct\030\004 \001(\010\022\017\n\007counter\030\005 \001(\003\022\024\n\014nac" +
       "k_timeout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossi" +
-      "p\">\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022",
+      "p\">\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022" +
       "\030\n\007gossips\030\003 \003(\0132\007.GossipB5\n1io.github.p" +
       "mackowski.rsocket.raft.gossip.protobufP\001" +
       "b\006proto3"
     };
-    com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
-          public com.google.protobuf.ExtensionRegistry assignDescriptors(
-              com.google.protobuf.Descriptors.FileDescriptor root) {
-            descriptor = root;
-            return null;
-          }
-        };
-    com.google.protobuf.Descriptors.FileDescriptor
+    descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+        });
     internal_static_InitJoinRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
     internal_static_InitJoinRequest_fieldAccessorTable = new

@@ -8,21 +8,21 @@ public interface GossipOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional .Gossip.Suspicion suspicion = 1;</code>
+   * <code>.Gossip.Suspicion suspicion = 1;</code>
    */
   int getSuspicionValue();
   /**
-   * <code>optional .Gossip.Suspicion suspicion = 1;</code>
+   * <code>.Gossip.Suspicion suspicion = 1;</code>
    */
   io.github.pmackowski.rsocket.raft.gossip.protobuf.Gossip.Suspicion getSuspicion();
 
   /**
-   * <code>optional int32 incarnation = 2;</code>
+   * <code>int32 incarnation = 2;</code>
    */
   int getIncarnation();
 
   /**
-   * <code>optional int32 node_id = 3;</code>
+   * <code>int32 node_id = 3;</code>
    */
   int getNodeId();
 }

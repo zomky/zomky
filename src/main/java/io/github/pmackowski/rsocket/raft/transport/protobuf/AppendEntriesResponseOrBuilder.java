@@ -12,12 +12,12 @@ public interface AppendEntriesResponseOrBuilder extends
    * currentTerm, for leader to update itself
    * </pre>
    *
-   * <code>optional int32 term = 1;</code>
+   * <code>int32 term = 1;</code>
    */
   int getTerm();
 
   /**
-   * <code>optional bool success = 2;</code>
+   * <code>bool success = 2;</code>
    */
   boolean getSuccess();
 
@@ -26,7 +26,7 @@ public interface AppendEntriesResponseOrBuilder extends
    * last log index, set only if success equals to false (extension to Raft)
    * </pre>
    *
-   * <code>optional int64 last_log_index = 3;</code>
+   * <code>int64 last_log_index = 3;</code>
    */
   long getLastLogIndex();
 }

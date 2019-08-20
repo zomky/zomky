@@ -8,7 +8,7 @@ public interface JoinResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional bool status = 1;</code>
+   * <code>bool status = 1;</code>
    */
   boolean getStatus();
 

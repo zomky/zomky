@@ -8,42 +8,42 @@ public interface AddGroupRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>optional int32 leader_id_suggestion = 1;</code>
+   * <code>int32 leader_id_suggestion = 1;</code>
    */
   int getLeaderIdSuggestion();
 
   /**
-   * <code>optional string state_machine = 2;</code>
+   * <code>string state_machine = 2;</code>
    */
   java.lang.String getStateMachine();
   /**
-   * <code>optional string state_machine = 2;</code>
+   * <code>string state_machine = 2;</code>
    */
   com.google.protobuf.ByteString
       getStateMachineBytes();
 
   /**
-   * <code>optional int32 election_timeout_min = 3;</code>
+   * <code>int32 election_timeout_min = 3;</code>
    */
   int getElectionTimeoutMin();
 
   /**
-   * <code>optional int32 election_timeout_max = 4;</code>
+   * <code>int32 election_timeout_max = 4;</code>
    */
   int getElectionTimeoutMax();
 
   /**
-   * <code>optional bool passive = 5;</code>
+   * <code>bool passive = 5;</code>
    */
   boolean getPassive();
 
   /**
-   * <code>optional bool persistent_storage = 6;</code>
+   * <code>bool persistent_storage = 6;</code>
    */
   boolean getPersistentStorage();
 
   /**
-   * <code>optional int32 segment_size = 7;</code>
+   * <code>int32 segment_size = 7;</code>
    */
   int getSegmentSize();
 

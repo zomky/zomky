@@ -107,7 +107,7 @@ public final class Raft {
       "ex\030\003 \001(\003\022\025\n\rlast_log_term\030\004 \001(\003\"2\n\014VoteR" +
       "esponse\022\014\n\004term\030\001 \001(\005\022\024\n\014vote_granted\030\002 " +
       "\001(\010\"\216\001\n\024AppendEntriesRequest\022\014\n\004term\030\001 \001" +
-      "(\005\022\021\n\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030",
+      "(\005\022\021\n\tleader_id\030\002 \001(\005\022\026\n\016prev_log_index\030" +
       "\003 \001(\003\022\025\n\rprev_log_term\030\004 \001(\003\022\017\n\007entries\030" +
       "\005 \003(\014\022\025\n\rleader_commit\030\006 \001(\003\"N\n\025AppendEn" +
       "triesResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002" +
@@ -117,7 +117,7 @@ public final class Raft {
       "\030\002 \001(\005\")\n\023RemoveServerRequest\022\022\n\nold_ser" +
       "ver\030\001 \001(\005\";\n\024RemoveServerResponse\022\016\n\006sta" +
       "tus\030\001 \001(\010\022\023\n\013leader_hint\030\002 \001(\005\"\216\001\n\026Insta" +
-      "llSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\021\n\tleade",
+      "llSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\021\n\tleade" +
       "r_id\030\002 \001(\005\022\033\n\023last_included_index\030\003 \001(\003\022" +
       "\032\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
       "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
@@ -127,23 +127,15 @@ public final class Raft {
       "n\030\001 \001(\005\022\025\n\rstate_machine\030\002 \001(\t\022\034\n\024electi" +
       "on_timeout_min\030\003 \001(\005\022\034\n\024election_timeout" +
       "_max\030\004 \001(\005\022\017\n\007passive\030\005 \001(\010\022\032\n\022persisten" +
-      "t_storage\030\006 \001(\010\022\024\n\014segment_size\030\007 \001(\005\022\r\n",
+      "t_storage\030\006 \001(\010\022\024\n\014segment_size\030\007 \001(\005\022\r\n" +
       "\005nodes\030\010 \003(\005\"\"\n\020AddGroupResponse\022\016\n\006stat" +
       "us\030\001 \001(\010B8\n4io.github.pmackowski.rsocket" +
       ".raft.transport.protobufP\001b\006proto3"
     };
-    com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
-          public com.google.protobuf.ExtensionRegistry assignDescriptors(
-              com.google.protobuf.Descriptors.FileDescriptor root) {
-            descriptor = root;
-            return null;
-          }
-        };
-    com.google.protobuf.Descriptors.FileDescriptor
+    descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+        });
     internal_static_PreVoteRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
     internal_static_PreVoteRequest_fieldAccessorTable = new
