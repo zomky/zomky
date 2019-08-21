@@ -1,5 +1,5 @@
 language: java
-install: true
+install: false
 jdk:
   - openjdk8
 
@@ -11,7 +11,7 @@ branches:
     - master
 
 script:
-  - ./gradlew build --scan -s
+  - ./gradlew check --scan -s
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

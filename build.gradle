@@ -97,17 +97,6 @@ configure(allprojects) { project ->
 
     sourceCompatibility = targetCompatibility = 1.8
 
-    jacoco {
-        toolVersion = '0.8.2'
-    }
-
-    jacocoTestReport {
-        reports {
-            xml.enabled = true
-            html.enabled = true
-        }
-    }
-
     [compileJava, compileTestJava]*.options*.compilerArgs = ["-Xlint:varargs",
                                                              "-Xlint:cast",
                                                              "-Xlint:classfile",
@@ -191,7 +180,7 @@ configure(rootProject) {
         classifier = null
         version = null
     }
-    
+
     test {
         useJUnitPlatform() {
             excludeTags 'integration'
@@ -225,6 +214,20 @@ configure(rootProject) {
         shouldRunAfter test
     }
 
+    jacoco {
+        toolVersion = '0.8.2'
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled = true
+            html.enabled = true
+        }
+    }
+
+    jacocoTestReport.dependsOn test
+    check.dependsOn jacocoTestReport
+    
     artifacts {
         archives sourcesJar
         archives javadocJar
@@ -236,7 +239,7 @@ configure(rootProject) {
 integrationTest.enabled = false
 
 project(':zomky-samples') {
-    archivesBaseName = ':zomky-samples'
+    archivesBaseName = 'zomky-samples'
     description = 'Samples for zomky'
     dependencies {
         compile rootProject
