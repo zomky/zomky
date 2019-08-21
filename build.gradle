@@ -78,7 +78,7 @@ configurations.all {
 }
 
 configure(allprojects) { project ->
-    group = 'io.github.pmackowski.rsocket.raft'
+    group = 'io.github.zomky'
 
     repositories {
         mavenLocal()
@@ -175,14 +175,14 @@ protobuf {
 }
 
 configure(rootProject) {
-    archivesBaseName = 'rsocket-raft'
-    description = 'Rsocket-raft: Raft implementation'
+    archivesBaseName = 'zomky'
+    description = 'Zomky: Raft & Gossip implementation'
 
     jar {
         manifest {
-            attributes("Automatic-Module-Name": "rsocket-raft",
+            attributes("Automatic-Module-Name": "zomky",
                     "Implementation-Version": version,
-                    "Main-Class" :"io.github.pmackowski.rsocket.raft.cli.Zomky")
+                    "Main-Class" :"io.github.zomky.cli.Zomky")
         }
     }
 
@@ -235,9 +235,9 @@ configure(rootProject) {
 
 integrationTest.enabled = false
 
-project(':rsocket-raft-samples') {
-    archivesBaseName = ':rsocket-raft-samples'
-    description = 'Samples for rsocket-raft'
+project(':zomky-samples') {
+    archivesBaseName = ':zomky-samples'
+    description = 'Samples for zomky'
     dependencies {
         compile rootProject
         runtime "ch.qos.logback:logback-classic:$logbackVersion"
@@ -246,7 +246,7 @@ project(':rsocket-raft-samples') {
     }
 
     task sample(type:JavaExec) {
-        main = 'io.github.pmackowski.rsocket.raft.samples.SampleRaft'
+        main = 'io.github.zomky.samples.SampleRaft'
         classpath = sourceSets.main.runtimeClasspath
     }
 

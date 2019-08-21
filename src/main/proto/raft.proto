@@ -1,5 +1,5 @@
 syntax = "proto3";
-option java_package = "io.github.pmackowski.rsocket.raft.transport.protobuf";
+option java_package = "io.github.zomky.transport.protobuf";
 option java_multiple_files = true;
 
 message PreVoteRequest {

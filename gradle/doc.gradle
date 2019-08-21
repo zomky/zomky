@@ -21,10 +21,10 @@ configure(rootProject) {
 
   javadoc {
 	dependsOn jar
-	group = "Rsocket Raft Javadoc"
+	group = "Zomky Javadoc"
 
 	description = "Generates aggregated Javadoc API documentation."
-	title = "RSocket Raft ${version}"
+	title = "Zomky ${version}"
 
 	if (JavaVersion.current().isJava8Compatible()) {
 	  compileTestJava.options.compilerArgs += "-parameters"
@@ -35,7 +35,7 @@ configure(rootProject) {
 
 	options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
 	options.author = true
-	options.header = "Rsocket Raft"
+	options.header = "Zomky"
 	options.overview = "src/api/overview.html"
 	options.links(rootProject.ext.javadocLinks)
 
@@ -65,12 +65,12 @@ configure(rootProject) {
 
 	doLast {
 	  file("$outputDir/pdf/index.pdf").
-			  renameTo("$outputDir/pdf/rsocket-raft-reference-guide-${version}.pdf")
+			  renameTo("$outputDir/pdf/zomky-reference-guide-${version}.pdf")
 	}
   }
   task docsZip(type: Zip, dependsOn: asciidoctor) {
-	baseName = 'rsocket-raft-docs'
-	from("$buildDir/asciidoc/pdf/rsocket-raft-reference-guide-${version}.pdf") { into("docs/") }
+	baseName = 'zomky-docs'
+	from("$buildDir/asciidoc/pdf/zomky-reference-guide-${version}.pdf") { into("docs/") }
 	from("$buildDir/asciidoc/html5/index.html") { into("docs/") }
 	from("$buildDir/asciidoc/html5/images") { into("images/") }
   }

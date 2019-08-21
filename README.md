@@ -1,6 +1,6 @@
-# rsocket-raft 
+# zomky
 
 ### Status
-[![Build Status](https://travis-ci.com/pmackowski/rsocket-raft.svg?branch=master)](https://travis-ci.com/pmackowski/rsocket-raft)
+[![Build Status](https://travis-ci.com/zomky/zomky.svg?branch=master)](https://travis-ci.com/zomky/zomky)
 
 Under development
