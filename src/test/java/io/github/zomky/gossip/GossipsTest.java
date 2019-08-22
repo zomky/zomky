@@ -2,7 +2,6 @@ package io.github.zomky.gossip;
 
 import io.github.zomky.gossip.protobuf.Ack;
 import io.github.zomky.gossip.protobuf.Gossip;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -103,7 +102,6 @@ class GossipsTest {
     }
 
     @Test
-    @Disabled
     void probeCompletedNoAcksOtherSuspicionExist() {
         // given
         Gossips gossips = Gossips.builder()
@@ -450,6 +448,27 @@ class GossipsTest {
         // then
         assertThat(gossips.incarnation()).isEqualTo(1);
         assertThat(gossips.count()).isEqualTo(0);
+        assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
+    }
+
+    @Test
+    void addSuspectGossipWithSameIncarnationNumberAndDifferentHarbouringNodes() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addSuspectGossip(DESTINATION_NODE_ID, 7009, 1, 0)
+                .incarnation(1)
+                .build();
+
+        // when
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(1).build());
+
+        // then
+        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7009).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(1).build()
+        );
+        assertThat(gossips.count()).isEqualTo(1);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 

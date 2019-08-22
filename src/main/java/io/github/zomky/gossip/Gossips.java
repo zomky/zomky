@@ -180,34 +180,45 @@ class Gossips {
             return;
         }
 
-        Gossip currentGossip = getCurrentGossip(nodeId, nodeIdHarbourSuspicion).orElse(null);
-        if (currentGossip == null) {
+        if (noGossips(nodeId)) {
             addGossipInternal(gossip);
             return;
         }
 
+        int currentIncarnation = currentIncarnation(nodeId);
+        Gossip.Suspicion currentSuspicion = currentSuspicion(nodeId);
+
         if (suspicion == Gossip.Suspicion.ALIVE) {
-            if (incarnation > currentGossip.getIncarnation() && (currentGossip.getSuspicion() == Gossip.Suspicion.ALIVE || currentGossip.getSuspicion() == Gossip.Suspicion.SUSPECT)) {
+            if (incarnation > currentIncarnation && (currentSuspicion == Gossip.Suspicion.ALIVE || currentSuspicion == Gossip.Suspicion.SUSPECT)) {
                 addGossipInternal(gossip);
             }
             return;
         }
 
         if (suspicion == Gossip.Suspicion.SUSPECT) {
-            if (incarnation >= currentIncarnation(nodeId) &&
-                    (
-                        (incarnation > currentGossip.getIncarnation() && currentGossip.getSuspicion() == Gossip.Suspicion.SUSPECT) ||
-                        (incarnation >= currentGossip.getIncarnation() && currentGossip.getSuspicion() == Gossip.Suspicion.ALIVE)
-               )
-            ) {
-                addGossipInternal(gossip);
+            if (currentSuspicion == Gossip.Suspicion.ALIVE) {
+                if (incarnation >= currentIncarnation) {
+                    addGossipInternal(gossip);
+                }
+                return;
             }
-            return;
+            if (currentSuspicion == Gossip.Suspicion.SUSPECT) {
+                if (incarnation > currentIncarnation ||
+                        (incarnation == currentIncarnation && !getGossip(nodeId, nodeIdHarbourSuspicion).isPresent())) {
+                    addGossipInternal(gossip);
+                }
+                return;
+            }
+
         }
 
-        if (suspicion == Gossip.Suspicion.DEAD) {
+        if (suspicion == Gossip.Suspicion.DEAD && currentSuspicion != Gossip.Suspicion.DEAD) {
             addGossipInternal(gossip);
         }
+    }
+
+    private boolean noGossips(int nodeId) {
+        return getGossipDisseminations(nodeId).isEmpty();
     }
 
     private void addGossipInternal(Gossip gossip) {
@@ -225,9 +236,7 @@ class Gossips {
         int incarnation = gossip.getIncarnation();
         Gossip.Suspicion suspicion = gossip.getSuspicion();
 
-        Gossip.Suspicion currentSuspicion = getGossip(gossip.getNodeId(), gossip.getNodeIdHarbourSuspicion())
-                .map(Gossip::getSuspicion)
-                .orElse(Gossip.Suspicion.UNKNOWN);
+        Gossip.Suspicion currentSuspicion = currentSuspicion(nodeId);
         Gossip.Suspicion newSuspicion = gossip.getSuspicion();
         if (currentSuspicion != newSuspicion && gossip.getNodeId() != this.nodeId) {
             sink.next(gossip);
@@ -265,6 +274,10 @@ class Gossips {
                 .setIncarnation(incarnation)
                 .setSuspicion(Gossip.Suspicion.SUSPECT)
                 .build();
+        int currentIncarnation = currentIncarnation(nodeId);
+        if (incarnation > currentIncarnation) {
+            suspectGossips.row(nodeId).clear();
+        }
         suspectGossips.put(nodeId, nodeIdHarbourSuspicion, new GossipDissemination(gossip, disseminationCount));
         aliveGossips.remove(nodeId);
     }
@@ -337,6 +350,14 @@ class Gossips {
 
     private int currentIncarnation(int nodeId) {
         return getGossipDisseminations(nodeId).stream().mapToInt(v -> v.getGossip().getIncarnation()).max().orElse(0);
+    }
+
+    private Gossip.Suspicion currentSuspicion(int nodeId) {
+        return getGossipDisseminations(nodeId).stream()
+                .map(GossipDissemination::getGossip)
+                .map(Gossip::getSuspicion)
+                .findAny()
+                .orElse(Gossip.Suspicion.UNKNOWN);
     }
 
     private static class GossipDissemination {
