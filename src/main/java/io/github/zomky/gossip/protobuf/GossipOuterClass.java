@@ -89,17 +89,18 @@ public final class GossipOuterClass {
       "_port\030\001 \001(\005\"#\n\021InitLeaveResponse\022\016\n\006stat" +
       "us\030\001 \001(\010\"&\n\014LeaveRequest\022\026\n\016requester_po" +
       "rt\030\001 \001(\005\"\037\n\rLeaveResponse\022\016\n\006status\030\001 \001(" +
-      "\010\"\220\001\n\006Gossip\022$\n\tsuspicion\030\001 \001(\0162\021.Gossip" +
+      "\010\"\263\001\n\006Gossip\022$\n\tsuspicion\030\001 \001(\0162\021.Gossip" +
       ".Suspicion\022\023\n\013incarnation\030\002 \001(\005\022\017\n\007node_" +
-      "id\030\003 \001(\005\":\n\tSuspicion\022\013\n\007UNKNOWN\020\000\022\t\n\005AL" +
-      "IVE\020\001\022\013\n\007SUSPECT\020\002\022\010\n\004DEAD\020\003\"\252\001\n\004Ping\022\031\n" +
-      "\021initiator_node_id\030\001 \001(\005\022\031\n\021requestor_no" +
-      "de_id\030\002 \001(\005\022\033\n\023destination_node_id\030\003 \001(\005" +
-      "\022\016\n\006direct\030\004 \001(\010\022\017\n\007counter\030\005 \001(\003\022\024\n\014nac" +
-      "k_timeout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossi" +
-      "p\">\n\003Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022" +
-      "\030\n\007gossips\030\003 \003(\0132\007.GossipB#\n\037io.github.z" +
-      "omky.gossip.protobufP\001b\006proto3"
+      "id\030\003 \001(\005\022!\n\031node_id_harbour_suspicion\030\004 " +
+      "\001(\005\":\n\tSuspicion\022\013\n\007UNKNOWN\020\000\022\t\n\005ALIVE\020\001" +
+      "\022\013\n\007SUSPECT\020\002\022\010\n\004DEAD\020\003\"\252\001\n\004Ping\022\031\n\021init" +
+      "iator_node_id\030\001 \001(\005\022\031\n\021requestor_node_id" +
+      "\030\002 \001(\005\022\033\n\023destination_node_id\030\003 \001(\005\022\016\n\006d" +
+      "irect\030\004 \001(\010\022\017\n\007counter\030\005 \001(\003\022\024\n\014nack_tim" +
+      "eout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossip\">\n\003" +
+      "Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022\030\n\007go" +
+      "ssips\030\003 \003(\0132\007.GossipB#\n\037io.github.zomky." +
+      "gossip.protobufP\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -158,7 +159,7 @@ public final class GossipOuterClass {
     internal_static_Gossip_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Gossip_descriptor,
-        new java.lang.String[] { "Suspicion", "Incarnation", "NodeId", });
+        new java.lang.String[] { "Suspicion", "Incarnation", "NodeId", "NodeIdHarbourSuspicion", });
     internal_static_Ping_descriptor =
       getDescriptor().getMessageTypes().get(9);
     internal_static_Ping_fieldAccessorTable = new

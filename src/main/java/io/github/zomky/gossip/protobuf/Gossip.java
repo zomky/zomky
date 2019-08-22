@@ -65,6 +65,11 @@ private static final long serialVersionUID = 0L;
             nodeId_ = input.readInt32();
             break;
           }
+          case 32: {
+
+            nodeIdHarbourSuspicion_ = input.readInt32();
+            break;
+          }
           default: {
             if (!parseUnknownField(
                 input, unknownFields, extensionRegistry, tag)) {
@@ -248,6 +253,15 @@ private static final long serialVersionUID = 0L;
     return nodeId_;
   }
 
+  public static final int NODE_ID_HARBOUR_SUSPICION_FIELD_NUMBER = 4;
+  private int nodeIdHarbourSuspicion_;
+  /**
+   * <code>int32 node_id_harbour_suspicion = 4;</code>
+   */
+  public int getNodeIdHarbourSuspicion() {
+    return nodeIdHarbourSuspicion_;
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -271,6 +285,9 @@ private static final long serialVersionUID = 0L;
     if (nodeId_ != 0) {
       output.writeInt32(3, nodeId_);
     }
+    if (nodeIdHarbourSuspicion_ != 0) {
+      output.writeInt32(4, nodeIdHarbourSuspicion_);
+    }
     unknownFields.writeTo(output);
   }
 
@@ -292,6 +309,10 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(3, nodeId_);
     }
+    if (nodeIdHarbourSuspicion_ != 0) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(4, nodeIdHarbourSuspicion_);
+    }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
@@ -312,6 +333,8 @@ private static final long serialVersionUID = 0L;
         != other.getIncarnation()) return false;
     if (getNodeId()
         != other.getNodeId()) return false;
+    if (getNodeIdHarbourSuspicion()
+        != other.getNodeIdHarbourSuspicion()) return false;
     if (!unknownFields.equals(other.unknownFields)) return false;
     return true;
   }
@@ -329,6 +352,8 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getIncarnation();
     hash = (37 * hash) + NODE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getNodeId();
+    hash = (37 * hash) + NODE_ID_HARBOUR_SUSPICION_FIELD_NUMBER;
+    hash = (53 * hash) + getNodeIdHarbourSuspicion();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -468,6 +493,8 @@ private static final long serialVersionUID = 0L;
 
       nodeId_ = 0;
 
+      nodeIdHarbourSuspicion_ = 0;
+
       return this;
     }
 
@@ -497,6 +524,7 @@ private static final long serialVersionUID = 0L;
       result.suspicion_ = suspicion_;
       result.incarnation_ = incarnation_;
       result.nodeId_ = nodeId_;
+      result.nodeIdHarbourSuspicion_ = nodeIdHarbourSuspicion_;
       onBuilt();
       return result;
     }
@@ -553,6 +581,9 @@ private static final long serialVersionUID = 0L;
       }
       if (other.getNodeId() != 0) {
         setNodeId(other.getNodeId());
+      }
+      if (other.getNodeIdHarbourSuspicion() != 0) {
+        setNodeIdHarbourSuspicion(other.getNodeIdHarbourSuspicion());
       }
       this.mergeUnknownFields(other.unknownFields);
       onChanged();
@@ -676,6 +707,32 @@ private static final long serialVersionUID = 0L;
     public Builder clearNodeId() {
       
       nodeId_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private int nodeIdHarbourSuspicion_ ;
+    /**
+     * <code>int32 node_id_harbour_suspicion = 4;</code>
+     */
+    public int getNodeIdHarbourSuspicion() {
+      return nodeIdHarbourSuspicion_;
+    }
+    /**
+     * <code>int32 node_id_harbour_suspicion = 4;</code>
+     */
+    public Builder setNodeIdHarbourSuspicion(int value) {
+      
+      nodeIdHarbourSuspicion_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>int32 node_id_harbour_suspicion = 4;</code>
+     */
+    public Builder clearNodeIdHarbourSuspicion() {
+      
+      nodeIdHarbourSuspicion_ = 0;
       onChanged();
       return this;
     }

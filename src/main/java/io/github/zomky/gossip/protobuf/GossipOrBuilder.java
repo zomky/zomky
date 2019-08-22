@@ -25,4 +25,9 @@ public interface GossipOrBuilder extends
    * <code>int32 node_id = 3;</code>
    */
   int getNodeId();
+
+  /**
+   * <code>int32 node_id_harbour_suspicion = 4;</code>
+   */
+  int getNodeIdHarbourSuspicion();
 }

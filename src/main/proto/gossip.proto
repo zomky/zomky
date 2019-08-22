@@ -52,6 +52,7 @@ message Gossip {
     Suspicion suspicion = 1;
     int32 incarnation = 2;
     int32 node_id = 3;
+    int32 node_id_harbour_suspicion = 4;
 }
 
 message Ping {
