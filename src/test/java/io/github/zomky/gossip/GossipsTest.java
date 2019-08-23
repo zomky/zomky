@@ -4,25 +4,42 @@ import io.github.zomky.gossip.protobuf.Ack;
 import io.github.zomky.gossip.protobuf.Gossip;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static io.github.zomky.gossip.protobuf.Gossip.Suspicion.*;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
+@ExtendWith(MockitoExtension.class)
 class GossipsTest {
 
     static final int INITIATOR_NODE_ID = 7000;
     static final int DESTINATION_NODE_ID = 7001;
 
+    @Mock
+    SuspectTimers suspectTimers;
+
     @Test
     void probeCompletedInitializedWithEmptyGossips() {
         // given
-        Gossips gossips = Gossips.builder().nodeId(INITIATOR_NODE_ID).build();
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
 
         ProbeResult probeResult = ProbeResult.builder()
                 .destinationNodeId(DESTINATION_NODE_ID)
@@ -45,6 +62,11 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7004).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build()
         );
+        Mockito.verify(suspectTimers).removeTimer(7004);
+        Mockito.verify(suspectTimers).initializeTimer(7004);
+        Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).removeTimer(7005);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
     @Test
@@ -52,6 +74,7 @@ class GossipsTest {
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
                 .addSuspectGossip(7004, 7005, 1)
                 .addAliveGossip(7005, 0)
                 .build();
@@ -78,12 +101,19 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
+        Mockito.verify(suspectTimers, never()).initializeTimer(7004);
+        Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).removeTimer(7006);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
     @Test
     void probeCompletedNoAcks() {
         // given
-        Gossips gossips = Gossips.builder().nodeId(INITIATOR_NODE_ID).build();
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
 
         ProbeResult probeResult = ProbeResult.builder()
                 .destinationNodeId(DESTINATION_NODE_ID)
@@ -98,7 +128,8 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build()
         );
-
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
     @Test
@@ -106,6 +137,7 @@ class GossipsTest {
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
                 .addSuspectGossip(DESTINATION_NODE_ID, 7010, 0, 0)
                 .build();
 
@@ -123,7 +155,42 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build()
         );
+        Mockito.verify(suspectTimers, never()).removeTimer(anyInt());
+        Mockito.verify(suspectTimers).incrementIndependentSuspicion(DESTINATION_NODE_ID);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
+    }
 
+    @Test
+    void probeCompletedNoAcksOtherSuspicionExist2() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
+
+        ProbeResult probeResult = ProbeResult.builder()
+                .destinationNodeId(DESTINATION_NODE_ID)
+                .subgroupSize(1)
+                .probeResult(new ProbeOperatorResult<>(true, Ack.newBuilder()
+                        .setNack(true)
+                        .addGossips(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).build())
+                        .addGossips(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7011).setSuspicion(SUSPECT).build())
+                        .build())
+                )
+                .build();
+
+        // when
+        gossips.probeCompleted(probeResult);
+
+        // then
+        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build(),
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build(),
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7011).setSuspicion(SUSPECT).setIncarnation(0).build()
+        );
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers, times(2)).incrementIndependentSuspicion(DESTINATION_NODE_ID);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
     @Test
@@ -189,7 +256,10 @@ class GossipsTest {
     @Test
     void probeCompletedMultipleAcks() {
         // given
-        Gossips gossips = Gossips.builder().nodeId(INITIATOR_NODE_ID).build();
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
 
         ProbeResult probeResult = ProbeResult.builder()
                 .destinationNodeId(DESTINATION_NODE_ID)
@@ -205,7 +275,6 @@ class GossipsTest {
                                         .addGossips(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .addGossips(Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build())
                                         .build()
-
                         )
                 )
                 .build();
@@ -220,14 +289,20 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
+        Mockito.verify(suspectTimers, never()).initializeTimer(anyInt());
+        Mockito.verify(suspectTimers, never()).incrementIndependentSuspicion(anyInt());
+        Mockito.verify(suspectTimers, times(4)).removeTimer(anyInt());
 
-        assertThat(gossips.count()).isEqualTo(4);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
     }
 
     @Test
     void probeCompletedOnlyNacks() { // nack can be returned by indirect ping
         // given
-        Gossips gossips = Gossips.builder().nodeId(INITIATOR_NODE_ID).build();
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
 
         ProbeResult probeResult = ProbeResult.builder()
                 .destinationNodeId(DESTINATION_NODE_ID)
@@ -259,7 +334,10 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        assertThat(gossips.count()).isEqualTo(4);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers, never()).incrementIndependentSuspicion(anyInt());
+        Mockito.verify(suspectTimers, times(3)).removeTimer(anyInt());
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
     }
 
     @Test
@@ -297,7 +375,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        assertThat(gossips.count()).isEqualTo(4);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
     }
 
     @Test
@@ -310,7 +388,7 @@ class GossipsTest {
                 .subgroupSize(0)
                 .probeResult(new ProbeOperatorResult<>(false,
                                 Ack.newBuilder()
-                                        .addGossips(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build())
+                                        .addGossips(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build())
                                         .build()
                         )
                 )
@@ -324,7 +402,7 @@ class GossipsTest {
             Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(0).build(), // produced by probeCompleted
             Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(1).build()
         );
-        assertThat(gossips.count()).isEqualTo(2);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(1);
     }
 
@@ -355,7 +433,7 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build() // produced by probeCompleted
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 
@@ -380,7 +458,33 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build() // produced by probeCompleted
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
+    }
+
+    @Test
+    void addSuspectGossipWithoutHarbourSuspicionDefined() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .build();
+
+        // then
+        assertThatThrownBy(() -> gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build()))
+                .isInstanceOf(GossipException.class)
+                .hasMessageStartingWith("Harbour suspicion must be defined for gossip");
+    }
+
+    @Test
+    void addAliveGossipWithHarbourSuspicionDefined() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .build();
+
+        // then
+        assertThatThrownBy(() -> gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(ALIVE).setIncarnation(0).build()))
+                .isInstanceOf(GossipException.class)
+                .hasMessageStartingWith("Harbour suspicion must not be defined for gossip");
     }
 
     @Test
@@ -395,7 +499,7 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -413,7 +517,7 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build()
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(0);
     }
 
     @Test
@@ -422,7 +526,7 @@ class GossipsTest {
         Gossips gossips = Gossips.builder().nodeId(INITIATOR_NODE_ID).build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
@@ -430,7 +534,7 @@ class GossipsTest {
         );
 
         assertThat(gossips.incarnation()).isEqualTo(1);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(1); // suspicion about itself increases LHM
     }
 
@@ -443,11 +547,11 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build());
 
         // then
         assertThat(gossips.incarnation()).isEqualTo(1);
-        assertThat(gossips.count()).isEqualTo(0);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 
@@ -468,7 +572,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7009).setSuspicion(SUSPECT).setIncarnation(1).build(),
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(1).build()
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
         assertThat(gossips.localHealthMultiplier()).isEqualTo(0);
     }
 
@@ -485,7 +589,7 @@ class GossipsTest {
 
         // then
         assertThat(gossips.incarnation()).isEqualTo(0);
-        assertThat(gossips.count()).isEqualTo(0);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -508,7 +612,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(1).build()
         );
         assertThat(gossips.incarnation()).isEqualTo(1);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -526,7 +630,7 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build()
         );
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -545,7 +649,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(0);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -564,7 +668,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(3).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -576,7 +680,7 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
@@ -585,7 +689,7 @@ class GossipsTest {
 
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, INITIATOR_NODE_ID)).isEqualTo(0);
 
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -597,22 +701,24 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(ALIVE).setIncarnation(3).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(3).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, INITIATOR_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
-    void addSuspectGossipWhichOverrideOtherSuspectGossip() {
+    void addSuspectGossipWhichOverrideOtherSuspectGossips() {
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
                 .addSuspectGossip(DESTINATION_NODE_ID, INITIATOR_NODE_ID, 3, 10)
+                .addSuspectGossip(DESTINATION_NODE_ID, 7010, 3, 3)
                 .build();
 
         // when
@@ -623,7 +729,33 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(4).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, INITIATOR_NODE_ID)).isEqualTo(0);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
+
+        Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verifyNoMoreInteractions(suspectTimers);
+    }
+
+    @Test
+    void addSuspectGossipWhichDoesNotOverrideSuspectedGossip() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addSuspectGossip(DESTINATION_NODE_ID, INITIATOR_NODE_ID, 3, 10)
+                .addSuspectGossip(DESTINATION_NODE_ID, 7010, 3, 2)
+                .build();
+
+        // when
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(3).build());
+
+        // then
+        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build(),
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(3).build()
+        );
+        assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, INITIATOR_NODE_ID)).isEqualTo(10);
+        assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, 7010)).isEqualTo(2);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2); // INITIATOR_NODE_ID + DESTINATION_NODE_ID
     }
 
     @Test
@@ -642,7 +774,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID, INITIATOR_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -654,14 +786,14 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
-                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build()
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(0);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -673,14 +805,14 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(3).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(ALIVE).setIncarnation(4).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
     }
 
     @Test
@@ -692,14 +824,14 @@ class GossipsTest {
                 .build();
 
         // when
-        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(SUSPECT).setIncarnation(1).build());
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(1).build());
 
         // then
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -718,7 +850,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build()
         );
         assertThat(gossips.getDisseminatedCount(DESTINATION_NODE_ID)).isEqualTo(10);
-        assertThat(gossips.count()).isEqualTo(1);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
     }
 
     @Test
@@ -732,7 +864,7 @@ class GossipsTest {
         List<Gossip> actual = gossips.chooseHotGossips();
 
         // then
-        assertThat(gossips.maxGossipDissemination()).isEqualTo(0);
+        assertThat(gossips.maxGossipDissemination()).isEqualTo(1);
         assertThat(actual).isEmpty();
     }
 
@@ -955,7 +1087,7 @@ class GossipsTest {
         assertThat(gossips.getDisseminatedCount(7003,7002)).isEqualTo(7);
         assertThat(gossips.getDisseminatedCount(7004)).isEqualTo(22);
 
-        assertThat(gossips.count()).isEqualTo(4);
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
     }
 
     @DisplayName("Gossip dissemination count")
@@ -1073,4 +1205,22 @@ class GossipsTest {
         assertThat(gossips.localHealthMultiplier()).isEqualTo(2);
     }
 
+    @Test
+    void markDead() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .suspectTimers(suspectTimers)
+                .build();
+        given(suspectTimers.removeTimers(Duration.ofMillis(1), 1)).willReturn(Arrays.asList(7002,7003));
+
+        // when
+        gossips.markDead(Duration.ofMillis(1));
+
+        // then
+        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
+                Gossip.newBuilder().setNodeId(7002).setSuspicion(DEAD).setIncarnation(0).build(),
+                Gossip.newBuilder().setNodeId(7003).setSuspicion(DEAD).setIncarnation(0).build()
+        );
+    }
 }

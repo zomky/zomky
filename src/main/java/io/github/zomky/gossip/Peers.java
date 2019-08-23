@@ -16,15 +16,11 @@ class Peers {
     private Set<Integer> peers = new HashSet<>();
     private BlockingQueue<Integer> shuffledPeers = new LinkedBlockingDeque<>();
 
-    public Peers(Set<Integer> peers) {
-        this.peers = peers;
-    }
-
     Peers(int nodeId) {
         this.nodeId = nodeId;
     }
 
-    public synchronized void add(int peerId) {
+    synchronized void add(int peerId) {
         boolean added = peers.add(peerId);
         if (added) {
             LOGGER.info("[Node {}] Adding new peer {}", nodeId, peerId);
@@ -36,11 +32,11 @@ class Peers {
         }
     }
 
-    public synchronized void remove(int nodeId) {
+    synchronized void remove(int nodeId) {
         peers.remove(nodeId);
     }
 
-    public PeerProbe nextPeerProbe(int subgroupSize) {
+    synchronized PeerProbe nextPeerProbe(int subgroupSize) {
         if (peers.isEmpty()) {
             return PeerProbe.NO_PEER_PROBE;
         }
@@ -48,14 +44,14 @@ class Peers {
         return new PeerProbe(peerId, selectCompanions(peerId, subgroupSize));
     }
 
-    public List<Integer> selectCompanions(int nodeId, int numberOfCompanions) {
+    private List<Integer> selectCompanions(int nodeId, int numberOfCompanions) {
         // TODO improve performance, now is O(n)
         List<Integer> n = new ArrayList<>(peers);
         Collections.shuffle(n);
         return n.stream().filter(i -> i != nodeId).limit(numberOfCompanions).collect(Collectors.toList());
     }
 
-    public Integer nextRandomPeerId() {
+    private Integer nextRandomPeerId() {
         Integer nodeId = shuffledPeers.poll();
         if (nodeId == null) {
             List<Integer> n = new ArrayList<>(peers);
@@ -66,7 +62,7 @@ class Peers {
         return nodeId;
     }
 
-    public int count() {
+    int count() {
         return peers.size();
     }
 }

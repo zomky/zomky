@@ -3,37 +3,80 @@ package io.github.zomky.gossip;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PeersTest {
 
     @Test
-    void nextRandomPeerId() {
-        Peers peers = new Peers(new HashSet<>(Arrays.asList(1,2,3)));
+    void peersAreEmpty() {
+        Peers peers = new Peers(7001);
 
-        assertThat(Arrays.asList(peers.nextRandomPeerId(),peers.nextRandomPeerId(),peers.nextRandomPeerId())).containsExactlyInAnyOrder(1,2,3);
-        assertThat(Arrays.asList(peers.nextRandomPeerId(),peers.nextRandomPeerId(),peers.nextRandomPeerId())).containsExactlyInAnyOrder(1,2,3);
+        assertThat(peers.nextPeerProbe(1)).isEqualTo(PeerProbe.NO_PEER_PROBE);
     }
 
     @Test
-    void selectCompanions() {
-        Peers peers = new Peers(new HashSet<>(Arrays.asList(1,2,3)));
+    void onePeer() {
+        Peers peers = new Peers(7000);
+        peers.add(7001);
 
-        List<Integer> actual = peers.selectCompanions(1, 20);
+        PeerProbe actual = peers.nextPeerProbe(1);
 
-        assertThat(actual).containsExactlyInAnyOrder(2,3);
+        assertThat(actual.getDestinationNodeId()).isEqualTo(7001);
+        assertThat(actual.getProxyNodeIds()).isEmpty();
     }
 
     @Test
-    void selectCompanions2() {
-        Peers peers = new Peers(new HashSet<>(Arrays.asList(1,2,3)));
+    void twoPeers() {
+        Peers peers = new Peers(7000);
+        peers.add(7001);
+        peers.add(7002);
 
-        List<Integer> actual = peers.selectCompanions(1, 1);
+        PeerProbe actual = peers.nextPeerProbe(1);
 
-        assertThat(actual).hasSize(1);
-        assertThat(actual).containsAnyOf(2,3);
+        assertThat(actual.getDestinationNodeId()).isIn(7001,7002);
+        assertThat(actual.getProxyNodeIds()).hasSize(1).containsAnyOf(7001,7002);
+        assertThat(actual.getProxyNodeIds()).doesNotContain(actual.getDestinationNodeId());
+    }
+
+    @Test
+    void threePeers() {
+        Peers peers = new Peers(7000);
+        peers.add(7001);
+        peers.add(7002);
+        peers.add(7003);
+
+        PeerProbe actual = peers.nextPeerProbe(1);
+
+        assertThat(actual.getDestinationNodeId()).isIn(7001,7002,7003);
+        assertThat(actual.getProxyNodeIds()).hasSize(1).containsAnyOf(7001,7002,7003);
+        assertThat(actual.getProxyNodeIds()).hasSize(1).doesNotContain(actual.getDestinationNodeId());
+    }
+
+    @Test
+    void manyPeersRoundRobinSelection() {
+        Peers peers = new Peers(7000);
+        peers.add(7001);
+        peers.add(7002);
+        peers.add(7003);
+
+        PeerProbe actual1 = peers.nextPeerProbe(1);
+        PeerProbe actual2 = peers.nextPeerProbe(2);
+        PeerProbe actual3 = peers.nextPeerProbe(2);
+        PeerProbe actual4 = peers.nextPeerProbe(2);
+        PeerProbe actual5 = peers.nextPeerProbe(2);
+        PeerProbe actual6 = peers.nextPeerProbe(2);
+
+        assertThat(Arrays.asList(actual1.getDestinationNodeId(), actual2.getDestinationNodeId(), actual3.getDestinationNodeId()))
+                .containsExactlyInAnyOrder(7001, 7002, 7003);
+        assertThat(Arrays.asList(actual4.getDestinationNodeId(), actual5.getDestinationNodeId(), actual6.getDestinationNodeId()))
+                .containsExactlyInAnyOrder(7001, 7002, 7003);
+
+        assertThat(actual1.getProxyNodeIds())
+                .hasSize(1)
+                .doesNotContain(actual1.getDestinationNodeId());
+        assertThat(actual2.getProxyNodeIds())
+                .hasSize(2)
+                .doesNotContain(actual2.getDestinationNodeId());
     }
 }

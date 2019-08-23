@@ -27,7 +27,9 @@ class Gossips {
     private Map<Integer, GossipDissemination> aliveGossips = new ConcurrentHashMap<>();
     private Map<Integer, GossipDissemination> deadGossips = new ConcurrentHashMap<>();
     // row - nodeId, column - nodeIdHarbourSuspicion
+    // guava
     private Table<Integer, Integer, GossipDissemination> suspectGossips = HashBasedTable.create();
+    private SuspectTimers suspectTimers = SuspectTimers.builder().build();
 
     private ReplayProcessor<Gossip> processor;
     private FluxSink<Gossip> sink;
@@ -58,7 +60,7 @@ class Gossips {
 
     synchronized Ack onPing(int nodeId, Ping ping) {
         List<Gossip> gossipsList = ping.getGossipsList();
-        gossipsList.forEach(this::addGossip);
+        gossipsList.forEach(this::addGossipIgnoreError);
         List<Gossip> hotGossips = chooseHotGossips(gossipsList);
         makeGossipsLessHot(hotGossips);
 
@@ -69,11 +71,20 @@ class Gossips {
     }
 
     synchronized void addAck(Ack ack) {
-        ack.getGossipsList().forEach(this::addGossip);
+        ack.getGossipsList().forEach(this::addGossipIgnoreError);
     }
 
     synchronized void addGossips(List<Gossip> gossips) {
         gossips.forEach(this::addGossipInternal);
+    }
+
+    synchronized void markDead(Duration probeInterval) {
+        List<Integer> nodeIds = suspectTimers.removeTimers(probeInterval, estimatedClusterSize());
+        nodeIds.forEach(nodeId -> addGossip(Gossip.newBuilder()
+                .setNodeId(nodeId)
+                .setSuspicion(Gossip.Suspicion.DEAD)
+                .build())
+        );
     }
 
     Flux<Gossip> peerChanges() {
@@ -108,14 +119,6 @@ class Gossips {
         return allGossipDisseminations().stream().map(GossipDissemination::getGossip).collect(Collectors.toList());
     }
 
-    private List<GossipDissemination> allGossipDisseminations() {
-        List<GossipDissemination> result = new ArrayList<>();
-        result.addAll(aliveGossips.values());
-        result.addAll(suspectGossips.values());
-        result.addAll(deadGossips.values());
-        return result;
-    }
-
     List<Gossip> chooseHotGossips() {
         return chooseHotGossips(new ArrayList<>());
     }
@@ -135,7 +138,7 @@ class Gossips {
 
     // visible for testing
     int maxGossipDissemination() {
-        return maxGossipDissemination(count());
+        return maxGossipDissemination(estimatedClusterSize());
     }
 
     int maxGossipDissemination(int gossipsCount) {
@@ -146,12 +149,22 @@ class Gossips {
         return Math.round(gossipDisseminationMultiplier * (log2Ceiling+1));
     }
 
-    int count() {
-        return aliveGossips.size() + deadGossips.size() + suspectGossips.rowKeySet().size();
+    int estimatedClusterSize() {
+        return aliveGossips.size() +
+                suspectGossips.rowKeySet().size() +
+                (noGossips(nodeId) ? 1 : 0);
     }
 
     int incarnation() {
         return incarnation;
+    }
+
+    private void addGossipIgnoreError(Gossip gossip) {
+        try {
+            addGossip(gossip);
+        } catch (Exception e) {
+            LOGGER.warn(String.format("[Node %s] Gossip %s has been added to following error", nodeId, gossip), e);
+        }
     }
 
     // visible for testing
@@ -160,6 +173,13 @@ class Gossips {
         int nodeIdHarbourSuspicion = gossip.getNodeIdHarbourSuspicion();
         int incarnation = gossip.getIncarnation();
         Gossip.Suspicion suspicion = gossip.getSuspicion();
+
+        if (suspicion == Gossip.Suspicion.SUSPECT && nodeIdHarbourSuspicion == 0) {
+            throw new GossipException(String.format("Harbour suspicion must be defined for gossip %s!", gossip));
+        }
+        if (suspicion != Gossip.Suspicion.SUSPECT && nodeIdHarbourSuspicion != 0) {
+            throw new GossipException(String.format("Harbour suspicion must not be defined for gossip %s!", gossip));
+        }
 
         // Node gets gossip about itself
         if (this.nodeId == nodeId) {
@@ -209,7 +229,6 @@ class Gossips {
                 }
                 return;
             }
-
         }
 
         if (suspicion == Gossip.Suspicion.DEAD && currentSuspicion != Gossip.Suspicion.DEAD) {
@@ -218,7 +237,7 @@ class Gossips {
     }
 
     private boolean noGossips(int nodeId) {
-        return getGossipDisseminations(nodeId).isEmpty();
+        return getAllGossipDisseminations(nodeId).isEmpty();
     }
 
     private void addGossipInternal(Gossip gossip) {
@@ -246,9 +265,6 @@ class Gossips {
             case ALIVE:   addAliveGossipInternal(nodeId, incarnation, disseminatedCount); break;
             case SUSPECT: addSuspectGossipInternal(nodeId, nodeIdHarbourSuspicion, incarnation, disseminatedCount); break;
             case DEAD: addDeadGossipInternal(nodeId, incarnation, disseminatedCount); break;
-            default: {
-                throw new GossipException("??");
-            }
         }
     }
 
@@ -265,6 +281,7 @@ class Gossips {
         aliveGossips.put(nodeId, new GossipDissemination(gossip, disseminationCount));
         deadGossips.remove(nodeId);
         suspectGossips.row(nodeId).clear();
+        suspectTimers.removeTimer(nodeId);
     }
 
     private void addSuspectGossipInternal(int nodeId, int nodeIdHarbourSuspicion, int incarnation, int disseminationCount) {
@@ -277,7 +294,14 @@ class Gossips {
         int currentIncarnation = currentIncarnation(nodeId);
         if (incarnation > currentIncarnation) {
             suspectGossips.row(nodeId).clear();
+            suspectTimers.removeTimer(nodeId);
         }
+        if (!suspectGossips.containsRow(nodeId)) {
+            suspectTimers.initializeTimer(nodeId);
+        } else {
+            suspectTimers.incrementIndependentSuspicion(nodeId);
+        }
+
         suspectGossips.put(nodeId, nodeIdHarbourSuspicion, new GossipDissemination(gossip, disseminationCount));
         aliveGossips.remove(nodeId);
     }
@@ -295,21 +319,11 @@ class Gossips {
         deadGossips.put(nodeId, new GossipDissemination(gossip, disseminationCount));
         aliveGossips.remove(nodeId);
         suspectGossips.row(nodeId).clear();
+        suspectTimers.removeTimer(nodeId);
     }
 
     private Optional<Gossip> getGossip(int nodeId, int nodeHarbourId) {
         return getGossipDissemination(nodeId, nodeHarbourId).map(GossipDissemination::getGossip);
-    }
-
-    private Optional<Gossip> getCurrentGossip(int nodeId, int nodeIdHarbourSuspicion) {
-        List<GossipDissemination> gossipDisseminations = getGossipDisseminations(nodeId);
-        if (gossipDisseminations.size() == 0) {
-            return Optional.empty();
-        } else if (gossipDisseminations.size() == 1) {
-            return Optional.of(gossipDisseminations.get(0)).map(GossipDissemination::getGossip);
-        } else {
-            return getGossip(nodeId, nodeIdHarbourSuspicion);
-        }
     }
 
     int getDisseminatedCount(int nodeId) {
@@ -335,7 +349,7 @@ class Gossips {
         return Optional.ofNullable(suspectGossips.get(nodeId, nodeHarbourId));
     }
 
-    private List<GossipDissemination> getGossipDisseminations(int nodeId) {
+    private List<GossipDissemination> getAllGossipDisseminations(int nodeId) {
         GossipDissemination alive = aliveGossips.get(nodeId);
         if (alive != null) {
             return ImmutableList.of(alive);
@@ -349,15 +363,23 @@ class Gossips {
     }
 
     private int currentIncarnation(int nodeId) {
-        return getGossipDisseminations(nodeId).stream().mapToInt(v -> v.getGossip().getIncarnation()).max().orElse(0);
+        return getAllGossipDisseminations(nodeId).stream().mapToInt(v -> v.getGossip().getIncarnation()).max().orElse(0);
     }
 
     private Gossip.Suspicion currentSuspicion(int nodeId) {
-        return getGossipDisseminations(nodeId).stream()
+        return getAllGossipDisseminations(nodeId).stream()
                 .map(GossipDissemination::getGossip)
                 .map(Gossip::getSuspicion)
                 .findAny()
                 .orElse(Gossip.Suspicion.UNKNOWN);
+    }
+
+    private List<GossipDissemination> allGossipDisseminations() {
+        List<GossipDissemination> result = new ArrayList<>();
+        result.addAll(aliveGossips.values());
+        result.addAll(suspectGossips.values());
+        result.addAll(deadGossips.values());
+        return result;
     }
 
     private static class GossipDissemination {
@@ -396,6 +418,7 @@ class Gossips {
         private Map<Integer, GossipDissemination> aliveGossips = new ConcurrentHashMap<>();
         private Map<Integer, GossipDissemination> deadGossips = new ConcurrentHashMap<>();
         private Multimap<Integer, GossipDissemination> suspectGossips = ArrayListMultimap.create();
+        private SuspectTimers suspectTimers = SuspectTimers.builder().build();
 
         private Builder() {
         }
@@ -430,6 +453,11 @@ class Gossips {
             return this;
         }
 
+        public Gossips.Builder suspectTimers(SuspectTimers suspectTimers) {
+            this.suspectTimers = suspectTimers;
+            return this;
+        }
+
         public Gossips.Builder addGossip(Gossip gossip, int disseminatedCount) {
             if (gossip.getSuspicion() == Gossip.Suspicion.ALIVE) {
                 return addAliveGossip(gossip.getNodeId(), gossip.getIncarnation(), disseminatedCount);
@@ -438,7 +466,7 @@ class Gossips {
             } else if (gossip.getSuspicion() == Gossip.Suspicion.DEAD) {
                 return addDeadGossip(gossip.getNodeId(), gossip.getIncarnation(), disseminatedCount);
             } else {
-                throw new GossipException("??");
+                throw new GossipException("Suspicion should be one of [ALIVE,SUSPECT,DEAD]");
             }
         }
 
@@ -489,6 +517,7 @@ class Gossips {
             gossips.incarnation = incarnation;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
             gossips.localHealthMultiplier = new LocalHealthMultiplier(maxLocalHealthMultiplier);
+            gossips.suspectTimers = suspectTimers;
             if (addAliveGossipAboutItself) {
                 addAliveGossip(nodeId, 0);
             }
