@@ -34,7 +34,7 @@ class RandomGossipProbe {
             return Mono.delay(peerProbeTimeouts.probeTimeout()).then(Mono.empty());
         }
         LOGGER.info("[Node {}][ping] Probing {} ...", nodeId, peerProbe);
-        List<Gossip> hotGossips = gossips.chooseHotGossips();
+        List<Gossip> hotGossips = gossips.chooseHotGossips(peerProbe.getDestinationNodeId());
         return gossipProbe.probeNode(peerProbe, hotGossips, peerProbeTimeouts);
     }
 

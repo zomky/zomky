@@ -117,8 +117,16 @@ class Gossips {
         return allGossipDisseminations().stream().map(GossipDissemination::getGossip).collect(Collectors.toList());
     }
 
-    List<Gossip> chooseHotGossips() {
-        return chooseHotGossips(new ArrayList<>());
+    List<Gossip> chooseHotGossips(int destinationNodeId) {
+        Comparator<GossipDissemination> buddy = Comparator.comparingInt(gossipDissemination -> gossipDissemination.isBuddy(destinationNodeId) ? 0 : 1);
+        int maxGossipDissemination = maxGossipDissemination();
+        return allGossipDisseminations()
+                .stream()
+                .filter(gossipDissemination -> gossipDissemination.getDisseminatedCount() < maxGossipDissemination || gossipDissemination.isBuddy(destinationNodeId))
+                .sorted(buddy.thenComparingInt(GossipDissemination::getDisseminatedCount))
+                .map(GossipDissemination::getGossip)
+                .limit(maxGossips)
+                .collect(Collectors.toList());
     }
 
     List<Gossip> chooseHotGossips(List<Gossip> ignoreGossips) {
@@ -397,6 +405,11 @@ class Gossips {
         int getDisseminatedCount() {
             return disseminatedCount;
         }
+
+        boolean isBuddy(int nodeId) {
+            return gossip.getNodeId() == nodeId && gossip.getSuspicion() == Gossip.Suspicion.SUSPECT;
+        }
+
     }
 
     private Gossips() {}

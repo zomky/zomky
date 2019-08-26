@@ -70,7 +70,7 @@ class RandomGossipProbeTest {
                 .expectSubscription()
                 .verifyComplete();
 
-        verify(gossips, never()).chooseHotGossips();
+        verify(gossips, never()).chooseHotGossips(any());
         verify(gossipProbe, never()).probeNode(any(), any(), any());
     }
 
@@ -79,7 +79,7 @@ class RandomGossipProbeTest {
         // given
         given(peers.nextPeerProbe(SUBGROUP_SIZE)).willReturn(peerProbe);
         given(gossips.localHealthMultiplier()).willReturn(LOCAL_HEALTH_MULTIPLIER);
-        given(gossips.chooseHotGossips()).willReturn(hotGossips);
+        given(gossips.chooseHotGossips(DESTINATION_NODE_ID)).willReturn(hotGossips);
         ArgumentCaptor<PeerProbeTimeouts> argumentCaptor = ArgumentCaptor.forClass(PeerProbeTimeouts.class);
         given(gossipProbe.probeNode(eq(peerProbe), eq(hotGossips), argumentCaptor.capture()))
                 .willReturn(Mono.just(probeResult));

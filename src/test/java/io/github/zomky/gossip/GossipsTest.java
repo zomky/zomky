@@ -879,7 +879,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(DESTINATION_NODE_ID);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(1);
@@ -896,7 +896,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(DESTINATION_NODE_ID);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(1);
@@ -912,7 +912,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(DESTINATION_NODE_ID);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(1);
@@ -937,7 +937,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(7001);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(5);
@@ -948,6 +948,41 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7006).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
                 Gossip.newBuilder().setNodeId(7007).setSuspicion(DEAD).setIncarnation(1).build(),
                 Gossip.newBuilder().setNodeId(7008).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                Gossip.newBuilder().setNodeId(7009).setSuspicion(ALIVE).setIncarnation(1).build()
+        );
+    }
+
+    @Test
+    void chooseHotGossipsWithLifeguardBuddyEnhancement() {
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .maxGossips(6)
+                .addGossip(Gossip.newBuilder().setNodeId(7001).setSuspicion(ALIVE).setIncarnation(0).build(), 4)
+                .addGossip(Gossip.newBuilder().setNodeId(7002).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 0)
+                .addGossip(Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 1)
+                .addGossip(Gossip.newBuilder().setNodeId(7004).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 5)
+                .addGossip(Gossip.newBuilder().setNodeId(7005).setNodeIdHarbourSuspicion(7015).setSuspicion(SUSPECT).setIncarnation(1).build(), 5)
+                .addGossip(Gossip.newBuilder().setNodeId(7006).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 1)
+                .addGossip(Gossip.newBuilder().setNodeId(7007).setSuspicion(DEAD).setIncarnation(1).build(), 4)
+                .addGossip(Gossip.newBuilder().setNodeId(7008).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 4)
+                .addGossip(Gossip.newBuilder().setNodeId(7009).setSuspicion(ALIVE).setIncarnation(1).build(), 1)
+                .addGossip(Gossip.newBuilder().setNodeId(7010).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(), 5)
+                .build();
+
+        // when
+        List<Gossip> actual = gossips.chooseHotGossips(7010);
+
+        // then
+        assertThat(gossips.maxGossipDissemination()).isEqualTo(5);
+        assertThat(actual).containsExactlyInAnyOrder(
+                // buddy
+                Gossip.newBuilder().setNodeId(7010).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                // other gossips
+                Gossip.newBuilder().setNodeId(7001).setSuspicion(ALIVE).setIncarnation(0).build(),
+                Gossip.newBuilder().setNodeId(7002).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                Gossip.newBuilder().setNodeId(7006).setNodeIdHarbourSuspicion(7005).setSuspicion(SUSPECT).setIncarnation(1).build(),
                 Gossip.newBuilder().setNodeId(7009).setSuspicion(ALIVE).setIncarnation(1).build()
         );
     }
@@ -971,7 +1006,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(DESTINATION_NODE_ID);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(8);
@@ -1037,7 +1072,7 @@ class GossipsTest {
                 .build();
 
         // when
-        List<Gossip> actual = gossips.chooseHotGossips();
+        List<Gossip> actual = gossips.chooseHotGossips(701022);
 
         // then
         assertThat(gossips.maxGossipDissemination()).isEqualTo(5);
