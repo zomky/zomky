@@ -11,16 +11,14 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static io.github.zomky.gossip.protobuf.Gossip.Suspicion.*;
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -1203,24 +1201,5 @@ class GossipsTest {
 
         // then
         assertThat(gossips.localHealthMultiplier()).isEqualTo(2);
-    }
-
-    @Test
-    void markDead() {
-        // given
-        Gossips gossips = Gossips.builder()
-                .nodeId(INITIATOR_NODE_ID)
-                .suspectTimers(suspectTimers)
-                .build();
-        given(suspectTimers.removeTimers(Duration.ofMillis(1), 1)).willReturn(Arrays.asList(7002,7003));
-
-        // when
-        gossips.markDead(Duration.ofMillis(1));
-
-        // then
-        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
-                Gossip.newBuilder().setNodeId(7002).setSuspicion(DEAD).setIncarnation(0).build(),
-                Gossip.newBuilder().setNodeId(7003).setSuspicion(DEAD).setIncarnation(0).build()
-        );
     }
 }

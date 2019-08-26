@@ -1,69 +1,95 @@
 package io.github.zomky.gossip;
 
-import com.google.common.math.DoubleMath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.DirectProcessor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
+import java.util.concurrent.*;
 
 public class SuspectTimers {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SuspectTimers.class);
 
     private int suspicionMinMultiplier;
     private int suspicionMaxMultiplier;
     private int k;
     private Map<Integer, SuspectTimer> suspectTimers = new ConcurrentHashMap<>();
+    private Map<Integer, ScheduledFuture<Integer>> suspectFutures = new ConcurrentHashMap<>();
+    private DirectProcessor<Integer> deadNodesProcessor;
+    private FluxSink<Integer> deadNodesSink;
+
+    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+
+    Flux<Integer> deadNodes() {
+        return deadNodesProcessor;
+    }
 
     void initializeTimer(int nodeId) {
-        suspectTimers.put(nodeId, new SuspectTimer(System.currentTimeMillis(), 0));
+    // TODO remove
+    }
+
+    void initializeTimer(int nodeId, Duration probeInterval, int clusterSize) {
+        cancelTaskIfScheduled(nodeId);
+
+        SuspectTimer suspectTimer = new SuspectTimer();
+        suspectTimer.setCreated(System.currentTimeMillis());
+        suspectTimer.setIndependentSuspicions(0);
+        suspectTimer.setProbeInterval(probeInterval);
+        suspectTimer.setClusterSize(clusterSize);
+        suspectTimers.put(nodeId, suspectTimer);
+
+        long suspicionTimeout = suspectTimer.suspicionTimeout(suspicionMinMultiplier, suspicionMaxMultiplier, k);
+        scheduleTask(nodeId, suspicionTimeout);
+    }
+
+    void incrementIndependentSuspicion(int nodeId) {
+        cancelTaskIfScheduled(nodeId);
+
+        SuspectTimer suspectTimer = suspectTimers.get(nodeId);
+        if (suspectTimer != null) {
+            suspectTimer.incrementIndependentSuspicion();
+
+            long suspicionTimeout = suspectTimer.suspicionTimeout(suspicionMinMultiplier, suspicionMaxMultiplier, k);
+            long elapsed = suspectTimer.elapsed();
+            if (elapsed >= suspicionTimeout) {
+                LOGGER.warn("Marking node {} as dead!", nodeId);
+                deadNodesSink.next(nodeId);
+            } else {
+                scheduleTask(nodeId, suspicionTimeout - elapsed);
+            }
+        }
     }
 
     void removeTimer(int nodeId) {
         suspectTimers.remove(nodeId);
+        cancelTaskIfScheduled(nodeId);
     }
 
-    List<Integer> removeTimers(Duration probeInterval, int clusterSize) {
-        List<Integer> nodeIds = new ArrayList<>();
-        suspectTimers.forEach((nodeId,suspectTimer) -> {
-            if (suspectTimer.isOverdue(suspicionMinMultiplier, suspicionMaxMultiplier, k, clusterSize, probeInterval)) {
-                nodeIds.add(nodeId);
+    private void scheduleTask(int nodeId, long suspicionTimeout) {
+        LOGGER.info("Suspecting node {} [timeout: {}ms]", nodeId, suspicionTimeout);
+        ScheduledFuture<Integer> schedule = executorService.schedule(() -> {
+            LOGGER.info("Suspecting node {} timeout reached.", nodeId);
+            suspectFutures.remove(nodeId);
+            deadNodesSink.next(nodeId);
+            return nodeId;
+        }, suspicionTimeout, TimeUnit.MILLISECONDS);
+        suspectFutures.put(nodeId, schedule);
+    }
+
+    private void cancelTaskIfScheduled(int nodeId) {
+        ScheduledFuture<Integer> currentScheduledFuture = suspectFutures.get(nodeId);
+        if (currentScheduledFuture != null) {
+            boolean cancelled = currentScheduledFuture.cancel(false);
+            if (cancelled) {
+                LOGGER.info("CANCELLED Cancelling timer for node {}", nodeId);
+            } else {
+                LOGGER.info("NOT CANCELLED Cancelling timer for node {}", nodeId);
             }
-        });
-        nodeIds.forEach(suspectTimers::remove);
-        return nodeIds;
-    }
-
-    void incrementIndependentSuspicion(int nodeId) {
-        SuspectTimer suspectTimer = suspectTimers.get(nodeId);
-        if (suspectTimer != null) {
-            suspectTimers.put(nodeId, suspectTimer.incrementIndependentSuspicion());
-        }
-    }
-
-    static class SuspectTimer {
-
-        private long created;
-        private int independentSuspicions;
-
-        SuspectTimer(long created, int independentSuspicions) {
-            this.created = created;
-            this.independentSuspicions = independentSuspicions;
-        }
-
-        SuspectTimer incrementIndependentSuspicion() {
-            return new SuspectTimer(created, independentSuspicions + 1);
-        }
-
-        boolean isOverdue(int suspicionMinMultiplier, int suspicionMaxMultiplier, int k, int clusterSize, Duration probeInterval) {
-            long suspicionTimeout = suspicionTimeout(suspicionMinMultiplier, suspicionMaxMultiplier, k, clusterSize, probeInterval);
-            return System.currentTimeMillis() <= created + suspicionTimeout;
-        }
-
-        long suspicionTimeout(int suspicionMinMultiplier, int suspicionMaxMultiplier, int k, int clusterSize, Duration probeInterval) {
-            long min = Math.round(suspicionMinMultiplier * Math.log10(clusterSize) * probeInterval.toMillis());
-            long max = suspicionMaxMultiplier * min; // guava
-            return Math.round(Math.max(min, max - (max - min) * DoubleMath.log2(independentSuspicions + 1) / DoubleMath.log2(k + 1)));
         }
     }
 
@@ -101,6 +127,10 @@ public class SuspectTimers {
             suspectTimers.suspicionMinMultiplier = suspicionMinMultiplier;
             suspectTimers.suspicionMaxMultiplier = suspicionMaxMultiplier;
             suspectTimers.k = k;
+
+            suspectTimers.deadNodesProcessor = DirectProcessor.create();
+            suspectTimers.deadNodesSink = suspectTimers.deadNodesProcessor.sink();
+
             return suspectTimers;
         }
 

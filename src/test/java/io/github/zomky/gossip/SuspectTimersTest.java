@@ -1,55 +1,67 @@
 package io.github.zomky.gossip;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.test.StepVerifier;
 
 import java.time.Duration;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class SuspectTimersTest {
 
-    @DisplayName("Suspicion timeout")
-    @ParameterizedTest(name = "Suspicion timeout should be {5} for cluster size {0}, lambda {1}, beta {2}, independentSuspicions {3}, parameter k {4}")
-    @CsvSource({
-    //      cluster size  ,lambda   ,beta     ,independentSuspicions   ,parameter k   ,expected timeout
-            "1            ,2        ,2        ,0                       ,3             ,0               ",
-            "1            ,2        ,2        ,3                       ,3             ,0               ",
+    private static int K_0_TIMEOUT = 192;
+    private static int K_1_TIMEOUT = 115;
+    private static int K_2_TIMEOUT = 72;
+    private static int K_3_TIMEOUT = 42;
 
-            "2            ,2        ,2        ,0                       ,3             ,1204            ",
-            "2            ,2        ,2        ,3                       ,3             ,602             ",
-            "2            ,2        ,4        ,0                       ,3             ,2408            ",
-            "2            ,2        ,4        ,3                       ,3             ,602             ",
-            "2            ,5        ,6        ,0                       ,3             ,9030            ",
-            "2            ,5        ,6        ,3                       ,3             ,1505            ",
+    SuspectTimers suspectTimers;
 
-            "3            ,2        ,2        ,0                       ,3             ,1908            ",
-            "3            ,2        ,2        ,3                       ,3             ,954             ",
-            "3            ,2        ,4        ,0                       ,3             ,3816            ",
-            "3            ,2        ,4        ,3                       ,3             ,954             ",
-            "3            ,5        ,6        ,0                       ,3             ,14316           ",
-            "3            ,5        ,6        ,3                       ,3             ,2386            ",
+    @BeforeEach
+    void setUp() {
+        suspectTimers = SuspectTimers.builder()
+                .suspicionMinMultiplier(2)
+                .suspicionMaxMultiplier(4)
+                .k(3)
+                .build();
+        // timeouts for 'k':
+        // 0 - 192ms
+        // 1 - 115ms (due to elapsed time might be a little less)
+        // 2 - 72ms  (due to elapsed time might be a little less)
+        // 3 - 42ms  (due to elapsed time might be a little less)
+    }
 
-            "100          ,2        ,2        ,0                       ,3             ,8000            ",
-            "100          ,2        ,2        ,3                       ,3             ,4000            ",
-            "100          ,2        ,4        ,0                       ,3             ,16000           ",
-            "100          ,2        ,4        ,3                       ,3             ,4000            ",
-            "100          ,5        ,6        ,0                       ,3             ,60000           ",
-            "100          ,5        ,6        ,1                       ,3             ,35000           ",
-            "100          ,5        ,6        ,2                       ,3             ,20376           ",
-            "100          ,5        ,6        ,3                       ,3             ,10000           "
-    })
-    // probe interval is 1000ms
-    void suspicionTimeout(int clusterSize, int lambda, int beta, int independentSuspicions, int k, long expectedSuspicionTimeout) {
-        // given
-        Duration probeInterval = Duration.ofSeconds(1);
-        SuspectTimers.SuspectTimer suspectTimer = new SuspectTimers.SuspectTimer(System.currentTimeMillis(), independentSuspicions);
+    @Test
+    void initializeTimer() {
+        StepVerifier.create(suspectTimers.deadNodes().log())
+                .then(() -> suspectTimers.initializeTimer(7001, Duration.ofMillis(50), 3))
+                .expectNoEvent(Duration.ofMillis(K_0_TIMEOUT))
+                .expectNext(7001)
+                .thenCancel()
+                .verify();
+    }
 
-        // when
-        long actual = suspectTimer.suspicionTimeout(lambda, beta, k, clusterSize, probeInterval);
+    @Test
+    void initializeAndThenRemoveTimer() {
+        StepVerifier.create(suspectTimers.deadNodes().log())
+                .then(() -> suspectTimers.initializeTimer(7001, Duration.ofMillis(50), 3))
+                .thenAwait(Duration.ofMillis(K_0_TIMEOUT - 50))
+                .then(() -> suspectTimers.removeTimer(7001))
+                .expectNoEvent(Duration.ofMillis(50))
+                .thenCancel()
+                .verify();
+    }
 
-        // then
-        assertThat(actual).isEqualTo(expectedSuspicionTimeout);
+    @Test
+    void incrementIndependentSuspicion() {
+        StepVerifier.create(suspectTimers.deadNodes().log())
+                .then(() -> suspectTimers.initializeTimer(7001, Duration.ofMillis(50), 3))
+                .then(() -> suspectTimers.incrementIndependentSuspicion(7001))
+                .then(() -> suspectTimers.incrementIndependentSuspicion(7001))
+                .then(() -> suspectTimers.incrementIndependentSuspicion(7001))
+                .expectNoEvent(Duration.ofMillis(40))
+                .expectNext(7001)
+                .thenCancel()
+                .verify();
     }
 }

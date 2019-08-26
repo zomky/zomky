@@ -42,7 +42,6 @@ class RandomGossipProbe {
     void probeCompleted(ProbeResult probeResult) {
         gossips.probeCompleted(probeResult);
         gossips.updateLocalHealthMultiplier(probeResult);
-        gossips.markDead(probeInterval());
         if (probeResult.hasAck()) {
             LOGGER.info("[Node {}][ping] Probing {} successful.", nodeId, probeResult.getDestinationNodeId());
         } else {

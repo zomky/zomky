@@ -78,15 +78,6 @@ class Gossips {
         gossips.forEach(this::addGossipInternal);
     }
 
-    synchronized void markDead(Duration probeInterval) {
-        List<Integer> nodeIds = suspectTimers.removeTimers(probeInterval, estimatedClusterSize());
-        nodeIds.forEach(nodeId -> addGossip(Gossip.newBuilder()
-                .setNodeId(nodeId)
-                .setSuspicion(Gossip.Suspicion.DEAD)
-                .build())
-        );
-    }
-
     Flux<Gossip> peerChanges() {
         return processor.filter(gossip -> gossip.getNodeId() != nodeId);
     }
@@ -297,7 +288,7 @@ class Gossips {
             suspectTimers.removeTimer(nodeId);
         }
         if (!suspectGossips.containsRow(nodeId)) {
-            suspectTimers.initializeTimer(nodeId);
+            suspectTimers.initializeTimer(nodeId, Duration.ofMillis(1000), estimatedClusterSize());
         } else {
             suspectTimers.incrementIndependentSuspicion(nodeId);
         }
