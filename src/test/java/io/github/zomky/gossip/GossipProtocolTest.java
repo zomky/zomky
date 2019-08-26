@@ -68,7 +68,7 @@ class GossipProtocolTest {
                 .willReturn(Mono.just(probeResult2))
                 .willReturn(Mono.just(probeResult3));
 
-        BDDMockito.given(randomGossipProbe.probeInterval())
+        BDDMockito.given(gossips.probeInterval())
                 .willReturn(Duration.ofMillis(1000))
                 .willReturn(Duration.ofMillis(2000));
 
@@ -88,7 +88,7 @@ class GossipProtocolTest {
         verify(randomGossipProbe).probeCompleted(probeResult1);
         verify(randomGossipProbe).probeCompleted(probeResult2);
         verify(randomGossipProbe).probeCompleted(probeResult3);
-        verify(randomGossipProbe, times(2)).probeInterval();
+        verify(gossips, times(2)).probeInterval();
     }
 
     @Test
@@ -99,7 +99,7 @@ class GossipProtocolTest {
                 .willReturn(Mono.just(probeResult1))
                 .willReturn(Mono.error(new RuntimeException()));
 
-        BDDMockito.given(randomGossipProbe.probeInterval()).willReturn(Duration.ofMillis(1000));
+        BDDMockito.given(gossips.probeInterval()).willReturn(Duration.ofMillis(1000));
 
         gossipProtocol = new GossipProtocol(RECIPIENT_NODE_ID, peers, gossips, randomGossipProbe, gossipTransport, (nodeId, counter) -> Mono.delay(Duration.ZERO));
 
@@ -111,7 +111,7 @@ class GossipProtocolTest {
                 .verifyError(RuntimeException.class);
 
         verify(randomGossipProbe).probeCompleted(probeResult1);
-        verify(randomGossipProbe).probeInterval();
+        verify(gossips).probeInterval();
     }
 
     @Test

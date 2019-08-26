@@ -27,7 +27,6 @@ class RandomGossipProbeTest {
     private static final int INITIATOR_NODE_ID = 7000;
     private static final int DESTINATION_NODE_ID = 7001;
     private static final Duration BASE_PROBE_TIMEOUT = Duration.ofMillis(500);
-    private static final Duration BASE_PROBE_INTERVAL = Duration.ofMillis(1000);
 
     private static final int SUBGROUP_SIZE = 2;
     private static final float INDIRECT_DELAY_RATIO = 0.3f;
@@ -55,7 +54,6 @@ class RandomGossipProbeTest {
                 .indirectDelayRatio(INDIRECT_DELAY_RATIO)
                 .subgroupSize(SUBGROUP_SIZE)
                 .baseProbeTimeout(BASE_PROBE_TIMEOUT)
-                .baseProbeInterval(BASE_PROBE_INTERVAL)
                 .nodeId(INITIATOR_NODE_ID)
                 .build();
 
@@ -109,15 +107,4 @@ class RandomGossipProbeTest {
         verify(gossips).updateLocalHealthMultiplier(probeResult);
     }
 
-    @Test
-    void probeInterval() {
-        // given
-        given(gossips.localHealthMultiplier()).willReturn(LOCAL_HEALTH_MULTIPLIER);
-
-        // when
-        Duration actual = randomGossipProbe.probeInterval();
-
-        // then
-        assertThat(actual).isEqualTo(Duration.ofMillis(4000));
-    }
 }

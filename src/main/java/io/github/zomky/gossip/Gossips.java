@@ -6,6 +6,7 @@ import io.github.zomky.gossip.protobuf.Gossip;
 import io.github.zomky.gossip.protobuf.Ping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.ReplayProcessor;
@@ -22,6 +23,7 @@ class Gossips {
     private int nodeId;
     private int maxGossips;
     private volatile int incarnation;
+    private Duration baseProbeInterval;
     private float gossipDisseminationMultiplier;
     private LocalHealthMultiplier localHealthMultiplier;
     private Map<Integer, GossipDissemination> aliveGossips = new ConcurrentHashMap<>();
@@ -33,6 +35,7 @@ class Gossips {
 
     private ReplayProcessor<Gossip> processor;
     private FluxSink<Gossip> sink;
+    private Disposable deadNodesDisposable;
 
     synchronized void probeCompleted(ProbeResult probeResult) {
         if (probeResult.hasAck()) {
@@ -80,6 +83,10 @@ class Gossips {
 
     Flux<Gossip> peerChanges() {
         return processor.filter(gossip -> gossip.getNodeId() != nodeId);
+    }
+
+    Duration probeInterval() {
+        return Duration.ofMillis(baseProbeInterval.toMillis() * (localHealthMultiplier() + 1));
     }
 
     void updateLocalHealthMultiplier(ProbeResult probeResult) {
@@ -288,7 +295,7 @@ class Gossips {
             suspectTimers.removeTimer(nodeId);
         }
         if (!suspectGossips.containsRow(nodeId)) {
-            suspectTimers.initializeTimer(nodeId, Duration.ofMillis(1000), estimatedClusterSize());
+            suspectTimers.initializeTimer(nodeId, probeInterval(), estimatedClusterSize());
         } else {
             suspectTimers.incrementIndependentSuspicion(nodeId);
         }
@@ -403,6 +410,7 @@ class Gossips {
         private int nodeId;
         private int maxGossips = Integer.MAX_VALUE;
         private int incarnation;
+        private Duration baseProbeInterval;
         private float gossipDisseminationMultiplier = 1f;
         private int maxLocalHealthMultiplier = 8;
         private boolean addAliveGossipAboutItself;
@@ -421,6 +429,11 @@ class Gossips {
 
         public Gossips.Builder incarnation(int incarnation) {
             this.incarnation = incarnation;
+            return this;
+        }
+
+        public Gossips.Builder baseProbeInterval(Duration baseProbeInterval) {
+            this.baseProbeInterval = baseProbeInterval;
             return this;
         }
 
@@ -506,6 +519,7 @@ class Gossips {
             gossips.nodeId = nodeId;
             gossips.maxGossips = maxGossips;
             gossips.incarnation = incarnation;
+            gossips.baseProbeInterval = baseProbeInterval;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
             gossips.localHealthMultiplier = new LocalHealthMultiplier(maxLocalHealthMultiplier);
             gossips.suspectTimers = suspectTimers;
@@ -529,6 +543,9 @@ class Gossips {
             });
             gossips.processor = ReplayProcessor.createTimeout(Duration.ofHours(1));
             gossips.sink = gossips.processor.sink(FluxSink.OverflowStrategy.DROP);
+            gossips.deadNodesDisposable = suspectTimers.deadNodes()
+                    .doOnNext(nodeId -> addDeadGossip(nodeId, 0, 0)) // TODO make it thread-safe
+                    .subscribe();
             return gossips;
         }
     }

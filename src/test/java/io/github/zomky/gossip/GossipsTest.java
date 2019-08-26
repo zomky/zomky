@@ -10,7 +10,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +20,9 @@ import java.util.List;
 import static io.github.zomky.gossip.protobuf.Gossip.Suspicion.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -34,8 +38,10 @@ class GossipsTest {
     @Test
     void probeCompletedInitializedWithEmptyGossips() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .suspectTimers(suspectTimers)
                 .build();
 
@@ -61,7 +67,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build()
         );
         Mockito.verify(suspectTimers).removeTimer(7004);
-        Mockito.verify(suspectTimers).initializeTimer(7004);
+        Mockito.verify(suspectTimers).initializeTimer(7004, Duration.ofMillis(1000), 1);
         Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
         Mockito.verify(suspectTimers).removeTimer(7005);
         Mockito.verifyNoMoreInteractions(suspectTimers);
@@ -70,6 +76,7 @@ class GossipsTest {
     @Test
     void probeCompletedInitializedWithGossips() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
                 .suspectTimers(suspectTimers)
@@ -99,7 +106,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        Mockito.verify(suspectTimers, never()).initializeTimer(7004);
+        Mockito.verify(suspectTimers, never()).initializeTimer(7004, Duration.ofMillis(3), 5);
         Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
         Mockito.verify(suspectTimers).removeTimer(7006);
         Mockito.verifyNoMoreInteractions(suspectTimers);
@@ -108,8 +115,10 @@ class GossipsTest {
     @Test
     void probeCompletedNoAcks() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .suspectTimers(suspectTimers)
                 .build();
 
@@ -126,13 +135,14 @@ class GossipsTest {
         assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(INITIATOR_NODE_ID).setSuspicion(SUSPECT).setIncarnation(0).build()
         );
-        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID, Duration.ofMillis(1000), 1);
         Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
     @Test
     void probeCompletedNoAcksOtherSuspicionExist() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
                 .suspectTimers(suspectTimers)
@@ -161,8 +171,10 @@ class GossipsTest {
     @Test
     void probeCompletedNoAcksOtherSuspicionExist2() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .suspectTimers(suspectTimers)
                 .build();
 
@@ -186,7 +198,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7010).setSuspicion(SUSPECT).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setNodeIdHarbourSuspicion(7011).setSuspicion(SUSPECT).setIncarnation(0).build()
         );
-        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID, Duration.ofMillis(1000), 1);
         Mockito.verify(suspectTimers, times(2)).incrementIndependentSuspicion(DESTINATION_NODE_ID);
         Mockito.verifyNoMoreInteractions(suspectTimers);
     }
@@ -198,6 +210,7 @@ class GossipsTest {
 
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .addSuspectGossip(7004, 7005, 0)
                 .build();
 
@@ -254,6 +267,7 @@ class GossipsTest {
     @Test
     void probeCompletedMultipleAcks() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
                 .suspectTimers(suspectTimers)
@@ -287,7 +301,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        Mockito.verify(suspectTimers, never()).initializeTimer(anyInt());
+        Mockito.verify(suspectTimers, never()).initializeTimer(anyInt(), any(Duration.class), anyInt());
         Mockito.verify(suspectTimers, never()).incrementIndependentSuspicion(anyInt());
         Mockito.verify(suspectTimers, times(4)).removeTimer(anyInt());
 
@@ -297,8 +311,10 @@ class GossipsTest {
     @Test
     void probeCompletedOnlyNacks() { // nack can be returned by indirect ping
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .suspectTimers(suspectTimers)
                 .build();
 
@@ -332,7 +348,7 @@ class GossipsTest {
                 Gossip.newBuilder().setNodeId(7005).setSuspicion(ALIVE).setIncarnation(0).build(),
                 Gossip.newBuilder().setNodeId(7006).setSuspicion(ALIVE).setIncarnation(0).build()
         );
-        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID, Duration.ofMillis(1000), 4);
         Mockito.verify(suspectTimers, never()).incrementIndependentSuspicion(anyInt());
         Mockito.verify(suspectTimers, times(3)).removeTimer(anyInt());
         assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
@@ -440,6 +456,7 @@ class GossipsTest {
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .addAliveGossip(DESTINATION_NODE_ID, 3)
                 .build();
 
@@ -712,8 +729,10 @@ class GossipsTest {
     @Test
     void addSuspectGossipWhichOverrideOtherSuspectGossips() {
         // given
+        given(suspectTimers.deadNodes()).willReturn(Flux.empty());
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .suspectTimers(suspectTimers)
                 .addSuspectGossip(DESTINATION_NODE_ID, INITIATOR_NODE_ID, 3, 10)
                 .addSuspectGossip(DESTINATION_NODE_ID, 7010, 3, 3)
@@ -730,7 +749,7 @@ class GossipsTest {
         assertThat(gossips.estimatedClusterSize()).isEqualTo(2);
 
         Mockito.verify(suspectTimers).removeTimer(DESTINATION_NODE_ID);
-        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID);
+        Mockito.verify(suspectTimers).initializeTimer(DESTINATION_NODE_ID, Duration.ofMillis(1000), 1);
         Mockito.verifyNoMoreInteractions(suspectTimers);
     }
 
@@ -780,6 +799,7 @@ class GossipsTest {
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
+                .baseProbeInterval(Duration.ofMillis(1000))
                 .addAliveGossip(DESTINATION_NODE_ID, 3, 10)
                 .build();
 

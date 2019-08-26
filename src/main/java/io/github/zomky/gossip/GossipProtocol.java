@@ -58,7 +58,7 @@ public class GossipProtocol {
                 if (wasFirstSubscription.compareAndSet(false, true)) {
                     return Mono.empty();
                 }
-                return Mono.delay(randomGossipProbe.probeInterval());
+                return Mono.delay(gossips.probeInterval());
             }))
             .repeat()
             .doOnError(throwable -> LOGGER.error("[Node {}] Probe nodes job has been stopped!", nodeId, throwable));
@@ -286,6 +286,7 @@ public class GossipProtocol {
             gossipProtocol.gossips = Gossips.builder()
                     .nodeId(nodeId)
                     .addAliveGossipAboutItself()
+                    .baseProbeInterval(baseProbeInterval)
                     .maxGossips(maxGossips)
                     .maxLocalHealthMultiplier(maxLocalHealthMultiplier)
                     .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
@@ -297,7 +298,6 @@ public class GossipProtocol {
                     .peers(gossipProtocol.peers)
                     .gossips(gossipProtocol.gossips)
                     .gossipProbe(new GossipProbe(nodeId, gossipProtocol.gossipTransport))
-                    .baseProbeInterval(baseProbeInterval)
                     .baseProbeTimeout(baseProbeTimeout)
                     .subgroupSize(subgroupSize)
                     .indirectDelayRatio(indirectDelayRatio)

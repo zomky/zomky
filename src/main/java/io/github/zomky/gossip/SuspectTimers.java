@@ -8,9 +8,9 @@ import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.*;
 
+// not thread-safe
 public class SuspectTimers {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SuspectTimers.class);
@@ -27,10 +27,6 @@ public class SuspectTimers {
 
     Flux<Integer> deadNodes() {
         return deadNodesProcessor;
-    }
-
-    void initializeTimer(int nodeId) {
-    // TODO remove
     }
 
     void initializeTimer(int nodeId, Duration probeInterval, int clusterSize) {

@@ -16,7 +16,6 @@ class RandomGossipProbe {
     private Peers peers;
     private Gossips gossips;
     private int subgroupSize;
-    private Duration baseProbeInterval;
     private Duration baseProbeTimeout;
     private float nackRatio;
     private float indirectDelayRatio;
@@ -49,10 +48,6 @@ class RandomGossipProbe {
         }
     }
 
-    Duration probeInterval() {
-        return Duration.ofMillis(baseProbeInterval.toMillis() * (gossips.localHealthMultiplier() + 1));
-    }
-
     private RandomGossipProbe() {}
 
     public static RandomGossipProbe.Builder builder() {
@@ -65,7 +60,6 @@ class RandomGossipProbe {
         private Peers peers;
         private Gossips gossips;
         private Duration baseProbeTimeout;
-        private Duration baseProbeInterval;
         private int subgroupSize;
         private float nackRatio;
         private float indirectDelayRatio;
@@ -91,11 +85,6 @@ class RandomGossipProbe {
 
         public RandomGossipProbe.Builder baseProbeTimeout(Duration baseProbeTimeout) {
             this.baseProbeTimeout = baseProbeTimeout;
-            return this;
-        }
-
-        public RandomGossipProbe.Builder baseProbeInterval(Duration baseProbeInterval) {
-            this.baseProbeInterval = baseProbeInterval;
             return this;
         }
 
@@ -125,7 +114,6 @@ class RandomGossipProbe {
             randomGossipProbe.peers = peers;
             randomGossipProbe.gossips = gossips;
             randomGossipProbe.baseProbeTimeout = baseProbeTimeout;
-            randomGossipProbe.baseProbeInterval = baseProbeInterval;
             randomGossipProbe.subgroupSize = subgroupSize;
             randomGossipProbe.nackRatio = nackRatio;
             randomGossipProbe.indirectDelayRatio = indirectDelayRatio;
