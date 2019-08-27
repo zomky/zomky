@@ -14,7 +14,8 @@ public enum RpcType {
     INIT_JOIN(12, false),
     JOIN(13, false),
     INIT_LEAVE(14, false),
-    LEAVE(15, false);
+    LEAVE(15, false),
+    PING(16, false);
 
     private final byte code;
     private final boolean raftCommand;
@@ -48,6 +49,7 @@ public enum RpcType {
             case 13: return JOIN;
             case 14: return INIT_LEAVE;
             case 15: return LEAVE;
+            case 16: return PING;
 
             default: throw new RuntimeException("Unknown type !");
         }

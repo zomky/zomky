@@ -95,16 +95,18 @@ class GossipProbeTest {
     @Test
     void onePeerDirectSuccessfulAfterRoundTripTime() { // cluster with two nodes
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, Collections.emptyList());
-
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+                .build();
+        given(gossipTransport.ping(ping))
+                .willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        given(gossipTransport.pingTcp(ping))
+                .willReturn(Mono.never());
 
         given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
         given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(50));
@@ -122,6 +124,80 @@ class GossipProbeTest {
                 .verifyComplete();
 
         verify(gossipTransport).ping(any());
+        verify(gossipTransport).pingTcp(any());
+    }
+
+    @Test
+    void onePeerDirectSuccessfulAfterRoundTripTimeAndDirectTcpSuccessful() { // cluster with two nodes
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, Collections.emptyList());
+        final Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build();
+        given(gossipTransport.ping(ping))
+                .willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        given(gossipTransport.pingTcp(ping))
+                .willReturn(Mono.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()));
+
+        given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(50));
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))
+                .expectSubscription()
+                .thenAwait(Duration.ofMillis(50))
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build(),
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
+                    assertThat(probeResult.hasMissedNack()).isFalse();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport).ping(any());
+        verify(gossipTransport).pingTcp(any());
+    }
+
+    @Test
+    void onePeerDirectUdpErrorAndDirectTcpSuccessful() { // cluster with two nodes
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, Collections.emptyList());
+        final Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.error(new GossipException("ping-error")));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.just(Ack.newBuilder().setTcp(true).setNodeId(DESTINATION_NODE_ID).build()));
+
+        given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(50));
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))
+                .expectSubscription()
+                .thenAwait(Duration.ofMillis(50))
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                        Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).setTcp(true).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(0);
+                    assertThat(probeResult.hasMissedNack()).isFalse();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport).ping(any());
+        verify(gossipTransport).pingTcp(any());
     }
 
     @Test
@@ -224,15 +300,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(80)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(80)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -283,15 +360,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -341,15 +419,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Flux.error(new TimeoutException()));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.error(new TimeoutException()));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -399,15 +478,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -455,15 +535,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(100)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(100)).thenMany(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -512,15 +593,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -570,15 +652,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Mono.delay(Duration.ofMillis(30)).thenMany(Flux.error(new TimeoutException())));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -629,15 +712,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -696,15 +780,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).build()).delayElements(Duration.ofMillis(100)));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
@@ -763,15 +848,16 @@ class GossipProbeTest {
         List<Integer> proxyNodeIds = Arrays.asList(7002,7003);
         PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
 
-        given(gossipTransport.ping(Ping.newBuilder()
+        final Ping ping = Ping.newBuilder()
                 .setInitiatorNodeId(NODE_ID)
                 .setRequestorNodeId(NODE_ID)
                 .setDestinationNodeId(DESTINATION_NODE_ID)
                 .addAllGossips(gossips)
                 .setDirect(true)
                 .setCounter(1)
-                .build())
-        ).willReturn(Flux.error(new TimeoutException()));
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.error(new TimeoutException()));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.error(new GossipException("tcp-ping-error")));
 
         given(gossipTransport.ping(Ping.newBuilder()
                         .setInitiatorNodeId(NODE_ID)
@@ -819,5 +905,100 @@ class GossipProbeTest {
                 .verifyComplete();
 
         verify(gossipTransport, times(3)).ping(any());
+    }
+
+    @Test
+    void manyPeersOnlyTcpDirectSuccessful() {
+        List<Integer> proxyNodeIds = Collections.singletonList(7002);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        final Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.error(new TimeoutException()));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).setTcp(true).build()));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7002)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setNackTimeout(NACK_TIMEOUT)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.error(new TimeoutException()));
+
+        given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(100));
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))
+                .expectSubscription()
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).setTcp(true).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(1);
+                    assertThat(probeResult.hasMissedNack()).isTrue();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(2)).ping(any());
+        verify(gossipTransport).pingTcp(any());
+    }
+
+    @Test
+    void manyPeersOnlyTcpDirectSuccessfulAndIndirectNack() {
+        List<Integer> proxyNodeIds = Collections.singletonList(7002);
+        PeerProbe peerProbe = new PeerProbe(DESTINATION_NODE_ID, proxyNodeIds);
+
+        final Ping ping = Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(NODE_ID)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(1)
+                .build();
+        given(gossipTransport.ping(ping)).willReturn(Flux.error(new TimeoutException()));
+        given(gossipTransport.pingTcp(ping)).willReturn(Mono.just(Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).setTcp(true).build()));
+
+        given(gossipTransport.ping(Ping.newBuilder()
+                .setInitiatorNodeId(NODE_ID)
+                .setRequestorNodeId(7002)
+                .setDestinationNodeId(DESTINATION_NODE_ID)
+                .addAllGossips(gossips)
+                .setDirect(false)
+                .setNackTimeout(NACK_TIMEOUT)
+                .setCounter(0)
+                .build())
+        ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7002).setNack(true).build()));
+
+        given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(100));
+
+        StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))
+                .expectSubscription()
+                .assertNext(probeResult -> {
+                    assertThat(probeResult.getDestinationNodeId()).isEqualTo(DESTINATION_NODE_ID);
+                    assertThat(probeResult.hasAck()).isTrue();
+                    assertThat(probeResult.getAcks()).containsExactly(
+                            Ack.newBuilder().setNodeId(DESTINATION_NODE_ID).setTcp(true).build(),
+                            Ack.newBuilder().setNodeId(7002).setNack(true).build()
+                    );
+                    assertThat(probeResult.getSubgroupSize()).isEqualTo(1);
+                    assertThat(probeResult.hasMissedNack()).isFalse();
+                })
+                .verifyComplete();
+
+        verify(gossipTransport, times(2)).ping(any());
+        verify(gossipTransport).pingTcp(any());
     }
 }

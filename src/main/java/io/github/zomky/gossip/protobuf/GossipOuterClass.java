@@ -97,10 +97,10 @@ public final class GossipOuterClass {
       "iator_node_id\030\001 \001(\005\022\031\n\021requestor_node_id" +
       "\030\002 \001(\005\022\033\n\023destination_node_id\030\003 \001(\005\022\016\n\006d" +
       "irect\030\004 \001(\010\022\017\n\007counter\030\005 \001(\003\022\024\n\014nack_tim" +
-      "eout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossip\">\n\003" +
-      "Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022\030\n\007go" +
-      "ssips\030\003 \003(\0132\007.GossipB#\n\037io.github.zomky." +
-      "gossip.protobufP\001b\006proto3"
+      "eout\030\006 \001(\005\022\030\n\007gossips\030\007 \003(\0132\007.Gossip\"K\n\003" +
+      "Ack\022\017\n\007node_id\030\001 \001(\005\022\014\n\004nack\030\002 \001(\010\022\013\n\003tc" +
+      "p\030\003 \001(\010\022\030\n\007gossips\030\004 \003(\0132\007.GossipB#\n\037io." +
+      "github.zomky.gossip.protobufP\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -171,7 +171,7 @@ public final class GossipOuterClass {
     internal_static_Ack_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Ack_descriptor,
-        new java.lang.String[] { "NodeId", "Nack", "Gossips", });
+        new java.lang.String[] { "NodeId", "Nack", "Tcp", "Gossips", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

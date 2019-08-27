@@ -113,6 +113,16 @@ public class GossipProtocol {
                    .thenReturn(LeaveResponse.newBuilder().setStatus(true).build());
     }
 
+    public Mono<Ack> onTcpPing(Ping ping) {
+        return onPingDelay
+                .apply(ping.getRequestorNodeId(), ping.getCounter())
+                .then(Mono.fromCallable(() -> {
+                    logOnTcpPing(ping);
+                    checkTcpPing(ping);
+                    return gossips.onPing(nodeId, ping, true);
+                }));
+    }
+
     public Publisher<Void> onPing(UdpInbound udpInbound, UdpOutbound udpOutbound) {
         return udpInbound.receiveObject()
                 .cast(DatagramPacket.class)
@@ -176,6 +186,12 @@ public class GossipProtocol {
                 });
     }
 
+    private void checkTcpPing(Ping ping) {
+        if (!ping.getDirect()) {
+            throw new GossipException(String.format("Direct ping only over TCP! [%s]", ping));
+        }
+    }
+
     private void checkPing(Ping ping) {
         if (ping.getDirect()) {
             checkDirectPing(ping);
@@ -197,6 +213,10 @@ public class GossipProtocol {
         if (ping.getRequestorNodeId() != nodeId) {
             throw new GossipException(String.format("This node is not a proxy node! [%s,%s]", ping.getRequestorNodeId(), nodeId));
         }
+    }
+
+    private static void logOnTcpPing(Ping ping) {
+        LOGGER.info("[Node {}][onTcpPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
     }
 
     private static void logOnPing(Ping ping) {

@@ -62,6 +62,10 @@ class Gossips {
     }
 
     synchronized Ack onPing(int nodeId, Ping ping) {
+        return onPing(nodeId, ping, false);
+    }
+
+    synchronized Ack onPing(int nodeId, Ping ping, boolean tcp) {
         List<Gossip> gossipsList = ping.getGossipsList();
         gossipsList.forEach(this::addGossipIgnoreError);
         List<Gossip> hotGossips = chooseHotGossips(gossipsList);
@@ -70,6 +74,7 @@ class Gossips {
         return Ack.newBuilder()
                 .setNodeId(nodeId)
                 .addAllGossips(hotGossips)
+                .setTcp(tcp)
                 .build();
     }
 
