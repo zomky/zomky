@@ -60,7 +60,12 @@ private static final long serialVersionUID = 0L;
             nack_ = input.readBool();
             break;
           }
-          case 26: {
+          case 24: {
+
+            tcp_ = input.readBool();
+            break;
+          }
+          case 34: {
             if (!((mutable_bitField0_ & 0x00000001) != 0)) {
               gossips_ = new java.util.ArrayList<io.github.zomky.gossip.protobuf.Gossip>();
               mutable_bitField0_ |= 0x00000001;
@@ -122,35 +127,44 @@ private static final long serialVersionUID = 0L;
     return nack_;
   }
 
-  public static final int GOSSIPS_FIELD_NUMBER = 3;
+  public static final int TCP_FIELD_NUMBER = 3;
+  private boolean tcp_;
+  /**
+   * <code>bool tcp = 3;</code>
+   */
+  public boolean getTcp() {
+    return tcp_;
+  }
+
+  public static final int GOSSIPS_FIELD_NUMBER = 4;
   private java.util.List<io.github.zomky.gossip.protobuf.Gossip> gossips_;
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   public java.util.List<io.github.zomky.gossip.protobuf.Gossip> getGossipsList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   public java.util.List<? extends io.github.zomky.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList() {
     return gossips_;
   }
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   public int getGossipsCount() {
     return gossips_.size();
   }
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   public io.github.zomky.gossip.protobuf.Gossip getGossips(int index) {
     return gossips_.get(index);
   }
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   public io.github.zomky.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index) {
@@ -177,8 +191,11 @@ private static final long serialVersionUID = 0L;
     if (nack_ != false) {
       output.writeBool(2, nack_);
     }
+    if (tcp_ != false) {
+      output.writeBool(3, tcp_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
-      output.writeMessage(3, gossips_.get(i));
+      output.writeMessage(4, gossips_.get(i));
     }
     unknownFields.writeTo(output);
   }
@@ -197,9 +214,13 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeBoolSize(2, nack_);
     }
+    if (tcp_ != false) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeBoolSize(3, tcp_);
+    }
     for (int i = 0; i < gossips_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(3, gossips_.get(i));
+        .computeMessageSize(4, gossips_.get(i));
     }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
@@ -220,6 +241,8 @@ private static final long serialVersionUID = 0L;
         != other.getNodeId()) return false;
     if (getNack()
         != other.getNack()) return false;
+    if (getTcp()
+        != other.getTcp()) return false;
     if (!getGossipsList()
         .equals(other.getGossipsList())) return false;
     if (!unknownFields.equals(other.unknownFields)) return false;
@@ -238,6 +261,9 @@ private static final long serialVersionUID = 0L;
     hash = (37 * hash) + NACK_FIELD_NUMBER;
     hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
         getNack());
+    hash = (37 * hash) + TCP_FIELD_NUMBER;
+    hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+        getTcp());
     if (getGossipsCount() > 0) {
       hash = (37 * hash) + GOSSIPS_FIELD_NUMBER;
       hash = (53 * hash) + getGossipsList().hashCode();
@@ -380,6 +406,8 @@ private static final long serialVersionUID = 0L;
 
       nack_ = false;
 
+      tcp_ = false;
+
       if (gossipsBuilder_ == null) {
         gossips_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000001);
@@ -415,6 +443,7 @@ private static final long serialVersionUID = 0L;
       int from_bitField0_ = bitField0_;
       result.nodeId_ = nodeId_;
       result.nack_ = nack_;
+      result.tcp_ = tcp_;
       if (gossipsBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0)) {
           gossips_ = java.util.Collections.unmodifiableList(gossips_);
@@ -477,6 +506,9 @@ private static final long serialVersionUID = 0L;
       }
       if (other.getNack() != false) {
         setNack(other.getNack());
+      }
+      if (other.getTcp() != false) {
+        setTcp(other.getTcp());
       }
       if (gossipsBuilder_ == null) {
         if (!other.gossips_.isEmpty()) {
@@ -586,6 +618,32 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
+    private boolean tcp_ ;
+    /**
+     * <code>bool tcp = 3;</code>
+     */
+    public boolean getTcp() {
+      return tcp_;
+    }
+    /**
+     * <code>bool tcp = 3;</code>
+     */
+    public Builder setTcp(boolean value) {
+      
+      tcp_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>bool tcp = 3;</code>
+     */
+    public Builder clearTcp() {
+      
+      tcp_ = false;
+      onChanged();
+      return this;
+    }
+
     private java.util.List<io.github.zomky.gossip.protobuf.Gossip> gossips_ =
       java.util.Collections.emptyList();
     private void ensureGossipsIsMutable() {
@@ -599,7 +657,7 @@ private static final long serialVersionUID = 0L;
         io.github.zomky.gossip.protobuf.Gossip, io.github.zomky.gossip.protobuf.Gossip.Builder, io.github.zomky.gossip.protobuf.GossipOrBuilder> gossipsBuilder_;
 
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public java.util.List<io.github.zomky.gossip.protobuf.Gossip> getGossipsList() {
       if (gossipsBuilder_ == null) {
@@ -609,7 +667,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public int getGossipsCount() {
       if (gossipsBuilder_ == null) {
@@ -619,7 +677,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public io.github.zomky.gossip.protobuf.Gossip getGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -629,7 +687,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder setGossips(
         int index, io.github.zomky.gossip.protobuf.Gossip value) {
@@ -646,7 +704,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder setGossips(
         int index, io.github.zomky.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -660,7 +718,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder addGossips(io.github.zomky.gossip.protobuf.Gossip value) {
       if (gossipsBuilder_ == null) {
@@ -676,7 +734,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder addGossips(
         int index, io.github.zomky.gossip.protobuf.Gossip value) {
@@ -693,7 +751,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder addGossips(
         io.github.zomky.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -707,7 +765,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder addGossips(
         int index, io.github.zomky.gossip.protobuf.Gossip.Builder builderForValue) {
@@ -721,7 +779,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder addAllGossips(
         java.lang.Iterable<? extends io.github.zomky.gossip.protobuf.Gossip> values) {
@@ -736,7 +794,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder clearGossips() {
       if (gossipsBuilder_ == null) {
@@ -749,7 +807,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public Builder removeGossips(int index) {
       if (gossipsBuilder_ == null) {
@@ -762,14 +820,14 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public io.github.zomky.gossip.protobuf.Gossip.Builder getGossipsBuilder(
         int index) {
       return getGossipsFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public io.github.zomky.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
         int index) {
@@ -779,7 +837,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public java.util.List<? extends io.github.zomky.gossip.protobuf.GossipOrBuilder> 
          getGossipsOrBuilderList() {
@@ -790,14 +848,14 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public io.github.zomky.gossip.protobuf.Gossip.Builder addGossipsBuilder() {
       return getGossipsFieldBuilder().addBuilder(
           io.github.zomky.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public io.github.zomky.gossip.protobuf.Gossip.Builder addGossipsBuilder(
         int index) {
@@ -805,7 +863,7 @@ private static final long serialVersionUID = 0L;
           index, io.github.zomky.gossip.protobuf.Gossip.getDefaultInstance());
     }
     /**
-     * <code>repeated .Gossip gossips = 3;</code>
+     * <code>repeated .Gossip gossips = 4;</code>
      */
     public java.util.List<io.github.zomky.gossip.protobuf.Gossip.Builder> 
          getGossipsBuilderList() {

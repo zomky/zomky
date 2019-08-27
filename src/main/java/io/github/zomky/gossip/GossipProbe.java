@@ -38,8 +38,11 @@ class GossipProbe {
         Publisher<?> probeTimeoutPublisher = Mono.delay(peerProbeTimeouts.probeTimeout());
 
         List<Integer> proxyNodeIds = peerProbe.getProxyNodeIds();
-        return new ProbeOperator<>(pingDirect(destinationNodeId, hotGossips),
-                                   pingIndirect(destinationNodeId, proxyNodeIds, peerProbeTimeouts.nackTimeout(), hotGossips),
+        return new ProbeOperator<>(pingUdpDirect(destinationNodeId, hotGossips),
+                                   Flux.defer(() -> Flux.mergeDelayError(peerProbe.getSubgroupSize() + 1,
+                                        pingTcpDirect(destinationNodeId, hotGossips),
+                                        pingIndirect(destinationNodeId, proxyNodeIds, peerProbeTimeouts.nackTimeout(), hotGossips)
+                                   )),
                                    indirectDelayPublisher,
                                    probeTimeoutPublisher)
                 .map(probeOperatorResult -> ProbeResult.builder()
@@ -56,8 +59,11 @@ class GossipProbe {
         if (!probeOperatorResult.isIndirect()) {
             return false;
         }
-        int expectedAckOrNack =  peerProbe.getSubgroupSize() +
-                (probeOperatorResult.isDirectSuccessful() ? 1 : 0);
+
+        boolean directTcpSuccessful = probeOperatorResult.getElements().stream().anyMatch(Ack::getTcp);
+        boolean directSuccessful = probeOperatorResult.isDirectSuccessful() || directTcpSuccessful;
+
+        int expectedAckOrNack =  peerProbe.getSubgroupSize() + (directSuccessful ? 1 : 0);
 
         long ackOrNack = probeOperatorResult.getElements().stream()
                 .map(Ack::getNodeId)
@@ -66,15 +72,8 @@ class GossipProbe {
         return ackOrNack != expectedAckOrNack;
     }
 
-    private Mono<Ack> pingDirect(int destinationNodeId, List<Gossip> gossips) {
-        Ping ping = Ping.newBuilder()
-                .setInitiatorNodeId(this.nodeId)
-                .setRequestorNodeId(this.nodeId)
-                .setDestinationNodeId(destinationNodeId)
-                .addAllGossips(gossips)
-                .setDirect(true)
-                .setCounter(clock.getOrDefault(destinationNodeId, new AtomicLong(0)).incrementAndGet())
-                .build();
+    private Mono<Ack> pingUdpDirect(int destinationNodeId, List<Gossip> gossips) {
+        Ping ping = pingDirect(destinationNodeId, gossips);
         return gossipTransport
                 .ping(ping)
                 .next()
@@ -82,6 +81,27 @@ class GossipProbe {
                 .doOnError(throwable -> {
                     LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
                 });
+    }
+
+    private Mono<Ack> pingTcpDirect(int destinationNodeId, List<Gossip> gossips) {
+        Ping ping = pingDirect(destinationNodeId, gossips);
+        return gossipTransport
+                .pingTcp(ping)
+                .doOnNext(ack -> LOGGER.info("[Node {}][ping-tcp] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId()))
+                .doOnError(throwable -> {
+                    LOGGER.warn("[Node {}][tcp-ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                });
+    }
+
+    private Ping pingDirect(int destinationNodeId, List<Gossip> gossips) {
+        return Ping.newBuilder()
+                .setInitiatorNodeId(this.nodeId)
+                .setRequestorNodeId(this.nodeId)
+                .setDestinationNodeId(destinationNodeId)
+                .addAllGossips(gossips)
+                .setDirect(true)
+                .setCounter(clock.getOrDefault(destinationNodeId, new AtomicLong(0)).incrementAndGet())
+                .build();
     }
 
     private Flux<Ack> pingIndirect(int destinationNodeId, List<Integer> proxies, Duration nackTimeout, List<Gossip> gossips) {

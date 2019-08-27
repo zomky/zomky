@@ -4,10 +4,7 @@ import com.google.protobuf.AbstractMessageLite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.github.zomky.client.protobuf.InfoRequest;
 import io.github.zomky.gossip.GossipProtocol;
-import io.github.zomky.gossip.protobuf.InitJoinRequest;
-import io.github.zomky.gossip.protobuf.InitLeaveRequest;
-import io.github.zomky.gossip.protobuf.JoinRequest;
-import io.github.zomky.gossip.protobuf.LeaveRequest;
+import io.github.zomky.gossip.protobuf.*;
 import io.github.zomky.raft.RaftException;
 import io.github.zomky.raft.RaftProtocol;
 import io.github.zomky.transport.RpcType;
@@ -94,6 +91,12 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
                         return Mono.just(payload)
                                 .map(this::toLeaveRequest)
                                 .flatMap(gossipProtocol::onLeaveRequest)
+                                .map(this::toPayload);
+
+                    case PING:
+                        return Mono.just(payload)
+                                .map(this::toPing)
+                                .flatMap(gossipProtocol::onTcpPing)
                                 .map(this::toPayload);
 
                     default:
@@ -194,6 +197,14 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
                     return LeaveRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                 } catch (InvalidProtocolBufferException e) {
                     throw new RaftException("Invalid leave request!", e);
+                }
+            }
+
+            private Ping toPing(Payload payload) {
+                try {
+                    return Ping.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                } catch (InvalidProtocolBufferException e) {
+                    throw new RaftException("Invalid ping request!", e);
                 }
             }
 

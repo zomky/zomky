@@ -18,25 +18,30 @@ public interface AckOrBuilder extends
   boolean getNack();
 
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>bool tcp = 3;</code>
+   */
+  boolean getTcp();
+
+  /**
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   java.util.List<io.github.zomky.gossip.protobuf.Gossip> 
       getGossipsList();
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   io.github.zomky.gossip.protobuf.Gossip getGossips(int index);
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   int getGossipsCount();
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   java.util.List<? extends io.github.zomky.gossip.protobuf.GossipOrBuilder> 
       getGossipsOrBuilderList();
   /**
-   * <code>repeated .Gossip gossips = 3;</code>
+   * <code>repeated .Gossip gossips = 4;</code>
    */
   io.github.zomky.gossip.protobuf.GossipOrBuilder getGossipsOrBuilder(
       int index);
