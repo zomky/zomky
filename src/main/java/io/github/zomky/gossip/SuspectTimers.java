@@ -2,13 +2,17 @@ package io.github.zomky.gossip;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 // not thread-safe
 public class SuspectTimers {
@@ -19,11 +23,12 @@ public class SuspectTimers {
     private int suspicionMaxMultiplier;
     private int k;
     private Map<Integer, SuspectTimer> suspectTimers = new ConcurrentHashMap<>();
-    private Map<Integer, ScheduledFuture<Integer>> suspectFutures = new ConcurrentHashMap<>();
+    private Map<Integer, Disposable> suspectDisposables = new ConcurrentHashMap<>();
     private DirectProcessor<Integer> deadNodesProcessor;
     private FluxSink<Integer> deadNodesSink;
 
-    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+    // TODO provide as parameter to builder
+    private Scheduler scheduler = Schedulers.newSingle("suspect-timers", true);
 
     Flux<Integer> deadNodes() {
         return deadNodesProcessor;
@@ -68,24 +73,19 @@ public class SuspectTimers {
 
     private void scheduleTask(int nodeId, long suspicionTimeout) {
         LOGGER.info("Suspecting node {} [timeout: {}ms]", nodeId, suspicionTimeout);
-        ScheduledFuture<Integer> schedule = executorService.schedule(() -> {
+        final Disposable disposable = scheduler.schedule(() -> {
             LOGGER.info("Suspecting node {} timeout reached.", nodeId);
-            suspectFutures.remove(nodeId);
+            suspectDisposables.remove(nodeId);
             deadNodesSink.next(nodeId);
-            return nodeId;
         }, suspicionTimeout, TimeUnit.MILLISECONDS);
-        suspectFutures.put(nodeId, schedule);
+
+        suspectDisposables.put(nodeId, disposable);
     }
 
     private void cancelTaskIfScheduled(int nodeId) {
-        ScheduledFuture<Integer> currentScheduledFuture = suspectFutures.get(nodeId);
-        if (currentScheduledFuture != null) {
-            boolean cancelled = currentScheduledFuture.cancel(false);
-            if (cancelled) {
-                LOGGER.info("CANCELLED Cancelling timer for node {}", nodeId);
-            } else {
-                LOGGER.info("NOT CANCELLED Cancelling timer for node {}", nodeId);
-            }
+        Disposable currentScheduledFuture = suspectDisposables.get(nodeId);
+        if (currentScheduledFuture != null && !currentScheduledFuture.isDisposed()) {
+            currentScheduledFuture.dispose();
         }
     }
 
