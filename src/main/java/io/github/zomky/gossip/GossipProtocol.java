@@ -97,7 +97,7 @@ public class GossipProtocol {
 
     public Mono<InitLeaveResponse> leave(InitLeaveRequest initLeaveRequest) {
         // I am leaving, lets inform other nodes
-        LOGGER.info("[Node {}] Leaving cluster ...");
+        LOGGER.info("[Node {}] Leaving cluster ...", initLeaveRequest.getRequesterPort());
         return Mono.fromRunnable(() -> gossips.addGossip(Gossip.newBuilder().setSuspicion(Gossip.Suspicion.DEAD).build()))
                 // TODO check credentials
                 .then(Mono.delay(Duration.ofSeconds(5)).doOnSuccess(l -> System.exit(0)))

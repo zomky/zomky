@@ -4,8 +4,6 @@ import io.github.zomky.client.protobuf.InfoRequest;
 import io.github.zomky.client.protobuf.InfoResponse;
 import io.github.zomky.gossip.Cluster;
 import io.github.zomky.gossip.GossipProtocol;
-import io.github.zomky.gossip.listener.NodeJoinedListener;
-import io.github.zomky.gossip.listener.NodeLeftGracefullyListener;
 import io.github.zomky.gossip.protobuf.InitJoinRequest;
 import io.github.zomky.gossip.protobuf.InitJoinResponse;
 import io.github.zomky.listener.SenderAvailableListener;
@@ -36,9 +34,6 @@ class DefaultNode implements InnerNode {
     private Senders senders;
     private GossipProtocol gossipProtocol;
     private RaftProtocol raftProtocol;
-
-    private Set<NodeJoinedListener> nodeJoinedListeners = new HashSet<>();
-    private Set<NodeLeftGracefullyListener> nodeLeftGracefullyListeners = new HashSet<>();
 
     private Set<SenderAvailableListener> senderAvailableListeners = new HashSet<>();
     private Set<SenderUnavailableListener> senderUnavailableListeners = new HashSet<>();
