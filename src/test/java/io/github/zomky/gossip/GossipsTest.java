@@ -631,11 +631,30 @@ class GossipsTest {
     }
 
     @Test
-    void addDeadGossip() { // incarnation number does not matter
+    void addDeadGossipOverrideAlive() { // incarnation number does not matter
         // given
         Gossips gossips = Gossips.builder()
                 .nodeId(INITIATOR_NODE_ID)
                 .addAliveGossip(DESTINATION_NODE_ID, 3)
+                .build();
+
+        // when
+        gossips.addGossip(Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build());
+
+        // then
+        assertThat(gossips.allGossips()).containsExactlyInAnyOrder(
+                Gossip.newBuilder().setNodeId(DESTINATION_NODE_ID).setSuspicion(DEAD).setIncarnation(0).build()
+        );
+        assertThat(gossips.estimatedClusterSize()).isEqualTo(1);
+    }
+
+    @Test
+    void addDeadGossipOverrideSuspect() { // incarnation number does not matter
+        // given
+        Gossips gossips = Gossips.builder()
+                .nodeId(INITIATOR_NODE_ID)
+                .addSuspectGossip(DESTINATION_NODE_ID, 7002, 3)
+                .addSuspectGossip(DESTINATION_NODE_ID, 7003, 3)
                 .build();
 
         // when
@@ -1125,12 +1144,17 @@ class GossipsTest {
                 .addGossip(Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7001).setSuspicion(SUSPECT).setIncarnation(1).build(), 0)
                 .addGossip(Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7002).setSuspicion(SUSPECT).setIncarnation(1).build(), 7)
                 .addGossip(Gossip.newBuilder().setNodeId(7004).setSuspicion(ALIVE).setIncarnation(1).build(), 22)
+                .addGossip(Gossip.newBuilder().setNodeId(7005).setSuspicion(DEAD).setIncarnation(0).build(), 22)
                 .build();
+
+        List<Gossip> allGossips = gossips.allGossips();
 
         // when
         gossips.makeGossipsLessHot(Arrays.asList(
                 Gossip.newBuilder().setNodeId(7001).setSuspicion(ALIVE).setIncarnation(0).build(),
-                Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7001).setSuspicion(SUSPECT).setIncarnation(1).build()
+                Gossip.newBuilder().setNodeId(7003).setNodeIdHarbourSuspicion(7001).setSuspicion(SUSPECT).setIncarnation(1).build(),
+                // suspect should not override dead
+                Gossip.newBuilder().setNodeId(7005).setNodeIdHarbourSuspicion(7001).setSuspicion(SUSPECT).setIncarnation(1).build()
         ));
 
         // then
@@ -1139,6 +1163,8 @@ class GossipsTest {
         assertThat(gossips.getDisseminatedCount(7003,7001)).isEqualTo(1);
         assertThat(gossips.getDisseminatedCount(7003,7002)).isEqualTo(7);
         assertThat(gossips.getDisseminatedCount(7004)).isEqualTo(22);
+        assertThat(gossips.getDisseminatedCount(7005)).isEqualTo(22);
+        assertThat(gossips.allGossips()).isEqualTo(allGossips);
 
         assertThat(gossips.estimatedClusterSize()).isEqualTo(5);
     }

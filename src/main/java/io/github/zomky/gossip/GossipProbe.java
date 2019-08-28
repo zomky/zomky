@@ -79,7 +79,7 @@ class GossipProbe {
                 .next()
                 .doOnNext(ack -> log(ping, ack))
                 .doOnError(throwable -> {
-                    LOGGER.warn("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                    LOGGER.debug("[Node {}][ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
                 });
     }
 
@@ -87,9 +87,9 @@ class GossipProbe {
         Ping ping = pingDirect(destinationNodeId, gossips);
         return gossipTransport
                 .pingTcp(ping)
-                .doOnNext(ack -> LOGGER.info("[Node {}][ping-tcp] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId()))
+                .doOnNext(ack -> LOGGER.trace("[Node {}][ping-tcp] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId()))
                 .doOnError(throwable -> {
-                    LOGGER.warn("[Node {}][tcp-ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
+                    LOGGER.debug("[Node {}][tcp-ping] Direct probe to {} failed. Reason {}.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), throwable.getMessage());
                 });
     }
 
@@ -120,7 +120,7 @@ class GossipProbe {
                             .doOnNext(ack -> log(ping, ack))
                             .onErrorResume(throwable -> {
                                 // cannot connect to proxy
-                                LOGGER.warn("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
+                                LOGGER.debug("[Node {}][ping] Indirect probe to {} through {} failed. Reason {}", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId(), throwable.getMessage());
                                 return Mono.empty();
                             });
                 });
@@ -128,12 +128,12 @@ class GossipProbe {
 
     private void log(Ping ping, Ack ack) {
         if (ping.getDirect()) {
-            LOGGER.info("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
+            LOGGER.trace("[Node {}][ping] Direct probe to {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
         } else {
             if (ack.getNack()) {
-                LOGGER.info("[Node {}][ping] Indirect probe to {} through {} failed.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                LOGGER.debug("[Node {}][ping] Indirect probe to {} through {} failed.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
             } else {
-                LOGGER.info("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                LOGGER.trace("[Node {}][ping] Indirect probe to {} through {} successful.", ping.getInitiatorNodeId(), ping.getDestinationNodeId(), ping.getRequestorNodeId());
             }
         }
     }

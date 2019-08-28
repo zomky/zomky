@@ -453,7 +453,7 @@ class GossipProbeTest {
         ).willReturn(Flux.just(Ack.newBuilder().setNodeId(7003).build()));
 
         given(peerProbeTimeouts.indirectDelay()).willReturn(Duration.ofMillis(10));
-        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(50));
+        given(peerProbeTimeouts.probeTimeout()).willReturn(Duration.ofMillis(100));
 
         // expected order 7003 (indirect), 7002 (indirect)
         StepVerifier.create(gossipProbe.probeNode(peerProbe, gossips, peerProbeTimeouts))

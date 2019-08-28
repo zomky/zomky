@@ -42,8 +42,12 @@ public class GossipProtocol {
                         peers.add(suspicion.getNodeId());
                         cluster.addMember(suspicion.getNodeId());
                     }
+                    if (suspicion.getSuspicion() == Gossip.Suspicion.DEAD) {
+                        peers.remove(suspicion.getNodeId());
+                        cluster.removeMember(suspicion.getNodeId());
+                    }
                 }, throwable -> {
-                    LOGGER.info("[Node {}] unrecoverable error", nodeId);
+                    LOGGER.error("[Node {}] unrecoverable error", nodeId);
                 });
         probeNodesDisposable = probeNodes().subscribe();
     }
@@ -153,14 +157,14 @@ public class GossipProtocol {
                                     .takeUntil(indirectAckOrNack -> !indirectAckOrNack.getNack())
                                     .doOnNext(indirectAckOrNack -> {
                                         if (indirectAckOrNack.getNack()) {
-                                            LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} taking too long time. Sending back NACK but still waiting for ACK.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                            LOGGER.debug("[Node {}][onPing] Probe to {} on behalf of {} taking too long time. Sending back NACK but still waiting for ACK.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                         } else {
-                                            LOGGER.info("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+                                            LOGGER.trace("[Node {}][onPing] Probe to {} on behalf of {} successful.", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
                                             gossips.addAck(indirectAckOrNack);
                                         }
                                     })
                                     .doOnError(throwable -> {
-                                        LOGGER.warn("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
+                                        LOGGER.debug("[Node {}][onPing] Probe to {} on behalf of {} failed. Reason {}.", pingOnBehalf.getRequestorNodeId(), pingOnBehalf.getDestinationNodeId(), pingOnBehalf.getInitiatorNodeId(), throwable.getMessage());
                                     })
                                     .map(indirectAckOrNack -> indirectAckOrNack.getNack() ?  nackDatagram : ackDatagram)
                                     // if proxy is available and cannot reach destination then nack is returned
@@ -171,9 +175,9 @@ public class GossipProtocol {
                                 .then()
                                 .onErrorResume(throwable -> {
                                     if (ping.getDirect()) {
-                                        LOGGER.warn("[Node {}][onPing] Cannot send ack back to {}!", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                                        LOGGER.debug("[Node {}][onPing] Cannot send ack back to {}!", ping.getDestinationNodeId(), ping.getRequestorNodeId());
                                     } else {
-                                        LOGGER.warn("[Node {}][onPing] Cannot send ack back to {}!", ping.getRequestorNodeId(), ping.getInitiatorNodeId());
+                                        LOGGER.debug("[Node {}][onPing] Cannot send ack back to {}!", ping.getRequestorNodeId(), ping.getInitiatorNodeId());
                                     }
                                     return Mono.empty();
                                 })
@@ -216,18 +220,18 @@ public class GossipProtocol {
     }
 
     private static void logOnTcpPing(Ping ping) {
-        LOGGER.info("[Node {}][onTcpPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+        LOGGER.trace("[Node {}][onTcpPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
     }
 
     private static void logOnPing(Ping ping) {
         if (ping.getDirect()) {
             if (ping.getInitiatorNodeId() == ping.getRequestorNodeId()) {
-                LOGGER.info("[Node {}][onPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
+                LOGGER.trace("[Node {}][onPing] I am being probed by {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId());
             } else {
-                LOGGER.info("[Node {}][onPing] I am being probed by {} on behalf of {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId(), ping.getInitiatorNodeId());
+                LOGGER.trace("[Node {}][onPing] I am being probed by {} on behalf of {} ...", ping.getDestinationNodeId(), ping.getRequestorNodeId(), ping.getInitiatorNodeId());
             }
         } else {
-            LOGGER.info("[Node {}][onPing] Probing {} on behalf of {} ...", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
+            LOGGER.trace("[Node {}][onPing] Probing {} on behalf of {} ...", ping.getRequestorNodeId(), ping.getDestinationNodeId(), ping.getInitiatorNodeId());
         }
     }
 

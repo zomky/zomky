@@ -27,13 +27,16 @@ class Peers {
             List<Integer> n = new ArrayList<>();
             int r = (int) Math.ceil(Math.random() * shuffledPeers.size());
             shuffledPeers.drainTo(n, r);
-            n.add(nodeId);
+            n.add(peerId);
             shuffledPeers.drainTo(n);
+            shuffledPeers.addAll(n);
         }
     }
 
-    synchronized void remove(int nodeId) {
-        peers.remove(nodeId);
+    synchronized void remove(int peerId) {
+        LOGGER.info("[Node {}] Removing peer {}", nodeId, peerId);
+        peers.remove(peerId);
+        shuffledPeers.remove(peerId);
     }
 
     synchronized PeerProbe nextPeerProbe(int subgroupSize) {

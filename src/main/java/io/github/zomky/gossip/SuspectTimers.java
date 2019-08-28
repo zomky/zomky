@@ -19,6 +19,7 @@ public class SuspectTimers {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SuspectTimers.class);
 
+    private int nodeId;
     private int suspicionMinMultiplier;
     private int suspicionMaxMultiplier;
     private int k;
@@ -45,7 +46,7 @@ public class SuspectTimers {
         suspectTimers.put(nodeId, suspectTimer);
 
         long suspicionTimeout = suspectTimer.suspicionTimeout(suspicionMinMultiplier, suspicionMaxMultiplier, k);
-        scheduleTask(nodeId, suspicionTimeout);
+        scheduleTask(nodeId, suspicionTimeout, 0);
     }
 
     void incrementIndependentSuspicion(int nodeId) {
@@ -53,15 +54,14 @@ public class SuspectTimers {
 
         SuspectTimer suspectTimer = suspectTimers.get(nodeId);
         if (suspectTimer != null) {
-            suspectTimer.incrementIndependentSuspicion();
+            int independentSuspicion = suspectTimer.incrementIndependentSuspicion();
 
             long suspicionTimeout = suspectTimer.suspicionTimeout(suspicionMinMultiplier, suspicionMaxMultiplier, k);
             long elapsed = suspectTimer.elapsed();
             if (elapsed >= suspicionTimeout) {
-                LOGGER.warn("Marking node {} as dead!", nodeId);
                 deadNodesSink.next(nodeId);
             } else {
-                scheduleTask(nodeId, suspicionTimeout - elapsed);
+                scheduleTask(nodeId, suspicionTimeout - elapsed, independentSuspicion);
             }
         }
     }
@@ -71,10 +71,9 @@ public class SuspectTimers {
         cancelTaskIfScheduled(nodeId);
     }
 
-    private void scheduleTask(int nodeId, long suspicionTimeout) {
-        LOGGER.info("Suspecting node {} [timeout: {}ms]", nodeId, suspicionTimeout);
+    private void scheduleTask(int nodeId, long suspicionTimeout, int independentSuspicion) {
+        LOGGER.info("[Node {}] Suspect node {} [suspicion: {}][current timeout: {}ms]", this.nodeId, nodeId, independentSuspicion, suspicionTimeout);
         final Disposable disposable = scheduler.schedule(() -> {
-            LOGGER.info("Suspecting node {} timeout reached.", nodeId);
             suspectDisposables.remove(nodeId);
             deadNodesSink.next(nodeId);
         }, suspicionTimeout, TimeUnit.MILLISECONDS);
@@ -96,11 +95,17 @@ public class SuspectTimers {
     }
 
     public static class Builder {
+        private int nodeId;
         private int suspicionMinMultiplier = 3;
         private int suspicionMaxMultiplier = 2;
         private int k = 3;
 
         private Builder() {
+        }
+
+        public SuspectTimers.Builder nodeId(int nodeId) {
+            this.nodeId = nodeId;
+            return this;
         }
 
         public SuspectTimers.Builder suspicionMinMultiplier(int suspicionMinMultiplier) {
@@ -120,6 +125,7 @@ public class SuspectTimers {
 
         public SuspectTimers build() {
             SuspectTimers suspectTimers = new SuspectTimers();
+            suspectTimers.nodeId = nodeId;
             suspectTimers.suspicionMinMultiplier = suspicionMinMultiplier;
             suspectTimers.suspicionMaxMultiplier = suspicionMaxMultiplier;
             suspectTimers.k = k;

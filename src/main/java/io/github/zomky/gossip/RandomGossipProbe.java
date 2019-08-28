@@ -30,10 +30,10 @@ class RandomGossipProbe {
                 .localHealthMultiplier(gossips.localHealthMultiplier())
                 .build();
         if (PeerProbe.NO_PEER_PROBE.equals(peerProbe)) {
-            LOGGER.info("[Node {}][ping] No probing for one-node cluster", nodeId);
+            LOGGER.trace("[Node {}][ping] No probing for one-node cluster", nodeId);
             return Mono.delay(peerProbeTimeouts.probeTimeout()).then(Mono.empty());
         }
-        LOGGER.info("[Node {}][ping] Probing {} ...", nodeId, peerProbe);
+        LOGGER.trace("[Node {}][ping] Probing {} ...", nodeId, peerProbe);
         List<Gossip> hotGossips = gossips.chooseHotGossips(peerProbe.getDestinationNodeId());
         return gossipProbe.probeNode(peerProbe, hotGossips, peerProbeTimeouts);
     }
@@ -42,9 +42,9 @@ class RandomGossipProbe {
         gossips.probeCompleted(probeResult);
         gossips.updateLocalHealthMultiplier(probeResult);
         if (probeResult.hasAck()) {
-            LOGGER.info("[Node {}][ping] Probing {} successful.", nodeId, probeResult.getDestinationNodeId());
+            LOGGER.trace("[Node {}][ping] Probing {} successful.", nodeId, probeResult.getDestinationNodeId());
         } else {
-            LOGGER.info("[Node {}][ping] Probing {} unsuccessful.", nodeId, probeResult.getDestinationNodeId());
+            LOGGER.trace("[Node {}][ping] Probing {} unsuccessful.", nodeId, probeResult.getDestinationNodeId());
         }
     }
 

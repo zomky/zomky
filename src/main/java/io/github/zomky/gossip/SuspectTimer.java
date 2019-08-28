@@ -11,8 +11,8 @@ class SuspectTimer {
     private int clusterSize;
     private Duration probeInterval;
 
-    void incrementIndependentSuspicion() {
-        independentSuspicions++;
+    int incrementIndependentSuspicion() {
+        return ++independentSuspicions;
     }
 
     long suspicionTimeout(int suspicionMinMultiplier, int suspicionMaxMultiplier, int k) {

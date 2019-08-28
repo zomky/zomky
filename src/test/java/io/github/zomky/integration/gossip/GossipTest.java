@@ -18,7 +18,7 @@ class GossipTest {
     @Test
     @Disabled
     void names() throws InterruptedException {
-        Hooks.onOperatorDebug();
+//        Hooks.onOperatorDebug();
 
         float lambdaGossipSharedMultiplier = 1f;
 
@@ -45,7 +45,7 @@ class GossipTest {
         NodeFactory.receiveExperimental()
                 .port(7002)
                 .retryJoin(7000)
-                .baseProbeTimeout(Duration.ofSeconds(200))
+                .baseProbeTimeout(Duration.ofSeconds(1))
                 .lambdaGossipSharedMultiplier(lambdaGossipSharedMultiplier)
                 .start()
                 .subscribeOn(Schedulers.elastic())
@@ -54,7 +54,7 @@ class GossipTest {
         NodeFactory.receiveExperimental()
                 .port(7003)
                 .retryJoin(7002)
-                .baseProbeTimeout(Duration.ofSeconds(200))
+                .baseProbeTimeout(Duration.ofSeconds(1))
                 .lambdaGossipSharedMultiplier(lambdaGossipSharedMultiplier)
                 .start()
                 .subscribeOn(Schedulers.elastic())
@@ -63,11 +63,14 @@ class GossipTest {
         NodeFactory.receiveExperimental()
                 .port(7004)
                 .retryJoin(7002)
-                .baseProbeTimeout(Duration.ofSeconds(200))
+                .baseProbeTimeout(Duration.ofSeconds(1))
                 .lambdaGossipSharedMultiplier(lambdaGossipSharedMultiplier)
                 .start()
                 .subscribeOn(Schedulers.elastic())
                 .block();
+
+        Thread.sleep(10000);
+        node2.dispose();
 
         Thread.sleep(60000);
     }

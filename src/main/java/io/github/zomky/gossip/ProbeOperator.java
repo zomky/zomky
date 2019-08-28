@@ -210,14 +210,12 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
 
         @Override
         public void cancel() {
-            LOGGER.debug("DirectSubscriber cancel");
             direct.cancel();
             //indirect.cancel();
         }
 
         @Override
         public void onNext(T t) {
-            LOGGER.debug("DirectSubscriber onNext {}", t);
             result.addDirect(t);
         }
 
@@ -238,7 +236,6 @@ class ProbeOperator<T, C extends ProbeOperatorResult<T>, I, P> extends MonoOpera
 
         @Override
         public void onComplete() {
-            LOGGER.debug("DirectSubscriber onComplete");
             directCompleted.compareAndSet(false, true);
         }
 

@@ -112,9 +112,22 @@ class Gossips {
     // visible for testing
     void makeGossipsLessHot(List<Gossip> hotGossips) {
         hotGossips.forEach(gossip -> {
-            getGossipDissemination(gossip.getNodeId(), gossip.getNodeIdHarbourSuspicion()).ifPresent(
-                gossipDissemination -> addGossipInternal(gossip, gossipDissemination.getDisseminatedCount() + 1)
-            );
+            if (gossip.getSuspicion() == Gossip.Suspicion.ALIVE) {
+                GossipDissemination alive = aliveGossips.get(gossip.getNodeId());
+                if (alive != null) {
+                    addGossipInternal(gossip, alive.getDisseminatedCount() + 1);
+                }
+            } else if (gossip.getSuspicion() == Gossip.Suspicion.SUSPECT) {
+                GossipDissemination suspect = suspectGossips.get(gossip.getNodeId(), gossip.getNodeIdHarbourSuspicion());
+                if (suspect != null) {
+                    addGossipInternal(gossip, suspect.getDisseminatedCount() + 1);
+                }
+            } else if (gossip.getSuspicion() == Gossip.Suspicion.DEAD) {
+                GossipDissemination dead = deadGossips.get(gossip.getNodeId());
+                if (dead != null) {
+                    addGossipInternal(gossip, dead.getDisseminatedCount() + 1);
+                }
+            }
         });
     }
 
@@ -257,9 +270,9 @@ class Gossips {
 
     private void addGossipInternal(Gossip gossip, int disseminatedCount) {
         if (gossip.getNodeIdHarbourSuspicion() == 0) {
-            LOGGER.info("[Node {}] Gossip [{} is {}, inc: {}, disseminated: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation(), disseminatedCount);
+            LOGGER.trace("[Node {}] Gossip [{} is {}, inc: {}, disseminated: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation(), disseminatedCount);
         } else {
-            LOGGER.info("[Node {}] Gossip [{} is {} by {}, inc: {}, disseminated: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getNodeIdHarbourSuspicion(), gossip.getIncarnation(), disseminatedCount);
+            LOGGER.trace("[Node {}] Gossip [{} is {} by {}, inc: {}, disseminated: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getNodeIdHarbourSuspicion(), gossip.getIncarnation(), disseminatedCount);
         }
         int nodeId = gossip.getNodeId();
         int nodeIdHarbourSuspicion = gossip.getNodeIdHarbourSuspicion();
@@ -296,6 +309,9 @@ class Gossips {
     }
 
     private void addSuspectGossipInternal(int nodeId, int nodeIdHarbourSuspicion, int incarnation, int disseminationCount) {
+        if (deadGossips.containsKey(nodeId)) {
+            throw new GossipException("??"); // TODO
+        }
         Gossip gossip = Gossip.newBuilder()
                 .setNodeId(nodeId)
                 .setNodeIdHarbourSuspicion(nodeIdHarbourSuspicion)
@@ -435,7 +451,7 @@ class Gossips {
         private Map<Integer, GossipDissemination> aliveGossips = new ConcurrentHashMap<>();
         private Map<Integer, GossipDissemination> deadGossips = new ConcurrentHashMap<>();
         private Multimap<Integer, GossipDissemination> suspectGossips = ArrayListMultimap.create();
-        private SuspectTimers suspectTimers = SuspectTimers.builder().build();
+        private SuspectTimers suspectTimers;
 
         private Builder() {
         }
@@ -540,29 +556,29 @@ class Gossips {
             gossips.baseProbeInterval = baseProbeInterval;
             gossips.gossipDisseminationMultiplier = gossipDisseminationMultiplier;
             gossips.localHealthMultiplier = new LocalHealthMultiplier(maxLocalHealthMultiplier);
-            gossips.suspectTimers = suspectTimers;
+            gossips.suspectTimers = suspectTimers != null ? suspectTimers :  SuspectTimers.builder().nodeId(nodeId).build();
             if (addAliveGossipAboutItself) {
                 addAliveGossip(nodeId, 0);
             }
             aliveGossips.values().forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
-                LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
+                LOGGER.trace("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
                 gossips.aliveGossips.put(gossip.getNodeId(), gossipDissemination);
             });
             suspectGossips.values().forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
-                LOGGER.info("[Node {}] Initialize gossip [{} is {} by {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getNodeIdHarbourSuspicion(), gossip.getIncarnation());
+                LOGGER.trace("[Node {}] Initialize gossip [{} is {} by {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getNodeIdHarbourSuspicion(), gossip.getIncarnation());
                 gossips.suspectGossips.put(gossip.getNodeId(), gossip.getNodeIdHarbourSuspicion(), gossipDissemination);
             });
             deadGossips.values().forEach(gossipDissemination -> {
                 Gossip gossip = gossipDissemination.getGossip();
-                LOGGER.info("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
+                LOGGER.trace("[Node {}] Initialize gossip [{} is {}, inc: {}]", this.nodeId, gossip.getNodeId(), gossip.getSuspicion(), gossip.getIncarnation());
                 gossips.deadGossips.put(gossip.getNodeId(), gossipDissemination);
             });
             gossips.processor = ReplayProcessor.createTimeout(Duration.ofHours(1));
             gossips.sink = gossips.processor.sink(FluxSink.OverflowStrategy.DROP);
-            gossips.deadNodesDisposable = suspectTimers.deadNodes()
-                    .doOnNext(nodeId -> addDeadGossip(nodeId, 0, 0)) // TODO make it thread-safe
+            gossips.deadNodesDisposable = gossips.suspectTimers.deadNodes()
+                    .doOnNext(nodeId -> gossips.addGossip(Gossip.newBuilder().setNodeId(nodeId).setSuspicion(Gossip.Suspicion.DEAD).build())) // TODO make it thread-safe
                     .subscribe();
             return gossips;
         }

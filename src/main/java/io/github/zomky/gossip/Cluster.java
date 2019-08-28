@@ -43,4 +43,7 @@ public class Cluster {
         this.members.add(member);
     }
 
+    public void removeMember(int member) {
+        this.members.remove(member);
+    }
 }
