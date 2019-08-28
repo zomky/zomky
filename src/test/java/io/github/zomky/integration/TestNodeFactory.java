@@ -1,13 +1,16 @@
-package io.github.zomky;
+package io.github.zomky.integration;
 
+import io.github.zomky.ClientSocketAcceptor;
+import io.github.zomky.Node;
+import io.github.zomky.NodeStorage;
+import io.github.zomky.RaftSocketAcceptor;
 import io.github.zomky.gossip.Cluster;
+import io.github.zomky.gossip.GossipOnPingDelay;
 import io.github.zomky.gossip.GossipProtocol;
 import io.github.zomky.gossip.protobuf.InitJoinRequest;
 import io.github.zomky.gossip.protobuf.InitJoinResponse;
 import io.github.zomky.raft.RaftProtocol;
-import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
-import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import org.slf4j.Logger;
@@ -18,110 +21,13 @@ import reactor.netty.udp.UdpServer;
 
 import java.time.Duration;
 
-public class NodeFactory {
+public class TestNodeFactory {
 
-    public static ClientNodeFactory connect() {
-        return new ClientNodeFactory();
-    }
-
-    public static ClientNodeFactory connectGroup(String groupName) {
-        return new ClientNodeFactory();
-    }
-
-    public static ServerNodeFactory receive() {
-        return new ServerNodeFactory();
-    }
-
-    public static ExperimentalServerNodeFactory receiveExperimental() {
-        return new ExperimentalServerNodeFactory();
-    }
-
-    public static class ClientNodeFactory {
-
-        private int port;
-
-        public ClientNodeFactory port(int port) {
-            this.port = port;
-            return this;
-        }
-
-        public Mono<RSocket> start() {
-            return RSocketFactory.connect()
-                    .transport(TcpClientTransport.create(port + 10000))
-                    .start();
-        }
+    public static TestNodeFactory.ServerNodeFactory receive() {
+        return new TestNodeFactory.ServerNodeFactory();
     }
 
     public static class ServerNodeFactory {
-
-        private NodeStorage nodeStorage;
-        private String nodeName;
-        private Integer port;
-        private Integer joinPort;
-        private boolean retryJoin;
-        private Cluster cluster;
-        private Duration baseProbeTimeout;
-
-        public ServerNodeFactory storage(NodeStorage nodeStorage) {
-            this.nodeStorage = nodeStorage;
-            return this;
-        }
-
-        public ServerNodeFactory nodeName(String nodeName) {
-            this.nodeName = nodeName;
-            return this;
-        }
-
-        public ServerNodeFactory port(Integer port) {
-            this.port = port;
-            return this;
-        }
-
-        public ServerNodeFactory join(Integer joinPort) {
-            if (joinPort != null) {
-                this.joinPort = joinPort;
-                this.retryJoin = false;
-            }
-            return this;
-        }
-
-        public ServerNodeFactory retryJoin(Integer joinPort) {
-            if (joinPort != null) {
-                this.joinPort = joinPort;
-                this.retryJoin = true;
-            }
-            return this;
-        }
-
-        public ServerNodeFactory baseProbeTimeout(Duration baseProbeTimeout) {
-            this.baseProbeTimeout = baseProbeTimeout;
-            return this;
-        }
-
-        // only for testing purposes // TODO should be removed
-        public ServerNodeFactory cluster(Cluster cluster) {
-            this.cluster = cluster;
-            return this;
-        }
-
-        public Mono<Node> start() {
-            return Mono.defer(() -> {
-                if (cluster == null) {
-                    this.cluster = new Cluster(port);
-                }
-                DefaultNode node = new DefaultNode(nodeStorage, nodeName, port, cluster, baseProbeTimeout);
-                node.startReceiver();
-
-                return Mono.justOrEmpty(joinPort)
-                        .flatMap(joinPort1 -> node.join(joinPort1, retryJoin))
-                        .thenReturn(node)
-                        .doOnNext(DefaultNode::start);
-            });
-        }
-
-    }
-
-    public static class ExperimentalServerNodeFactory {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
@@ -131,6 +37,7 @@ public class NodeFactory {
         private Integer joinPort;
         private boolean retryJoin;
         // gossip
+        private GossipOnPingDelay onPingDelay = GossipOnPingDelay.NO_DELAY;
         private Duration baseProbeTimeout = Duration.ofMillis(500);
         private Duration baseProbeInterval = Duration.ofMillis(1000);
         private int subgroupSize = 3;
@@ -140,22 +47,22 @@ public class NodeFactory {
         private float nackRatio = 0.6f;
         private int maxLocalHealthMultiplier = 8;
 
-        public ExperimentalServerNodeFactory storage(NodeStorage nodeStorage) {
+        public TestNodeFactory.ServerNodeFactory storage(NodeStorage nodeStorage) {
             this.nodeStorage = nodeStorage;
             return this;
         }
 
-        public ExperimentalServerNodeFactory nodeName(String nodeName) {
+        public TestNodeFactory.ServerNodeFactory nodeName(String nodeName) {
             this.nodeName = nodeName;
             return this;
         }
 
-        public ExperimentalServerNodeFactory port(int port) {
+        public TestNodeFactory.ServerNodeFactory port(int port) {
             this.port = port;
             return this;
         }
 
-        public ExperimentalServerNodeFactory join(Integer joinPort) {
+        public TestNodeFactory.ServerNodeFactory join(Integer joinPort) {
             if (joinPort != null) {
                 this.joinPort = joinPort;
                 this.retryJoin = false;
@@ -163,7 +70,7 @@ public class NodeFactory {
             return this;
         }
 
-        public ExperimentalServerNodeFactory retryJoin(Integer joinPort) {
+        public TestNodeFactory.ServerNodeFactory retryJoin(Integer joinPort) {
             if (joinPort != null) {
                 this.joinPort = joinPort;
                 this.retryJoin = true;
@@ -171,42 +78,47 @@ public class NodeFactory {
             return this;
         }
 
-        public ExperimentalServerNodeFactory baseProbeTimeout(Duration baseProbeTimeout) {
+        public TestNodeFactory.ServerNodeFactory onPingDelay(GossipOnPingDelay onPingDelay) {
+            this.onPingDelay = onPingDelay;
+            return this;
+        }
+
+        public TestNodeFactory.ServerNodeFactory baseProbeTimeout(Duration baseProbeTimeout) {
             this.baseProbeTimeout = baseProbeTimeout;
             return this;
         }
 
-        public ExperimentalServerNodeFactory baseProbeInterval(Duration baseProbeInterval) {
+        public TestNodeFactory.ServerNodeFactory baseProbeInterval(Duration baseProbeInterval) {
             this.baseProbeInterval = baseProbeInterval;
             return this;
         }
 
-        public ExperimentalServerNodeFactory subgroupSize(int subgroupSize) {
+        public TestNodeFactory.ServerNodeFactory subgroupSize(int subgroupSize) {
             this.subgroupSize = subgroupSize;
             return this;
         }
 
-        public ExperimentalServerNodeFactory maxGossips(int maxGossips) {
+        public TestNodeFactory.ServerNodeFactory maxGossips(int maxGossips) {
             this.maxGossips = maxGossips;
             return this;
         }
 
-        public ExperimentalServerNodeFactory lambdaGossipSharedMultiplier(float lambdaGossipSharedMultiplier) {
+        public TestNodeFactory.ServerNodeFactory lambdaGossipSharedMultiplier(float lambdaGossipSharedMultiplier) {
             this.lambdaGossipSharedMultiplier = lambdaGossipSharedMultiplier;
             return this;
         }
 
-        public ExperimentalServerNodeFactory indirectDelayRatio(float indirectDelayRatio) {
+        public TestNodeFactory.ServerNodeFactory indirectDelayRatio(float indirectDelayRatio) {
             this.indirectDelayRatio = indirectDelayRatio;
             return this;
         }
 
-        public ExperimentalServerNodeFactory nackRatio(float nackRatio) {
+        public TestNodeFactory.ServerNodeFactory nackRatio(float nackRatio) {
             this.nackRatio = nackRatio;
             return this;
         }
 
-        public ExperimentalServerNodeFactory maxLocalHealthMultiplier(int maxGossips) {
+        public TestNodeFactory.ServerNodeFactory maxLocalHealthMultiplier(int maxGossips) {
             this.maxGossips = maxGossips;
             return this;
         }
@@ -216,6 +128,7 @@ public class NodeFactory {
                 int nodeId = port;
                 GossipProtocol gossipProtocol = GossipProtocol.builder()
                         .nodeId(nodeId)
+                        .onPingDelay(onPingDelay)
                         .baseProbeTimeout(baseProbeTimeout)
                         .baseProbeInterval(baseProbeInterval)
                         .subgroupSize(subgroupSize)
@@ -300,6 +213,6 @@ public class NodeFactory {
             });
         }
 
-
     }
+
 }

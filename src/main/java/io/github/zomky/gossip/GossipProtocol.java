@@ -48,6 +48,11 @@ public class GossipProtocol {
         probeNodesDisposable = probeNodes().subscribe();
     }
 
+    // temporary
+    public Cluster getCluster() {
+        return cluster;
+    }
+
     // visible for testing
     Flux<ProbeResult> probeNodes() {
         AtomicBoolean wasFirstSubscription = new AtomicBoolean(false);
@@ -240,6 +245,7 @@ public class GossipProtocol {
     public static class Builder {
 
         private int nodeId;
+        private GossipOnPingDelay onPingDelay;
         private Duration baseProbeInterval;
         private Duration baseProbeTimeout;
         private int subgroupSize;
@@ -254,6 +260,11 @@ public class GossipProtocol {
 
         public GossipProtocol.Builder nodeId(int nodeId) {
             this.nodeId = nodeId;
+            return this;
+        }
+
+        public GossipProtocol.Builder onPingDelay(GossipOnPingDelay onPingDelay) {
+            this.onPingDelay = onPingDelay;
             return this;
         }
 
@@ -311,7 +322,7 @@ public class GossipProtocol {
                     .maxLocalHealthMultiplier(maxLocalHealthMultiplier)
                     .gossipDisseminationMultiplier(lambdaGossipSharedMultiplier)
                     .build();
-            gossipProtocol.onPingDelay = GossipOnPingDelay.NO_DELAY;
+            gossipProtocol.onPingDelay = onPingDelay == null ? GossipOnPingDelay.NO_DELAY : onPingDelay;
 
             gossipProtocol.randomGossipProbe = RandomGossipProbe.builder()
                     .nodeId(nodeId)
