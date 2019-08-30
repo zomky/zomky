@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -29,6 +30,8 @@ public class RaftProtocol {
     private Cluster cluster;
     private ScheduledExecutorService stateMachineExecutor;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
+    private Map<String, StateMachine> stateMachines = new HashMap<>();
+    private Map<String, StateMachineEntryConverter> stateMachineConverters = new HashMap<>();
 
     public RaftProtocol(Cluster cluster) {
         this.cluster = cluster;
@@ -36,6 +39,9 @@ public class RaftProtocol {
 
     public void start() {
         LOGGER.info("[Node {}] Starting RAFT ...", cluster.getLocalNodeId());
+        stateMachines.putAll(StateMachineUtils.stateMachines(cluster.getLocalNodeId()));
+        stateMachineConverters.putAll(StateMachineUtils.stateMachineConverters());
+
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
         stateMachineExecutor.scheduleWithFixedDelay(() -> {
@@ -113,7 +119,6 @@ public class RaftProtocol {
     }
 
     public Mono<AddGroupResponse> onAddGroup(String groupName, AddGroupRequest addGroupRequest) {
-        LOGGER.info("[Node {} onAddGroup", cluster.getLocalNodeId());
         RaftRole raftRole = Boolean.TRUE.equals(addGroupRequest.getPassive()) ? new PassiveRole() : new FollowerRole();
         ElectionTimeout electionTimeout = addGroupRequest.getLeaderIdSuggestion() == cluster.getLocalNodeId() ?
                 ElectionTimeout.exactly(Math.min(100, addGroupRequest.getElectionTimeoutMin())) : // TODO extract 100
@@ -134,18 +139,14 @@ public class RaftProtocol {
                 .raftRole(raftRole)
                 .raftConfiguration(RaftConfiguration.builder()
                         .configuration(new Configuration(addGroupRequest.getNodesList()))
-                        .stateMachine(StateMachine.stateMachine(cluster.getLocalNodeId(), addGroupRequest.getStateMachine()))
-                        .stateMachineEntryConverter(StateMachine.stateMachineEntryConverter(addGroupRequest.getStateMachine()))
+                        .stateMachine(stateMachines.get(addGroupRequest.getStateMachine()))
+                        .stateMachineEntryConverter(stateMachineConverters.get(addGroupRequest.getStateMachine()))
                         .electionTimeout(electionTimeout)
                         .build())
                 .build();
         addGroup(raftGroup);
         return Mono.just(AddGroupResponse.newBuilder().setStatus(true).build())
                 .doOnNext(createGroupResponse -> LOGGER.info("[Node {}] Create group {}", cluster.getLocalNodeId(), groupName));
-    }
-
-    public void convertToFollower(int term) {
-
     }
 
     public RaftGroup getByName(String groupName) {
