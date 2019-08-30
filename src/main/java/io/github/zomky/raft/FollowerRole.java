@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.IndexedTerm;
 import io.github.zomky.transport.Sender;
@@ -35,15 +35,15 @@ public class FollowerRole implements RaftRole {
     }
 
     @Override
-    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onInit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (raftGroup.quorum() == 1) {
             raftGroup.convertToCandidate();
         } else {
             subscription = processor.timeout(raftGroup.nextElectionTimeout())
                     .onErrorResume(throwable -> {
-                        LOGGER.info("[Node {}][group {}] Election timeout ({})", node.getNodeId(), raftGroup.getGroupName(), throwable.getMessage());
+                        LOGGER.info("[Node {}][group {}] Election timeout ({})", cluster.getLocalNodeId(), raftGroup.getGroupName(), throwable.getMessage());
                         if (raftGroup.isPreVote() && raftGroup.quorum() - 1 > 0) {
-                            return sendPreVotes(node, raftGroup, raftStorage)
+                            return sendPreVotes(cluster, raftGroup, raftStorage)
                                     .doOnNext(preVotes -> {
                                         if (preVotes) {
                                             raftGroup.convertToCandidate();
@@ -62,62 +62,62 @@ public class FollowerRole implements RaftRole {
     }
 
     @Override
-    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (subscription != null) {
             subscription.dispose();
         }
     }
 
     @Override
-    public Mono<VoteResponse> onRequestVote(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
-        Mono<VoteResponse> voteResponse = RaftRole.super.onRequestVote(node, raftGroup, raftStorage, requestVote);
+    public Mono<VoteResponse> onRequestVote(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
+        Mono<VoteResponse> voteResponse = RaftRole.super.onRequestVote(cluster, raftGroup, raftStorage, requestVote);
         return voteResponse.doOnNext(r -> {
             if (r.getVoteGranted()) {
-                restartElectionTimer(node);
+                restartElectionTimer(cluster);
             }
         });
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                    .doOnNext(appendEntriesRequest -> {
                        int currentTerm = raftStorage.getTerm();
                        if (appendEntriesRequest.getTerm() >= currentTerm) {
-                           restartElectionTimer(node);
+                           restartElectionTimer(cluster);
                        }
-                   }).then(RaftRole.super.onAppendEntries(node, raftGroup, raftStorage, appendEntries));
+                   }).then(RaftRole.super.onAppendEntries(cluster, raftGroup, raftStorage, appendEntries));
     }
 
-    private void restartElectionTimer(InnerNode node) {
+    private void restartElectionTimer(Cluster cluster) {
         try {
             if (subscription != null && !subscription.isDisposed()) {
-                LOGGER.debug("[Node {}] restartElectionTimer ...", node.getNodeId());
+                LOGGER.debug("[Node {}] restartElectionTimer ...", cluster.getLocalNodeId());
                 sink.next(System.currentTimeMillis());
             }
         } catch (Exception e) {
-            LOGGER.error("[Node {}] restartElectionTimer ... {}", node.getNodeId(), e);
+            LOGGER.error("[Node {}] restartElectionTimer ... {}", cluster.getLocalNodeId(), e);
         }
     }
 
-    private Mono<Boolean> sendPreVotes(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    private Mono<Boolean> sendPreVotes(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
         Duration timeout = raftGroup.nextElectionTimeout();
         return raftGroup.availableSenders()
-                    .flatMap(sender -> sendPreVoteRequest(node, raftGroup, raftStorage, sender, timeout))
+                    .flatMap(sender -> sendPreVoteRequest(cluster, raftGroup, raftStorage, sender, timeout))
                     .filter(PreVoteResponse::getVoteGranted)
                     .buffer(raftGroup.quorum() - 1)
                     .timeout(timeout)
                     .next()
                     .map(i -> true)
-                    .doOnError(throwable -> LOGGER.warn(String.format("[Node %s][group %s] sendPreVote failed!", node.getNodeId(), raftGroup.getGroupName()), throwable))
+                    .doOnError(throwable -> LOGGER.warn(String.format("[Node %s][group %s] sendPreVote failed!", cluster.getLocalNodeId(), raftGroup.getGroupName()), throwable))
                     .onErrorReturn(false);
     }
 
-    private Mono<PreVoteResponse> sendPreVoteRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender, Duration timeout) {
+    private Mono<PreVoteResponse> sendPreVoteRequest(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender, Duration timeout) {
         IndexedTerm last = raftStorage.getLastIndexedTerm();
         PreVoteRequest preVoteRequest = PreVoteRequest.newBuilder()
                 .setNextTerm(raftStorage.getTerm() + 1)
-                .setCandidateId(node.getNodeId())
+                .setCandidateId(cluster.getLocalNodeId())
                 .setLastLogIndex(last.getIndex())
                 .setLastLogTerm(last.getTerm())
                 .build();
@@ -125,7 +125,7 @@ public class FollowerRole implements RaftRole {
         return sender.requestPreVote(raftGroup, preVoteRequest)
                      .timeout(timeout)
                      .onErrorResume(throwable -> {
-                        LOGGER.error("[Node {} -> Node {}][group {}] Pre-Vote failure", node.getNodeId(), preVoteRequest.getCandidateId(), raftGroup.getGroupName(), throwable);
+                        LOGGER.error("[Node {} -> Node {}][group {}] Pre-Vote failure", cluster.getLocalNodeId(), preVoteRequest.getCandidateId(), raftGroup.getGroupName(), throwable);
                         return Mono.just(PreVoteResponse.newBuilder().setVoteGranted(false).build());
                      });
     }

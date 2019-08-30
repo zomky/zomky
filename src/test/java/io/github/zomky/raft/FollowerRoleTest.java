@@ -1,7 +1,7 @@
 package io.github.zomky.raft;
 
 import com.google.protobuf.ByteString;
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.InMemoryRaftStorage;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.CommandEntry;
@@ -34,7 +34,7 @@ class FollowerRoleTest {
     FollowerRole followerRole = new FollowerRole();
 
     @Mock
-    InnerNode node;
+    Cluster cluster;
 
     @Mock
     RaftGroup raftGroup;
@@ -51,7 +51,7 @@ class FollowerRoleTest {
         Duration electionTimeout = Duration.ofMillis(50);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
         given(raftGroup.isPreVote()).willReturn(false);
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
         await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(raftGroup).convertToCandidate());
     }
@@ -74,7 +74,7 @@ class FollowerRoleTest {
         given(sender2.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse));
 
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
         await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(raftGroup).convertToCandidate());
     }
@@ -97,7 +97,7 @@ class FollowerRoleTest {
         given(sender2.requestPreVote(eq(raftGroup), any(PreVoteRequest.class)))
                 .willReturn(Mono.just(preVoteResponse));
 
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
         int lag = 50;
         Thread.sleep(electionTimeout.toMillis() + lag);
@@ -108,7 +108,7 @@ class FollowerRoleTest {
     void noElectionTimeout() throws InterruptedException {
         Duration electionTimeout = Duration.ofMillis(50);
         given(raftGroup.nextElectionTimeout()).willReturn(electionTimeout);
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
         long lessThanElectionTimeout = electionTimeout.toMillis() - 20;
         Thread.sleep(lessThanElectionTimeout);
@@ -118,8 +118,8 @@ class FollowerRoleTest {
     @Test
     void onExitCallResetElectionTimeout() throws InterruptedException {
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(50));
-        followerRole.onInit(node, raftGroup, raftStorage);
-        followerRole.onExit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
+        followerRole.onExit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(100);
         verify(raftGroup, never()).convertToCandidate();
@@ -136,9 +136,9 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
-        followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest)
+        followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest)
                 .delaySubscription(Duration.ofMillis(50))
                 .subscribe();
 
@@ -157,9 +157,9 @@ class FollowerRoleTest {
                 .setLeaderCommit(1)
                 .build();
 
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
 
-        followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest)
+        followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest)
                 .delaySubscription(Duration.ofMillis(50))
                 .subscribe();
 
@@ -181,7 +181,7 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(0);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
@@ -199,7 +199,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(0);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
@@ -223,7 +223,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
@@ -248,7 +248,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
@@ -273,7 +273,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
@@ -298,7 +298,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(2);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
@@ -320,7 +320,7 @@ class FollowerRoleTest {
                 .setTerm(1)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(false);
@@ -339,7 +339,7 @@ class FollowerRoleTest {
                 .setTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onRequestVote(node, raftGroup, raftStorage, voteRequest))
+        StepVerifier.create(followerRole.onRequestVote(cluster, raftGroup, raftStorage, voteRequest))
                 .assertNext(voteResponse -> {
                     assertThat(voteResponse.getTerm()).isEqualTo(1);
                     assertThat(voteResponse.getVoteGranted()).isEqualTo(true);
@@ -365,7 +365,7 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(cluster, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(1);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(false);
@@ -389,7 +389,7 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(cluster, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(1);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(true);
@@ -412,7 +412,7 @@ class FollowerRoleTest {
                 .setNextTerm(2)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(cluster, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(3);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(false);
@@ -436,7 +436,7 @@ class FollowerRoleTest {
                 .setNextTerm(3)
                 .build();
 
-        StepVerifier.create(followerRole.onPreRequestVote(node, raftGroup, raftStorage, preVoteRequest))
+        StepVerifier.create(followerRole.onPreRequestVote(cluster, raftGroup, raftStorage, preVoteRequest))
                 .assertNext(preVoteResponse -> {
                     assertThat(preVoteResponse.getTerm()).isEqualTo(2);
                     assertThat(preVoteResponse.getVoteGranted()).isEqualTo(true);
@@ -461,7 +461,7 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val1"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(0);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
@@ -488,7 +488,7 @@ class FollowerRoleTest {
                 .addEntries(entry(2, "val3"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
@@ -514,7 +514,7 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val2")) // leader sends only one entry despite it could send more entries
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
@@ -542,7 +542,7 @@ class FollowerRoleTest {
                 .addEntries(entry(1, "val2"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
@@ -569,7 +569,7 @@ class FollowerRoleTest {
                 .addEntries(entry(2, "val3"))
                 .build();
 
-        StepVerifier.create(followerRole.onAppendEntries(node, raftGroup, raftStorage, appendEntriesRequest))
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
                 .assertNext(appendEntriesResponse -> {
                     assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
                     assertThat(appendEntriesResponse.getSuccess()).isEqualTo(false);
@@ -583,7 +583,7 @@ class FollowerRoleTest {
 
     private void initFollower() {
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofSeconds(100));
-        followerRole.onInit(node, raftGroup, raftStorage);
+        followerRole.onInit(cluster, raftGroup, raftStorage);
     }
 
     private CommandEntry commandEntry(int term, String value) {

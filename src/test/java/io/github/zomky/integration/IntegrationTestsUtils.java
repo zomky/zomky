@@ -2,10 +2,7 @@ package io.github.zomky.integration;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.github.zomky.Node;
-import io.github.zomky.NodeFactory;
 import io.github.zomky.external.protobuf.CommandRequest;
-import io.github.zomky.gossip.Cluster;
 import io.github.zomky.storage.FileSystemRaftStorage;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.RaftStorageConfiguration;
@@ -17,9 +14,6 @@ import reactor.blockhound.BlockHound;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static io.github.zomky.storage.log.serializer.LogEntrySerializer.serialize;
 
@@ -70,15 +64,14 @@ public class IntegrationTestsUtils {
                 .orElse(null);
     }
 
-    public static Map<Integer, Node> startNodes(int numberOfNodes, int firstPort) {
+   /* public static Map<Integer, Node> startNodes(int numberOfNodes, int firstPort) {
         Cluster cluster = new Cluster(IntStream.range(0, numberOfNodes).map(i -> firstPort +i).toArray());
         return IntStream.range(0, numberOfNodes)
                 .mapToObj(i -> NodeFactory.receive()
                         .port(firstPort + i)
-                        .cluster(cluster)
                         .start()
                         .block())
                 .collect(Collectors.toMap(Node::getNodeId, n -> n));
-    }
+    }*/
 
 }

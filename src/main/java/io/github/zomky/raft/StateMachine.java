@@ -15,7 +15,7 @@ public interface StateMachine<T> {
 
     // TODO move somewhere else
     static StateMachine stateMachine(int port, String stateMachineName) {
-        Reflections reflections = new Reflections("io.github.pmackowski"); // TODO
+        Reflections reflections = new Reflections("io.github.zomky"); // TODO
         Set<Class<? extends StateMachine>> stateMachineTypes = reflections.getSubTypesOf(StateMachine.class);
         Class<? extends StateMachine> stateMachineType = stateMachineTypes.stream()
                 .filter(type -> {
@@ -35,7 +35,7 @@ public interface StateMachine<T> {
 
     // TODO move somewhere else
     static StateMachineEntryConverter stateMachineEntryConverter(String stateMachineName) {
-        Reflections reflections = new Reflections("io.github.pmackowski"); // TODO
+        Reflections reflections = new Reflections("io.github.zomky"); // TODO
         Set<Class<? extends StateMachineEntryConverter>> converterTypes = reflections.getSubTypesOf(StateMachineEntryConverter.class);
         Class<? extends StateMachineEntryConverter> converter = converterTypes.stream()
                 .filter(type -> {

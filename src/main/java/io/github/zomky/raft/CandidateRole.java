@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.IndexedTerm;
 import io.github.zomky.transport.Sender;
@@ -24,35 +24,35 @@ public class CandidateRole implements RaftRole {
     }
 
     @Override
-    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onInit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (raftGroup.quorum() == 1)  {
             raftGroup.voteForMyself();
             raftGroup.convertToLeader();
         } else {
             ElectionContext electionContext = new ElectionContext(false);
-            subscription = Mono.defer(() -> startElection(node, raftGroup, raftStorage, electionContext))
+            subscription = Mono.defer(() -> startElection(cluster, raftGroup, raftStorage, electionContext))
                     .repeatWhen(leaderNotElected(electionContext))
                     .subscribe();
         }
     }
 
     @Override
-    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
         if (subscription != null) {
             subscription.dispose();
         }
     }
 
-    private Mono<Void> startElection(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
+    private Mono<Void> startElection(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
         return Mono.just(raftGroup)
                    .doOnNext(RaftGroup::voteForMyself)
-                   .then(sendVotes(node, raftGroup, raftStorage, electionContext));
+                   .then(sendVotes(cluster, raftGroup, raftStorage, electionContext));
     }
 
 
-    private Mono<Void> sendVotes(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
+    private Mono<Void> sendVotes(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, ElectionContext electionContext) {
         return raftGroup.availableSenders()
-                .flatMap(sender -> sendVoteRequest(node, raftGroup, raftStorage, sender))
+                .flatMap(sender -> sendVoteRequest(cluster, raftGroup, raftStorage, sender))
                 .doOnNext(voteResponse -> {
                     if (voteResponse.getTerm() > raftStorage.getTerm()) {
                         raftGroup.convertToFollower(voteResponse.getTerm());
@@ -72,7 +72,7 @@ public class CandidateRole implements RaftRole {
                     // TODO what if subscription is null ??
                     boolean repeatElection = !(throwable instanceof RaftException || subscription.isDisposed());
                     if (repeatElection) {
-                        LOGGER.info("[Node {}][group {}] Election timeout ({})", node.getNodeId(), raftGroup.getGroupName(), subscription.isDisposed());
+                        LOGGER.info("[Node {}][group {}] Election timeout ({})", cluster.getLocalNodeId(), raftGroup.getGroupName(), subscription.isDisposed());
                         electionContext.setRepeatElection(repeatElection);
                     }
                     return Mono.empty();
@@ -80,22 +80,22 @@ public class CandidateRole implements RaftRole {
                 .then();
     }
 
-    private Mono<VoteResponse> sendVoteRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
+    private Mono<VoteResponse> sendVoteRequest(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, Sender sender) {
         if (!raftGroup.isCandidate()) {
-            LOGGER.info("[Node {} -> Node {}][group {}] Vote dropped", node.getNodeId(), sender.getNodeId(), raftGroup.getGroupName());
+            LOGGER.info("[Node {} -> Node {}][group {}] Vote dropped", cluster.getLocalNodeId(), sender.getNodeId(), raftGroup.getGroupName());
             return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
         }
 
         IndexedTerm last = raftStorage.getLastIndexedTerm();
         VoteRequest requestVote = VoteRequest.newBuilder()
                 .setTerm(raftStorage.getTerm())
-                .setCandidateId(node.getNodeId())
+                .setCandidateId(cluster.getLocalNodeId())
                 .setLastLogIndex(last.getIndex())
                 .setLastLogTerm(last.getTerm())
                 .build();
         return sender.requestVote(raftGroup, requestVote)
                 .onErrorResume(throwable -> {
-                    LOGGER.error(String.format("[Node %s -> Node %s][group %s] Vote failure", node.getNodeId(), requestVote.getCandidateId(), raftGroup.getGroupName()), throwable);
+                    LOGGER.error(String.format("[Node %s -> Node %s][group %s] Vote failure", cluster.getLocalNodeId(), requestVote.getCandidateId(), raftGroup.getGroupName()), throwable);
                     return Mono.just(VoteResponse.newBuilder().setVoteGranted(false).build());
                 });
     }

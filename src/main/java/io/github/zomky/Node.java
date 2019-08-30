@@ -1,6 +1,5 @@
 package io.github.zomky;
 
-import io.github.zomky.gossip.Cluster;
 import io.github.zomky.gossip.protobuf.InitJoinResponse;
 import io.rsocket.Closeable;
 import reactor.core.publisher.Mono;

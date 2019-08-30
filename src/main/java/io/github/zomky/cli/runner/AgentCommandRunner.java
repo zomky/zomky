@@ -20,7 +20,7 @@ public class AgentCommandRunner implements ZomkyCommandRunner {
         MainCommand mainCommand = mainCommand(parseResult);
         AgentCommand agentCommand = command(parseResult, AgentCommand.class);
 
-        NodeFactory.receiveExperimental()
+        NodeFactory.receive()
                 .storage(agentCommand.isDev() ? new InMemoryNodeStorage() : new FileSystemNodeStorage(agentCommand.getDataDirectory()))
                 .nodeName(agentCommand.getNodeName())
                 .port(mainCommand.getAgentPort())

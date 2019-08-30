@@ -46,7 +46,7 @@ public class RaftTcpTransport {
                     } catch (InvalidProtocolBufferException e) {
                         throw new RaftException("Invalid append entries response!", e);
                     } finally {
-                        appendEntriesResponsePayload.release();
+                        //appendEntriesResponsePayload.release();
                     }
                 });
     }

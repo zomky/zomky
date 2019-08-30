@@ -21,7 +21,6 @@ public class GossipProtocol {
     private static final Logger LOGGER = LoggerFactory.getLogger(GossipProtocol.class);
 
     private int nodeId;
-    private Cluster cluster;
     private Peers peers;
     private Gossips gossips;
     private RandomGossipProbe randomGossipProbe;
@@ -40,16 +39,22 @@ public class GossipProtocol {
                 .subscribe(suspicion -> {
                     if (suspicion.getSuspicion() == Gossip.Suspicion.ALIVE) {
                         peers.add(suspicion.getNodeId());
-                        cluster.addMember(suspicion.getNodeId());
                     }
                     if (suspicion.getSuspicion() == Gossip.Suspicion.DEAD) {
                         peers.remove(suspicion.getNodeId());
-                        cluster.removeMember(suspicion.getNodeId());
                     }
                 }, throwable -> {
                     LOGGER.error("[Node {}] unrecoverable error", nodeId);
                 });
         probeNodesDisposable = probeNodes().subscribe();
+    }
+
+    public Flux<Integer> nodeAvailable() {
+        return gossips.peerChanges().filter(gossip -> gossip.getSuspicion() == Gossip.Suspicion.ALIVE).map(Gossip::getNodeId);
+    }
+
+    public Flux<Integer> nodeUnavailable() {
+        return gossips.peerChanges().filter(gossip -> gossip.getSuspicion() == Gossip.Suspicion.DEAD).map(Gossip::getNodeId);
     }
 
     // visible for testing
@@ -304,7 +309,6 @@ public class GossipProtocol {
         public GossipProtocol build() {
             GossipProtocol gossipProtocol = new GossipProtocol();
             gossipProtocol.nodeId = nodeId;
-            gossipProtocol.cluster = new Cluster(nodeId);
             gossipProtocol.gossipTransport = new GossipTransport();
             gossipProtocol.peers = new Peers(nodeId);
             gossipProtocol.gossips = Gossips.builder()

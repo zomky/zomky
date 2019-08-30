@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.InMemoryRaftStorage;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.transport.Sender;
@@ -24,7 +24,7 @@ public class CandidateRoleTest {
     CandidateRole candidateRole = new CandidateRole();
 
     @Mock
-    InnerNode node;
+    Cluster cluster;
 
     @Mock
     RaftGroup raftGroup;
@@ -48,7 +48,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(150);
         verify(raftGroup).convertToLeader();
@@ -58,7 +58,7 @@ public class CandidateRoleTest {
     void leaderElectedOneNode() {
         given(raftGroup.quorum()).willReturn(1);
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         verify(raftGroup).voteForMyself();
         verify(raftGroup).convertToLeader();
@@ -76,7 +76,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(150);
         verify(raftGroup).convertToLeader();
@@ -103,7 +103,7 @@ public class CandidateRoleTest {
                 .willReturn(Mono.just(voteNotGranted()))
                 .willReturn(Mono.just(voteGranted()).delayElement(Duration.ofMillis(70)));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(50);
         verify(raftGroup, times(1)).voteForMyself();
@@ -128,7 +128,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofSeconds(100)));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(150);
         verify(raftGroup).convertToLeader();
@@ -154,7 +154,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(150);
         verify(raftGroup, never()).convertToLeader();
@@ -178,7 +178,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteNotGranted()));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(50);
         verify(raftGroup, never()).convertToLeader();
@@ -191,7 +191,7 @@ public class CandidateRoleTest {
         given(raftGroup.nextElectionTimeout()).willReturn(Duration.ofMillis(10));
         given(raftGroup.availableSenders()).willReturn(Flux.create(emitter -> {}));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(50);
         verify(raftGroup, never()).convertToLeader();
@@ -218,7 +218,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.just(voteResponse).delayElement(Duration.ofSeconds(100)));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(120);
         verify(raftGroup, never()).convertToLeader();
@@ -243,7 +243,7 @@ public class CandidateRoleTest {
         given(sender2.requestVote(eq(raftGroup), any(VoteRequest.class)))
                 .willReturn(Mono.error(new RuntimeException("sender 2 error")).delayElement(Duration.ofSeconds(100)).cast(VoteResponse.class));
 
-        candidateRole.onInit(node, raftGroup, raftStorage);
+        candidateRole.onInit(cluster, raftGroup, raftStorage);
 
         Thread.sleep(120);
         verify(raftGroup, never()).convertToLeader();

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Hooks;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -22,7 +21,7 @@ class GossipTest {
 
         float lambdaGossipSharedMultiplier = 1f;
 
-        NodeFactory.receiveExperimental()
+        NodeFactory.receive()
                 .port(7000)
                 .retryJoin(7001)
                 .baseProbeTimeout(Duration.ofSeconds(1))
@@ -33,7 +32,7 @@ class GossipTest {
 
         Thread.sleep(2000);
 
-        Node node2 = NodeFactory.receiveExperimental()
+        Node node2 = NodeFactory.receive()
                 .port(7001)
                 .retryJoin(7000)
                 .baseProbeTimeout(Duration.ofSeconds(200))
@@ -42,7 +41,7 @@ class GossipTest {
                 .subscribeOn(Schedulers.elastic())
                 .block();
 
-        NodeFactory.receiveExperimental()
+        NodeFactory.receive()
                 .port(7002)
                 .retryJoin(7000)
                 .baseProbeTimeout(Duration.ofSeconds(1))
@@ -51,7 +50,7 @@ class GossipTest {
                 .subscribeOn(Schedulers.elastic())
                 .block();
 
-        NodeFactory.receiveExperimental()
+        NodeFactory.receive()
                 .port(7003)
                 .retryJoin(7002)
                 .baseProbeTimeout(Duration.ofSeconds(1))
@@ -60,7 +59,7 @@ class GossipTest {
                 .subscribeOn(Schedulers.elastic())
                 .block();
 
-        NodeFactory.receiveExperimental()
+        NodeFactory.receive()
                 .port(7004)
                 .retryJoin(7002)
                 .baseProbeTimeout(Duration.ofSeconds(1))

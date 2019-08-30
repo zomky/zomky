@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.IndexedTerm;
@@ -18,11 +18,11 @@ public interface RaftRole {
 
     NodeState nodeState();
 
-    void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage);
+    void onInit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage);
 
-    void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage);
+    void onExit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage);
 
-    default Mono<AppendEntriesResponse> onAppendEntries(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    default Mono<AppendEntriesResponse> onAppendEntries(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {
                     int currentTerm = raftStorage.getTerm();
@@ -68,7 +68,7 @@ public interface RaftRole {
                 });
     }
 
-    default Mono<PreVoteResponse> onPreRequestVote(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
+    default Mono<PreVoteResponse> onPreRequestVote(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, PreVoteRequest preRequestVote) {
         return Mono.just(preRequestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
@@ -96,7 +96,7 @@ public interface RaftRole {
                 });
     }
 
-    default Mono<VoteResponse> onRequestVote(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
+    default Mono<VoteResponse> onRequestVote(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, VoteRequest requestVote) {
         return Mono.just(requestVote)
                 .map(requestVote1 -> {
                     int currentTerm = raftStorage.getTerm();
@@ -143,20 +143,20 @@ public interface RaftRole {
                 });
     }
 
-    default Mono<AddServerResponse> onAddServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AddServerRequest addServerRequest) {
-        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", node.getNodeId())));
+    default Mono<AddServerResponse> onAddServer(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, AddServerRequest addServerRequest) {
+        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", cluster.getLocalNodeId())));
     }
 
-    default Mono<RemoveServerResponse> onRemoveServer(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
-        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", node.getNodeId())));
+    default Mono<RemoveServerResponse> onRemoveServer(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, RemoveServerRequest removeServerRequest) {
+        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", cluster.getLocalNodeId())));
     }
 
-    default Mono<Payload> onClientRequest(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Payload payload) {
-        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", node.getNodeId())));
+    default Mono<Payload> onClientRequest(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, Payload payload) {
+        return Mono.error(new RaftException(String.format("[Node %s] I am not a leader!", cluster.getLocalNodeId())));
     }
 
-    default Flux<Payload> onClientRequests(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
-        return Flux.error(new RaftException(String.format("[Node %s] I am not a leader!", node.getNodeId())));
+    default Flux<Payload> onClientRequests(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, Publisher<Payload> payloads) {
+        return Flux.error(new RaftException(String.format("[Node %s] I am not a leader!", cluster.getLocalNodeId())));
     }
 
 }

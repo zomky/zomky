@@ -1,7 +1,6 @@
 package io.github.zomky.integration;
 
 import io.github.zomky.IntegrationTest;
-import io.github.zomky.Nodes;
 import io.github.zomky.client.RaftManagementClient;
 import io.github.zomky.external.statemachine.KVStoreClient;
 import io.github.zomky.external.statemachine.KeyValue;
@@ -23,6 +22,8 @@ class NodeFactoryTest {
     void receive() throws InterruptedException {
 
         Nodes nodes = Nodes.create(7000, 7001, 7002);
+
+        Thread.sleep(5_000);
 
         //node.dispose();
 
@@ -62,8 +63,8 @@ class NodeFactoryTest {
     private AddGroupRequest addGroupRequest(int leaderIdSuggestion, Configuration configuration) {
         return AddGroupRequest.newBuilder()
                 .setLeaderIdSuggestion(leaderIdSuggestion)
-                .setElectionTimeoutMin(200)
-                .setElectionTimeoutMax(400)
+                .setElectionTimeoutMin(100)
+                .setElectionTimeoutMax(1200)
                 .setPersistentStorage(false)
                 .setStateMachine("kv1")
                 .addAllNodes(configuration.getMembers())
@@ -77,14 +78,15 @@ class NodeFactoryTest {
         Nodes nodes = Nodes.create(7000, 7001, 7002);
         Configuration configuration = new Configuration(7001, 7002);
 
+        Thread.sleep(5_000);
+
         RaftManagementClient raftManagementClient = new RaftManagementClient();
         raftManagementClient.addGroup("group1", addGroupRequest(7001, configuration)).block();
 
-        Thread.sleep(2_000);
+        Thread.sleep(3_000);
 
         raftManagementClient.addServer("group1", 7001, 7000).block();
-        raftManagementClient.removeServer("group1", 7001, 7002).block();
-
+        //raftManagementClient.removeServer("group1", 7001, 7002).block();
         KVStoreClient kvStoreClient = new KVStoreClient(7001);
 
         int nbEntries = 10;
@@ -94,7 +96,6 @@ class NodeFactoryTest {
                 .doOnNext(s -> LOGGER.info("KVStoreClient received {}", s))
                 .doOnComplete(() -> LOGGER.info("KVStoreClient finished"))
                 .subscribe();
-
 //        final AddServerResponse group1 = raftManagementClient.addServer("group1", 7001).block();
 //
 //        System.out.println(group1);

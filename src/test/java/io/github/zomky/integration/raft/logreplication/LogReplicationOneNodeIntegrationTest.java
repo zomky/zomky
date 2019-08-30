@@ -1,7 +1,7 @@
 package io.github.zomky.integration.raft.logreplication;
 
 import io.github.zomky.IntegrationTest;
-import io.github.zomky.Nodes;
+import io.github.zomky.integration.Nodes;
 import io.github.zomky.external.statemachine.KVStateMachine1;
 import io.github.zomky.external.statemachine.KVStateMachineEntryConverter;
 import io.github.zomky.external.statemachine.KVStoreClient;

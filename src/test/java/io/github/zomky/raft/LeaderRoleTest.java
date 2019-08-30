@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.InMemoryRaftStorage;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.CommandEntry;
@@ -47,7 +47,7 @@ class LeaderRoleTest {
     Sender sender1, sender2;
 
     @Mock
-    InnerNode node;
+    Cluster cluster;
 
     @Mock
     RaftGroup raftGroup;
@@ -59,6 +59,8 @@ class LeaderRoleTest {
         Mockito.lenient().when(sender1.getNodeId()).thenReturn(1);
         Mockito.lenient().when(sender2.getNodeId()).thenReturn(2);
         Mockito.lenient().when(raftGroup.quorum()).thenReturn(2);
+        Mockito.lenient().when(cluster.onSenderAvailable()).thenReturn(Flux.empty());
+        Mockito.lenient().when(cluster.onSenderUnavailable()).thenReturn(Flux.empty());
     }
 
     @Test
@@ -70,7 +72,7 @@ class LeaderRoleTest {
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
-        leaderRole.onInit(node, raftGroup, raftStorage);
+        leaderRole.onInit(cluster, raftGroup, raftStorage);
 
         // then
         ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
@@ -92,7 +94,7 @@ class LeaderRoleTest {
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
-        leaderRole.onInit(node, raftGroup, raftStorage);
+        leaderRole.onInit(cluster, raftGroup, raftStorage);
 
         // then
         List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(1));
@@ -106,7 +108,7 @@ class LeaderRoleTest {
         raftStorage.update(1, 0);
         given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
-        leaderRole.onInit(node, raftGroup, raftStorage);
+        leaderRole.onInit(cluster, raftGroup, raftStorage);
 
         // when
         raftStorage.append(commandEntry(1,  "val1"));
@@ -137,7 +139,7 @@ class LeaderRoleTest {
         raftStorage.append(commandEntry(1,  "val2"));
         given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
-        leaderRole.onInit(node, raftGroup, raftStorage);
+        leaderRole.onInit(cluster, raftGroup, raftStorage);
 
         // when
         raftStorage.append(commandEntry(1,  "val3"));
@@ -177,7 +179,7 @@ class LeaderRoleTest {
         raftStorage.append(commandEntry(1,  "val2"));
 
         // when
-        StepVerifier.create(leaderRole.onAddServer(node, raftGroup, raftStorage, addServerRequest()))
+        StepVerifier.create(leaderRole.onAddServer(cluster, raftGroup, raftStorage, addServerRequest()))
                 .thenAwait(Duration.ofMillis(200))
                 .then(() -> {
                     raftStorage.append(commandEntry(2,  "val3"));

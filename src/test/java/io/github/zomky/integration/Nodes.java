@@ -1,6 +1,8 @@
-package io.github.zomky;
+package io.github.zomky.integration;
 
-import io.github.zomky.gossip.Cluster;
+import io.github.zomky.InnerNode;
+import io.github.zomky.Node;
+import io.github.zomky.NodeFactory;
 import io.github.zomky.raft.FollowerRole;
 import io.github.zomky.raft.RaftConfiguration;
 import io.github.zomky.raft.RaftGroup;
@@ -24,15 +26,14 @@ public class Nodes {
     }
 
     public static Nodes create(int ... ports) {
-        Cluster cluster = new Cluster(ports);
+        int joinPort = ports[0];
         Map<Integer, InnerNode> nodes = IntStream.of(ports)
                 .mapToObj(port -> NodeFactory.receive()
                         .port(port)
-                        .cluster(cluster)
+                        .retryJoin(joinPort != port ? joinPort : null)
                         .start()
                         .block())
                 .collect(Collectors.toConcurrentMap(Node::getNodeId, n -> (InnerNode) n));
-
         return new Nodes(nodes);
     }
 
@@ -76,7 +77,7 @@ public class Nodes {
                     .groupName(groupName)
                     .raftStorage(raftStorage == null ? new InMemoryRaftStorage() : raftStorage)
                     .raftConfiguration(raftConfiguration1)
-                    .node(node)
+                    .cluster(node.getCluster())
                     .raftRole(new FollowerRole())
                     .build();
             node.getRaftProtocol().addGroup(raftGroup);

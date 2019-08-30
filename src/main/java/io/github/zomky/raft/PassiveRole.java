@@ -1,6 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
+import io.github.zomky.Cluster;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.LogEntry;
@@ -23,17 +23,18 @@ public class PassiveRole implements RaftRole {
     }
 
     @Override
-    public void onInit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
-        LOGGER.info("[Node {}] Passive", node.getNodeId());
+    public void onInit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
+        LOGGER.info("[Node {}] Passive", cluster.getLocalNodeId());
     }
 
     @Override
-    public void onExit(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage) {
+    public void onExit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage) {
 
     }
 
     @Override
-    public Mono<AppendEntriesResponse> onAppendEntries(InnerNode node, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+    public Mono<AppendEntriesResponse> onAppendEntries(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
+        LOGGER.info("[Node {}] passive onAppendEntries", cluster.getLocalNodeId());
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {
                     int currentTerm = raftStorage.getTerm();

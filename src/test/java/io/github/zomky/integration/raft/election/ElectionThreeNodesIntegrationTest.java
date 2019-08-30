@@ -1,7 +1,7 @@
 package io.github.zomky.integration.raft.election;
 
 import io.github.zomky.IntegrationTest;
-import io.github.zomky.Nodes;
+import io.github.zomky.integration.Nodes;
 import io.github.zomky.external.statemachine.KVStateMachine1;
 import io.github.zomky.external.statemachine.KVStateMachineEntryConverter;
 import io.github.zomky.integration.IntegrationTestsUtils;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Hooks;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -47,6 +48,7 @@ class ElectionThreeNodesIntegrationTest {
     @Test
     void electionPreVoteDisabled() {
         // given
+        Hooks.onOperatorDebug();
         nodes = Nodes.create(7000,7001,7002);
 
         // when

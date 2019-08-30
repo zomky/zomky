@@ -1,5 +1,6 @@
 package io.github.zomky.raft;
 
+import io.github.zomky.Cluster;
 import io.github.zomky.InnerNode;
 import io.github.zomky.storage.FileSystemRaftStorage;
 import io.github.zomky.storage.InMemoryRaftStorage;
@@ -25,21 +26,16 @@ public class RaftProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
 
-    private InnerNode node;
+    private Cluster cluster;
     private ScheduledExecutorService stateMachineExecutor;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
 
-    public RaftProtocol(int nodeId) {
-        // TODO after InnerNode removal this constructor should be used
-    }
-
-    public RaftProtocol(InnerNode node) {
-        this.node = node;
-        // TODO initialize from storage
+    public RaftProtocol(Cluster cluster) {
+        this.cluster = cluster;
     }
 
     public void start() {
-        LOGGER.info("[Node {}] Starting RAFT ...", node.getNodeId());
+        LOGGER.info("[Node {}] Starting RAFT ...", cluster.getLocalNodeId());
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
         stateMachineExecutor = Executors.newScheduledThreadPool(1);
         stateMachineExecutor.scheduleWithFixedDelay(() -> {
@@ -85,7 +81,7 @@ public class RaftProtocol {
                     if (response.getSuccess()) {
                         raftGroup.setCurrentLeader(appendEntries.getLeaderId());
                         if (appendEntries.getEntriesCount() > 0) {
-                            LOGGER.info("[Node {} -> Node {}][group {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), node.getNodeId(), raftGroup.getGroupName(), appendEntries, response);
+                            LOGGER.info("[Node {} -> Node {}][group {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), appendEntries, response);
                         }
                     }
                 });
@@ -94,31 +90,32 @@ public class RaftProtocol {
     public Mono<PreVoteResponse> onPreRequestVote(String groupName, PreVoteRequest preRequestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onPreRequestVote(preRequestVote)
-                .doOnNext(preVoteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), node.getNodeId(), raftGroup.getGroupName(), preRequestVote, preVoteResponse));
+                .doOnNext(preVoteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), preRequestVote, preVoteResponse));
 
     }
 
     public Mono<VoteResponse> onRequestVote(String groupName, VoteRequest requestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onRequestVote(requestVote)
-                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), node.getNodeId(), raftGroup.getGroupName(), requestVote, voteResponse));
+                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), requestVote, voteResponse));
     }
 
     public Mono<AddServerResponse> onAddServer(String groupName, AddServerRequest addServerRequest) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onAddServer(addServerRequest)
-                .doOnNext(addServerResponse -> LOGGER.info("[Node {}][group {}] Add server \n{} \n-> \n{}", node.getNodeId(), raftGroup.getGroupName(), addServerRequest.getNewServer(), addServerResponse.getStatus()));
+                .doOnNext(addServerResponse -> LOGGER.info("[Node {}][group {}] Add server \n{} \n-> \n{}", cluster.getLocalNodeId(), raftGroup.getGroupName(), addServerRequest.getNewServer(), addServerResponse.getStatus()));
     }
 
     public Mono<RemoveServerResponse> onRemoveServer(String groupName, RemoveServerRequest removeServerRequest) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onRemoveServer(removeServerRequest)
-                .doOnNext(removeServerResponse -> LOGGER.info("[Node {}][group {}] Remove server \n{} \n-> \n{}", node.getNodeId(), raftGroup.getGroupName(), removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
+                .doOnNext(removeServerResponse -> LOGGER.info("[Node {}][group {}] Remove server \n{} \n-> \n{}", cluster.getLocalNodeId(), raftGroup.getGroupName(), removeServerRequest.getOldServer(), removeServerResponse.getStatus()));
     }
 
     public Mono<AddGroupResponse> onAddGroup(String groupName, AddGroupRequest addGroupRequest) {
+        LOGGER.info("[Node {} onAddGroup", cluster.getLocalNodeId());
         RaftRole raftRole = Boolean.TRUE.equals(addGroupRequest.getPassive()) ? new PassiveRole() : new FollowerRole();
-        ElectionTimeout electionTimeout = addGroupRequest.getLeaderIdSuggestion() == node.getNodeId() ?
+        ElectionTimeout electionTimeout = addGroupRequest.getLeaderIdSuggestion() == cluster.getLocalNodeId() ?
                 ElectionTimeout.exactly(Math.min(100, addGroupRequest.getElectionTimeoutMin())) : // TODO extract 100
                 ElectionTimeout.between(addGroupRequest.getElectionTimeoutMin(), addGroupRequest.getElectionTimeoutMax());
 
@@ -133,18 +130,18 @@ public class RaftProtocol {
         RaftGroup raftGroup = RaftGroup.builder()
                 .groupName(groupName)
                 .raftStorage(raftStorage)
-                .node(node)
+                .cluster(cluster)
                 .raftRole(raftRole)
                 .raftConfiguration(RaftConfiguration.builder()
                         .configuration(new Configuration(addGroupRequest.getNodesList()))
-                        .stateMachine(StateMachine.stateMachine(node.getNodeId(), addGroupRequest.getStateMachine()))
+                        .stateMachine(StateMachine.stateMachine(cluster.getLocalNodeId(), addGroupRequest.getStateMachine()))
                         .stateMachineEntryConverter(StateMachine.stateMachineEntryConverter(addGroupRequest.getStateMachine()))
                         .electionTimeout(electionTimeout)
                         .build())
                 .build();
         addGroup(raftGroup);
         return Mono.just(AddGroupResponse.newBuilder().setStatus(true).build())
-                .doOnNext(createGroupResponse -> LOGGER.info("[Node {}] Create group {}", node.getNodeId(), groupName));
+                .doOnNext(createGroupResponse -> LOGGER.info("[Node {}] Create group {}", cluster.getLocalNodeId(), groupName));
     }
 
     public void convertToFollower(int term) {

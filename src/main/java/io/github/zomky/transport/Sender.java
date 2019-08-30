@@ -15,38 +15,28 @@ import reactor.core.publisher.Mono;
 public class Sender {
 
     private final int nodeId;
-    private final RSocket raftSocket;
+    private final Mono<RSocket> monoRaftSocket;
     private final boolean available;
 
     public static Sender createSender(int nodeId) {
-        RSocket raftSocket = RSocketFactory.connect()
+        return availableSender(nodeId); // TODO
+    }
+
+    public static Sender availableSender(int nodeId) {
+        final Mono<RSocket> mono = RSocketFactory.connect()
                 .transport(TcpClientTransport.create(nodeId))
                 .start()
-                .block();
-
-        return new Sender(nodeId, raftSocket, true);
-    }
-
-    public static Sender createSender(String bindAddress, int nodeId) {
-        RSocket raftSocket = RSocketFactory.connect()
-                .transport(TcpClientTransport.create(bindAddress, nodeId))
-                .start()
-                .block();
-
-        return new Sender(nodeId, raftSocket, true);
-    }
-
-    public static Sender availableSender(int nodeId, RSocket raftSocket) {
-        return new Sender(nodeId, raftSocket, true);
+                .cache();
+        return new Sender(nodeId, mono, true);
     }
 
     public static Sender unavailableSender(int nodeId) {
-        return new Sender(nodeId, null,false);
+        return new Sender(nodeId, Mono.error(new RuntimeException("ZOMKY NO NO !!!")),false);
     }
 
-    public Sender(int nodeId, RSocket raftSocket, boolean available) {
+    public Sender(int nodeId, Mono<RSocket> monoRaftSocket, boolean available) {
         this.nodeId = nodeId;
-        this.raftSocket = raftSocket;
+        this.monoRaftSocket = monoRaftSocket;
         this.available = available;
     }
 
@@ -58,9 +48,14 @@ public class Sender {
         return metadataRequest.toByteArray();
     }
 
+    private Mono<Payload> requestResponse(Payload payload) {
+        return monoRaftSocket.flatMap(raftSocket -> raftSocket.requestResponse(payload));
+    }
+
     public Mono<PreVoteResponse> requestPreVote(RaftGroup raftGroup, PreVoteRequest preVoteRequest) {
         Payload payload = ByteBufPayload.create(preVoteRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.PRE_REQUEST_VOTE));
-        return raftSocket.requestResponse(payload)
+
+        return requestResponse(payload)
                 .map(payload1 -> {
                     try {
                         return PreVoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
@@ -72,7 +67,7 @@ public class Sender {
 
     public Mono<VoteResponse> requestVote(RaftGroup raftGroup, VoteRequest voteRequest) {
         Payload payload = ByteBufPayload.create(voteRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.REQUEST_VOTE));
-        return raftSocket.requestResponse(payload)
+        return requestResponse(payload)
                 .map(payload1 -> {
                     try {
                         return VoteResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
@@ -84,7 +79,7 @@ public class Sender {
 
     public Mono<AppendEntriesResponse> appendEntries(RaftGroup raftGroup, AppendEntriesRequest appendEntriesRequest) {
         Payload payload = ByteBufPayload.create(appendEntriesRequest.toByteArray(), metadataRequest(raftGroup.getGroupName(), RpcType.APPEND_ENTRIES));
-        return raftSocket.requestResponse(payload)
+        return requestResponse(payload)
                 .map(appendEntriesResponsePayload -> {
                     try {
                         return AppendEntriesResponse.parseFrom(NettyUtils.toByteArray(appendEntriesResponsePayload.sliceData()));
@@ -98,7 +93,7 @@ public class Sender {
 
     public Mono<AddServerResponse> addServer(String groupName, AddServerRequest addServerRequest) {
         Payload payload = ByteBufPayload.create(addServerRequest.toByteArray(), metadataRequest(groupName, RpcType.ADD_SERVER));
-        return raftSocket.requestResponse(payload)
+        return requestResponse(payload)
                 .map(payload1 -> {
                     try {
                         return AddServerResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
@@ -110,7 +105,7 @@ public class Sender {
 
     public Mono<RemoveServerResponse> removeServer(String groupName, RemoveServerRequest removeServerRequest) {
         Payload payload = ByteBufPayload.create(removeServerRequest.toByteArray(), metadataRequest(groupName, RpcType.REMOVE_SERVER));
-        return raftSocket.requestResponse(payload)
+        return requestResponse(payload)
                 .map(payload1 -> {
                     try {
                         return RemoveServerResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
@@ -122,7 +117,7 @@ public class Sender {
 
     public Mono<AddGroupResponse> addGroup(String groupName, AddGroupRequest createGroupRequest) {
         Payload payload = ByteBufPayload.create(createGroupRequest.toByteArray(), metadataRequest(groupName, RpcType.ADD_GROUP));
-        return raftSocket.requestResponse(payload)
+        return requestResponse(payload)
                 .map(payload1 -> {
                     try {
                         return AddGroupResponse.parseFrom(NettyUtils.toByteArray(payload1.sliceData()));
@@ -153,7 +148,7 @@ public class Sender {
     }
 
     public void stop() {
-        if (raftSocket != null) raftSocket.dispose();
+//        if (raftSocket != null) raftSocket.dispose();
     }
 
 }

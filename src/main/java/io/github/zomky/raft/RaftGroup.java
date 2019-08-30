@@ -1,7 +1,6 @@
 package io.github.zomky.raft;
 
-import io.github.zomky.InnerNode;
-import io.github.zomky.Node;
+import io.github.zomky.Cluster;
 import io.github.zomky.listener.ConfigurationChangeListener;
 import io.github.zomky.listener.ConfirmListener;
 import io.github.zomky.listener.LastAppliedListener;
@@ -37,7 +36,7 @@ public class RaftGroup {
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroup.class);
 
     RaftStorage raftStorage;
-    private InnerNode node;
+    private Cluster cluster;
     private String groupName;
     private RaftConfiguration raftConfiguration;
     private LogStorageReader logStorageReader;
@@ -63,7 +62,7 @@ public class RaftGroup {
     }
 
     void onInit() {
-        nodeState.onInit(node, this, raftStorage);
+        nodeState.onInit(cluster, this, raftStorage);
     }
 
     public RaftStorage getRaftStorage() {
@@ -80,11 +79,11 @@ public class RaftGroup {
 
     void voteForMyself() {
         int term = raftStorage.getTerm();
-        raftStorage.update(term + 1, node.getNodeId());
+        raftStorage.update(term + 1, cluster.getLocalNodeId());
     }
 
     public Flux<Sender> availableSenders() {
-        return node.getSenders().availableSenders(this);
+        return cluster.availableSenders(this);
     }
 
     public String getGroupName() {
@@ -129,7 +128,7 @@ public class RaftGroup {
 
     void convertToFollower(int term) {
         if (term < raftStorage.getTerm()) {
-            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", node.getNodeId(), nodeState, raftStorage.getTerm(), term));
+            throw new RaftException(String.format("[Node %s] [current state %s] Term can only be increased! Current term %s vs %s.", cluster.getLocalNodeId(), nodeState, raftStorage.getTerm(), term));
         }
         if (term > raftStorage.getTerm()) {
             raftStorage.update(term, 0);
@@ -151,17 +150,17 @@ public class RaftGroup {
 
     void convertToLeader() {
         transitionBetweenStates(NodeState.CANDIDATE, new LeaderRole());
-        setCurrentLeader(node.getNodeId());
+        setCurrentLeader(cluster.getLocalNodeId());
     }
 
     private void transitionBetweenStates(NodeState stateFrom, RaftRole raftRole) {
         if (nodeState.nodeState() != stateFrom) {
-            throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", node.getNodeId(), nodeState, stateFrom, raftRole.nodeState()));
+            throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", cluster.getLocalNodeId(), nodeState, stateFrom, raftRole.nodeState()));
         }
-        LOGGER.info("[Node {}][group {}] State transition {} -> {}", node.getNodeId(), groupName, stateFrom, raftRole.nodeState());
-        nodeState.onExit(node, this, raftStorage);
+        LOGGER.info("[Node {}][group {}] State transition {} -> {}", cluster.getLocalNodeId(), groupName, stateFrom, raftRole.nodeState());
+        nodeState.onExit(cluster, this, raftStorage);
         nodeState = raftRole;
-        nodeState.onInit(node, this, raftStorage);
+        nodeState.onInit(cluster, this, raftStorage);
     }
 
     public int getCurrentLeaderId() {
@@ -173,11 +172,11 @@ public class RaftGroup {
     }
 
     public Mono<Payload> onClientRequest(Payload payload) {
-        return nodeState.onClientRequest(node, this, this.raftStorage, payload);
+        return nodeState.onClientRequest(cluster, this, this.raftStorage, payload);
     }
 
     public Flux<Payload> onClientRequests(Publisher<Payload> payloads) {
-        return nodeState.onClientRequests(node, this, this.raftStorage, payloads);
+        return nodeState.onClientRequests(cluster, this, this.raftStorage, payloads);
     }
 
     public boolean lastAppendEntriesWithinElectionTimeout() {
@@ -211,7 +210,7 @@ public class RaftGroup {
     public void setCommitIndex(long commitIndex) {
         raftStorage.commit(commitIndex);
         if (commitIndex >= currentConfigurationId && currentConfigurationId > previousConfigurationId) {
-            LOGGER.info("[Node {}] Configuration {} committed", node.getNodeId(), currentConfiguration);
+            LOGGER.info("[Node {}] Configuration {} committed", cluster.getLocalNodeId(), currentConfiguration);
             raftStorage.updateConfiguration(currentConfiguration);
             previousConfigurationId = currentConfigurationId;
         }
@@ -220,28 +219,28 @@ public class RaftGroup {
 
     public Duration nextElectionTimeout() {
         this.currentElectionTimeout = raftConfiguration.getElectionTimeout().nextRandom();
-        LOGGER.info("[Node {}][Group {}] Current election timeout {}", node.getNodeId(), groupName, currentElectionTimeout);
+        LOGGER.info("[Node {}][Group {}] Current election timeout {}", cluster.getLocalNodeId(), groupName, currentElectionTimeout);
         return currentElectionTimeout;
     }
 
     public Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
-        return nodeState.onAppendEntries(node, this, this.raftStorage, appendEntries);
+        return nodeState.onAppendEntries(cluster, this, this.raftStorage, appendEntries);
     }
 
     public Mono<PreVoteResponse> onPreRequestVote(PreVoteRequest preRequestVote) {
-        return nodeState.onPreRequestVote(node, this, this.raftStorage, preRequestVote);
+        return nodeState.onPreRequestVote(cluster, this, this.raftStorage, preRequestVote);
     }
 
     public Mono<VoteResponse> onRequestVote(VoteRequest requestVote) {
-        return nodeState.onRequestVote(node, this, this.raftStorage, requestVote);
+        return nodeState.onRequestVote(cluster, this, this.raftStorage, requestVote);
     }
 
     public Mono<AddServerResponse> onAddServer(AddServerRequest addServerRequest) {
-        return nodeState.onAddServer(node, this, this.raftStorage, addServerRequest);
+        return nodeState.onAddServer(cluster, this, this.raftStorage, addServerRequest);
     }
 
     public Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest) {
-        return nodeState.onRemoveServer(node, this, this.raftStorage, removeServerRequest);
+        return nodeState.onRemoveServer(cluster, this, this.raftStorage, removeServerRequest);
     }
 
     public void addConfigurationChangeListener(ConfigurationChangeListener configurationChangeListener) {
@@ -272,7 +271,7 @@ public class RaftGroup {
             configurationChangeListeners.forEach(configurationChangeListener -> configurationChangeListener.handle(oldConfiguration, newConfiguration));
 
             // If this server was removed, step down.
-            if (oldMember == node.getNodeId()) {
+            if (oldMember == cluster.getLocalNodeId()) {
                 this.convertToPassive();
             }
         });
@@ -311,11 +310,11 @@ public class RaftGroup {
         LogEntry logEntry = indexedLogEntry.getLogEntry();
         if (logEntry instanceof ConfigurationEntry) {
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
-            LOGGER.info("[Node {}] New configuration {}", node.getNodeId(), configurationEntry.getMembers());
+            LOGGER.info("[Node {}] New configuration {}", cluster.getLocalNodeId(), configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
 //            senders.replaceWith(currentConfiguration);
-            if (!currentConfiguration.getMembers().contains(node.getNodeId())) {
+            if (!currentConfiguration.getMembers().contains(cluster.getLocalNodeId())) {
                 convertToPassive();
             }
         }
@@ -326,32 +325,31 @@ public class RaftGroup {
         LogEntry logEntry = indexedLogEntry.getLogEntry();
         if (logEntry instanceof ConfigurationEntry) {
             ConfigurationEntry configurationEntry = (ConfigurationEntry) logEntry;
-            LOGGER.info("[Node {}] New configuration {}", node.getNodeId(), configurationEntry.getMembers());
+            LOGGER.info("[Node {}] New configuration {}", cluster.getLocalNodeId(), configurationEntry.getMembers());
             currentConfiguration = new Configuration(configurationEntry.getMembers());
             currentConfigurationId = indexedLogEntry.getIndex();
 //            senders.replaceWith(currentConfiguration);
-            if (currentConfiguration.getMembers().contains(node.getNodeId())) {
+            if (currentConfiguration.getMembers().contains(cluster.getLocalNodeId())) {
                 this.convertToFollower(raftStorage.getTerm());
             }
         }
     }
 
     public void advanceStateMachine() {
-
         // very inefficient
         while (logStorageReader.hasNext()) {
             final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-            LOGGER.info("[Server {}] advance state machine for group {}, next {}", node.getNodeId(), groupName, indexedLogEntry);
+            LOGGER.info("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
             if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
                 ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
                 lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", node.getNodeId(), groupName, indexedLogEntry.getIndex());
+                LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
             }
         }
     }
 
     public Mono<Sender> getSenderById(int newServer) {
-        return node.getSenders().getSenderById(newServer);
+        return cluster.getSenderById(newServer);
     }
 
     public static Builder builder() {
@@ -363,7 +361,7 @@ public class RaftGroup {
     public static class Builder {
         private RaftStorage raftStorage;
         private RaftConfiguration raftConfiguration;
-        private InnerNode node;
+        private Cluster cluster;
         private String groupName;
         private RaftRole role;
 
@@ -385,8 +383,8 @@ public class RaftGroup {
             return this;
         }
 
-        public Builder node(Node node) {
-            this.node = (InnerNode) node;
+        public Builder cluster(Cluster cluster) {
+            this.cluster = cluster;
             return this;
         }
 
@@ -404,7 +402,7 @@ public class RaftGroup {
             RaftGroup raftGroup = new RaftGroup();
             raftGroup.raftStorage = raftStorage;
             raftGroup.logStorageReader = raftStorage.openCommittedEntriesReader();
-            raftGroup.node = node;
+            raftGroup.cluster = cluster;
             raftGroup.raftConfiguration = raftConfiguration;
             raftGroup.nodeState = role;
             raftGroup.groupName = groupName;
