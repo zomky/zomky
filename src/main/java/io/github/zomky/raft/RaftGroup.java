@@ -219,7 +219,7 @@ public class RaftGroup {
 
     public Duration nextElectionTimeout() {
         this.currentElectionTimeout = raftConfiguration.getElectionTimeout().nextRandom();
-        LOGGER.info("[Node {}][Group {}] Current election timeout {}", cluster.getLocalNodeId(), groupName, currentElectionTimeout);
+        LOGGER.debug("[Node {}][Group {}] Current election timeout {}", cluster.getLocalNodeId(), groupName, currentElectionTimeout);
         return currentElectionTimeout;
     }
 
@@ -339,11 +339,11 @@ public class RaftGroup {
         // very inefficient
         while (logStorageReader.hasNext()) {
             final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-            LOGGER.info("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
+            LOGGER.debug("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
             if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
                 ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
                 lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                LOGGER.info("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
+                LOGGER.debug("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
             }
         }
     }

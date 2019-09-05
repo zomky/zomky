@@ -11,17 +11,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.*;
 import java.util.function.Supplier;
 
 public class InMemoryRaftStorage implements RaftStorage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryRaftStorage.class);
 
-    private List<IndexedLogEntry> entries = new CopyOnWriteArrayList<>();
+    private List<IndexedLogEntry> entries = Collections.synchronizedList(new ArrayList<>());
+
     private IndexedLogEntry last;
     private volatile long commitIndex;
     private volatile int term;

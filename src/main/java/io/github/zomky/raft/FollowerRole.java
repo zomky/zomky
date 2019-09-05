@@ -41,7 +41,7 @@ public class FollowerRole implements RaftRole {
         } else {
             subscription = processor.timeout(raftGroup.nextElectionTimeout())
                     .onErrorResume(throwable -> {
-                        LOGGER.info("[Node {}][group {}] Election timeout ({})", cluster.getLocalNodeId(), raftGroup.getGroupName(), throwable.getMessage());
+                        LOGGER.debug("[Node {}][group {}] Election timeout ({})", cluster.getLocalNodeId(), raftGroup.getGroupName(), throwable.getMessage());
                         if (raftGroup.isPreVote() && raftGroup.quorum() - 1 > 0) {
                             return sendPreVotes(cluster, raftGroup, raftStorage)
                                     .doOnNext(preVotes -> {
@@ -125,7 +125,7 @@ public class FollowerRole implements RaftRole {
         return sender.requestPreVote(raftGroup, preVoteRequest)
                      .timeout(timeout)
                      .onErrorResume(throwable -> {
-                        LOGGER.error("[Node {} -> Node {}][group {}] Pre-Vote failure", cluster.getLocalNodeId(), preVoteRequest.getCandidateId(), raftGroup.getGroupName(), throwable);
+                        LOGGER.error("[Node {} -> Node {}][group {}] Pre-Vote failure", cluster.getLocalNodeId(), sender.getNodeId(), raftGroup.getGroupName(), throwable);
                         return Mono.just(PreVoteResponse.newBuilder().setVoteGranted(false).build());
                      });
     }
