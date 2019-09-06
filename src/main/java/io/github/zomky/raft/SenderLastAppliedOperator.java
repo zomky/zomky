@@ -91,10 +91,10 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             try {
                 CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), raftGroup.getRaftConfiguration().getStateMachineEntryConverter().convert(payload));
                 IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
+                unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
                 if (raftGroup.quorum() == 1) {
                     raftGroup.setCommitIndex(logEntryInfo.getIndex());
                 }
-                unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
             } catch (Exception e) {
                 handleError(e);
             }
