@@ -19,8 +19,12 @@ import io.rsocket.Payload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
+import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -55,14 +59,36 @@ public class RaftGroup {
     private volatile long previousConfigurationId;
     private volatile long currentConfigurationId;
 
+    Lock appendLock = new ReentrantLock();
     Lock configurationLock = new ReentrantLock();
+    DirectProcessor<Long> directProcessor = DirectProcessor.create();
+    FluxSink<Long> sink = directProcessor.sink();
+    Disposable disposable;
+
+    public void appendLock() {
+        appendLock.lock();
+    }
+
+    public void appendUnlock() {
+        appendLock.unlock();
+    }
 
     public RaftConfiguration getRaftConfiguration() {
         return raftConfiguration;
     }
 
     void onInit() {
+        disposable = Flux.from(directProcessor)
+                .doOnNext(i -> advanceStateMachine())
+                .subscribeOn(Schedulers.parallel())
+                .subscribe();
+
         nodeState.onInit(cluster, this, raftStorage);
+    }
+
+    public void onExit() {
+        disposable.dispose();
+        sink.complete();
     }
 
     public RaftStorage getRaftStorage() {
@@ -167,10 +193,6 @@ public class RaftGroup {
         return currentLeaderId.get();
     }
 
-    public void onExit() {
-
-    }
-
     public Mono<Payload> onClientRequest(Payload payload) {
         return nodeState.onClientRequest(cluster, this, this.raftStorage, payload);
     }
@@ -215,6 +237,7 @@ public class RaftGroup {
             previousConfigurationId = currentConfigurationId;
         }
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
+        sink.next(commitIndex);
     }
 
     public Duration nextElectionTimeout() {

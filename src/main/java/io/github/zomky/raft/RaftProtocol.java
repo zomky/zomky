@@ -28,7 +28,6 @@ public class RaftProtocol {
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
 
     private Cluster cluster;
-    private ScheduledExecutorService stateMachineExecutor;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
     private Map<String, StateMachine> stateMachines = new HashMap<>();
     private Map<String, StateMachineEntryConverter> stateMachineConverters = new HashMap<>();
@@ -43,15 +42,6 @@ public class RaftProtocol {
         stateMachineConverters.putAll(StateMachineUtils.stateMachineConverters());
 
         raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
-        stateMachineExecutor = Executors.newScheduledThreadPool(1);
-        stateMachineExecutor.scheduleWithFixedDelay(() -> {
-            try {
-                raftGroups.values().forEach(raftGroup -> raftGroup.advanceStateMachine());
-            } catch (Exception e) {
-                LOGGER.error("Main loop failure", e);
-            }
-        }, 0, 10, TimeUnit.MILLISECONDS);
-
     }
 
     public void addGroup(RaftGroup raftGroup) {
@@ -61,7 +51,6 @@ public class RaftProtocol {
 
     public void dispose() {
         raftGroups.values().forEach(raftGroup -> raftGroup.onExit());
-        stateMachineExecutor.shutdownNow();
     }
 
     public Mono<Payload> onClientRequest(Payload payload) {
@@ -87,7 +76,7 @@ public class RaftProtocol {
                     if (response.getSuccess()) {
                         raftGroup.setCurrentLeader(appendEntries.getLeaderId());
                         if (appendEntries.getEntriesCount() > 0) {
-                            LOGGER.info("[Node {} -> Node {}][group {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), appendEntries, response);
+                            LOGGER.debug("[Node {} -> Node {}][group {}] Append entries \n{} \n-> \n{}", appendEntries.getLeaderId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), appendEntries, response);
                         }
                     }
                 });
@@ -96,14 +85,14 @@ public class RaftProtocol {
     public Mono<PreVoteResponse> onPreRequestVote(String groupName, PreVoteRequest preRequestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onPreRequestVote(preRequestVote)
-                .doOnNext(preVoteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), preRequestVote, preVoteResponse));
+                .doOnNext(preVoteResponse -> LOGGER.debug("[Node {} -> Node {}][group {}] Pre-Vote \n{} \n-> \n{}", preRequestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), preRequestVote, preVoteResponse));
 
     }
 
     public Mono<VoteResponse> onRequestVote(String groupName, VoteRequest requestVote) {
         RaftGroup raftGroup = raftGroups.get(groupName);
         return raftGroup.onRequestVote(requestVote)
-                .doOnNext(voteResponse -> LOGGER.info("[Node {} -> Node {}][group {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), requestVote, voteResponse));
+                .doOnNext(voteResponse -> LOGGER.debug("[Node {} -> Node {}][group {}] Vote \n{} \n-> \n{}", requestVote.getCandidateId(), cluster.getLocalNodeId(), raftGroup.getGroupName(), requestVote, voteResponse));
     }
 
     public Mono<AddServerResponse> onAddServer(String groupName, AddServerRequest addServerRequest) {
@@ -121,7 +110,7 @@ public class RaftProtocol {
     public Mono<AddGroupResponse> onAddGroup(String groupName, AddGroupRequest addGroupRequest) {
         RaftRole raftRole = Boolean.TRUE.equals(addGroupRequest.getPassive()) ? new PassiveRole() : new FollowerRole();
         ElectionTimeout electionTimeout = addGroupRequest.getLeaderIdSuggestion() == cluster.getLocalNodeId() ?
-                ElectionTimeout.exactly(Math.min(100, addGroupRequest.getElectionTimeoutMin())) : // TODO extract 100
+                ElectionTimeout.exactly(Math.min(300, addGroupRequest.getElectionTimeoutMin())) : // TODO extract 300
                 ElectionTimeout.between(addGroupRequest.getElectionTimeoutMin(), addGroupRequest.getElectionTimeoutMax());
 
         RaftStorage raftStorage = Boolean.TRUE.equals(addGroupRequest.getPersistentStorage()) ?
@@ -146,7 +135,7 @@ public class RaftProtocol {
                 .build();
         addGroup(raftGroup);
         return Mono.just(AddGroupResponse.newBuilder().setStatus(true).build())
-                .doOnNext(createGroupResponse -> LOGGER.info("[Node {}] Create group {}", cluster.getLocalNodeId(), groupName));
+                .doOnNext(createGroupResponse -> LOGGER.debug("[Node {}] Create group {}", cluster.getLocalNodeId(), groupName));
     }
 
     public RaftGroup getByName(String groupName) {
