@@ -16,16 +16,21 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class RaftProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
+
+    private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(100);
 
     private Cluster cluster;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
@@ -41,7 +46,37 @@ public class RaftProtocol {
         stateMachines.putAll(StateMachineUtils.stateMachines(cluster.getLocalNodeId()));
         stateMachineConverters.putAll(StateMachineUtils.stateMachineConverters());
 
-        raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
+        raftGroups.values().forEach(RaftGroup::onInit);
+
+        Flux.interval(HEARTBEAT_TIMEOUT)
+            .flatMap(i -> Flux.fromIterable(cluster.availableSenders2()))
+            .flatMap(sender -> {
+                int memberId = sender.getNodeId();
+                List<HeartbeatGroup> heartbeatGroups = raftGroups.values().stream()
+                        .filter(RaftGroup::isLeader)
+                        .filter(raftGroup -> raftGroup.installedOnNode(memberId))
+                        .map(raftGroup -> HeartbeatGroup.newBuilder()
+                                .setGroupName(raftGroup.getGroupName())
+                                .setTerm(raftGroup.getTerm())
+                                .build()
+                        )
+                        .collect(Collectors.toList());
+                return sender.heartbeatGroups(HeartbeatsRequest.newBuilder()
+                        .setLeaderId(cluster.getLocalNodeId())
+                        .addAllHeartbeatGroups(heartbeatGroups)
+                        .build()
+                );
+            })
+            .doOnNext(heartbeatsResponse -> {
+                heartbeatsResponse.getHeartbeatGroupStatusesList().forEach(heartbeatGroupStatus -> {
+                    RaftGroup raftGroup = getByName(heartbeatGroupStatus.getGroupName());
+                    if (raftGroup != null && heartbeatGroupStatus.getTerm() > raftGroup.getTerm()) {
+                        raftGroup.convertToFollower(heartbeatGroupStatus.getTerm());
+                    }
+                });
+            })
+            .subscribe();
+
     }
 
     public void addGroup(RaftGroup raftGroup) {
@@ -67,6 +102,19 @@ public class RaftProtocol {
                        RaftGroup raftGroup = raftGroups.get(groupName);
                        return raftGroup.onClientRequests(payloadFlux);
                    }));
+    }
+
+
+    public Mono<HeartbeatsResponse> onHeartbeats(HeartbeatsRequest heartbeatsRequest) {
+        int leaderId = heartbeatsRequest.getLeaderId();
+        return Flux.fromIterable(heartbeatsRequest.getHeartbeatGroupsList())
+                   .flatMap(heartbeatGroup -> {
+                       RaftGroup raftGroup = getByName(heartbeatGroup.getGroupName());
+                       return raftGroup.onHeartbeat(leaderId, heartbeatGroup);
+                   })
+                   .buffer()
+                   .next()
+                   .map(heartbeatGroupStatuses -> HeartbeatsResponse.newBuilder().addAllHeartbeatGroupStatuses(heartbeatGroupStatuses).build()) ;
     }
 
     public Mono<AppendEntriesResponse> onAppendEntries(String groupName, AppendEntriesRequest appendEntries) {

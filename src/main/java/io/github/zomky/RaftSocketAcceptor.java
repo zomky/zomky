@@ -33,6 +33,12 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
                 RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
                 String groupName = metadataRequest.getGroupName();
                 switch (rpcType) {
+                    case HEARTBEATS:
+                        return Mono.just(payload)
+                                .map(this::toHeartbeatsRequest)
+                                .flatMap(heartbeatsRequest -> raftProtocol.onHeartbeats(heartbeatsRequest))
+                                .map(this::toPayload);
+
                     case APPEND_ENTRIES:
                         return Mono.just(payload)
                                 .map(this::toAppendEntriesRequest)
@@ -112,11 +118,19 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
                 }
             }
 
+            private HeartbeatsRequest toHeartbeatsRequest(Payload payload) {
+                try {
+                    return HeartbeatsRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                } catch (InvalidProtocolBufferException e) {
+                    throw new RaftException("Invalid heartbeats request!", e);
+                }
+            }
+
             private AppendEntriesRequest toAppendEntriesRequest(Payload payload) {
                 try {
                     return AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
                 } catch (InvalidProtocolBufferException e) {
-                    throw new RaftException("Invalid pre-vote request!", e);
+                    throw new RaftException("Invalid append entries request!", e);
                 }
             }
 

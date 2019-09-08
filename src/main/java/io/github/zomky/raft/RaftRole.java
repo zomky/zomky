@@ -22,6 +22,23 @@ public interface RaftRole {
 
     void onExit(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage);
 
+    default Mono<HeartbeatGroupStatus> onHeartbeat(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, int leaderId, HeartbeatGroup heartbeatGroup) {
+        return Mono.just(heartbeatGroup)
+                    .map(heartbeatGroupRequest -> {
+                        int currentTerm = raftStorage.getTerm();
+                        if (heartbeatGroup.getTerm() > currentTerm) {
+                            raftGroup.convertToFollower(heartbeatGroup.getTerm());
+                        }
+
+                        // 1. Reply false if term < currentTerm
+                        if (heartbeatGroup.getTerm() < currentTerm) {
+                            return HeartbeatGroupStatus.newBuilder().setGroupName(raftGroup.getGroupName()).setTerm(currentTerm).setSuccess(false).build();
+                        }
+                        raftGroup.appendEntriesCall();
+
+                    })
+    }
+
     default Mono<AppendEntriesResponse> onAppendEntries(Cluster cluster, RaftGroup raftGroup, RaftStorage raftStorage, AppendEntriesRequest appendEntries) {
         return Mono.just(appendEntries)
                 .map(appendEntriesRequest -> {

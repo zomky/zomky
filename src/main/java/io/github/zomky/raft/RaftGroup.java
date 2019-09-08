@@ -179,6 +179,10 @@ public class RaftGroup {
         setCurrentLeader(cluster.getLocalNodeId());
     }
 
+    boolean installedOnNode(int nodeId) {
+        return currentConfiguration.contains(nodeId);
+    }
+
     private void transitionBetweenStates(NodeState stateFrom, RaftRole raftRole) {
         if (nodeState.nodeState() != stateFrom) {
             throw new RaftException(String.format("[Node %s] [current state %s] Cannot transition from %s to %s.", cluster.getLocalNodeId(), nodeState, stateFrom, raftRole.nodeState()));
@@ -244,6 +248,10 @@ public class RaftGroup {
         this.currentElectionTimeout = raftConfiguration.getElectionTimeout().nextRandom();
         LOGGER.debug("[Node {}][Group {}] Current election timeout {}", cluster.getLocalNodeId(), groupName, currentElectionTimeout);
         return currentElectionTimeout;
+    }
+
+    public Mono<HeartbeatGroupStatus> onHeartbeat(int leaderId, HeartbeatGroup heartbeatGroup) {
+        return nodeState.onHeartbeat(cluster, this, this.raftStorage, leaderId, heartbeatGroup);
     }
 
     public Mono<AppendEntriesResponse> onAppendEntries(AppendEntriesRequest appendEntries) {
@@ -380,6 +388,10 @@ public class RaftGroup {
     }
 
     private RaftGroup() {}
+
+    public int getTerm() { // TODO
+        return raftStorage.getTerm();
+    }
 
     public static class Builder {
         private RaftStorage raftStorage;

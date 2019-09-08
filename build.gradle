@@ -47,7 +47,7 @@ buildScan {
 ext {
     gradleScriptDir = "${rootProject.projectDir}/gradle"
 
-    rsocketVersion = "1.0.0-RC1"
+    rsocketVersion = "1.0.0-RC3"
     reactorExtraVersion = "3.2.2.RELEASE"
     protobufVersion = "3.9.1"
     reactorCoreVersion = "3.2.10.RELEASE"

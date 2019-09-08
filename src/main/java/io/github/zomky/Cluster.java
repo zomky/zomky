@@ -10,6 +10,7 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -98,6 +99,10 @@ public class Cluster {
             senders.values().stream().filter(Sender::isAvailable).forEach(emitter::next);
             // lack of emitter.complete() is intentional
         });
+    }
+
+    public List<Sender> availableSenders2() { // TODO
+        return senders.values().stream().filter(Sender::isAvailable).collect(Collectors.toList());
     }
 
     public Flux<Sender> availableSenders(RaftGroup raftGroup) {

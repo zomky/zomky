@@ -48,6 +48,13 @@ public class Sender {
         return metadataRequest.toByteArray();
     }
 
+    private static byte[] metadataRequest(RpcType rpcType) {
+        MetadataRequest metadataRequest = MetadataRequest.newBuilder()
+                .setMessageType(rpcType.getCode())
+                .build();
+        return metadataRequest.toByteArray();
+    }
+
     private Mono<Payload> requestResponse(Payload payload) {
         return monoRaftSocket.flatMap(raftSocket -> raftSocket.requestResponse(payload));
     }
@@ -87,6 +94,20 @@ public class Sender {
                         throw new RaftException("Invalid append entries response!", e);
                     } finally {
                         appendEntriesResponsePayload.release();
+                    }
+                });
+    }
+
+    public Mono<HeartbeatsResponse> heartbeatGroups(HeartbeatsRequest heartbeatsRequest) {
+        Payload payload = ByteBufPayload.create(heartbeatsRequest.toByteArray(), metadataRequest(RpcType.HEARTBEATS));
+        return requestResponse(payload)
+                .map(heartbeatsResponsePayload -> {
+                    try {
+                        return HeartbeatsResponse.parseFrom(NettyUtils.toByteArray(heartbeatsResponsePayload.sliceData()));
+                    } catch (InvalidProtocolBufferException e) {
+                        throw new RaftException("Invalid heartbeats response!", e);
+                    } finally {
+                        heartbeatsResponsePayload.release();
                     }
                 });
     }

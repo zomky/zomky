@@ -41,6 +41,26 @@ message AppendEntriesResponse {
     int64 last_log_index = 3; // last log index, set only if success equals to false (extension to Raft)
 }
 
+message HeartbeatGroup {
+    int32 term = 1; // set leader’s term
+    string group_name = 2;
+}
+
+message HeartbeatGroupStatus {
+    int32 term = 1; // set leader’s term
+    string group_name = 2;
+    bool success = 3;
+}
+
+message HeartbeatsRequest {
+    int32 leader_id = 1; // leaderId so follower can redirect clients
+    repeated HeartbeatGroup heartbeat_groups = 2;
+}
+
+message HeartbeatsResponse {
+    repeated HeartbeatGroupStatus heartbeat_group_statuses = 1;
+}
+
 message AddServerRequest {
     int32 new_server = 1; // address of server to add to configuration
 }

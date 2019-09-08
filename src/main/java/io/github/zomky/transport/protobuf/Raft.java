@@ -45,6 +45,26 @@ public final class Raft {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_AppendEntriesResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_HeartbeatGroup_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_HeartbeatGroup_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_HeartbeatGroupStatus_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_HeartbeatGroupStatus_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_HeartbeatsRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_HeartbeatsRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_HeartbeatsResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_HeartbeatsResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_AddServerRequest_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -111,26 +131,33 @@ public final class Raft {
       "\003 \001(\003\022\025\n\rprev_log_term\030\004 \001(\003\022\017\n\007entries\030" +
       "\005 \003(\014\022\025\n\rleader_commit\030\006 \001(\003\"N\n\025AppendEn" +
       "triesResponse\022\014\n\004term\030\001 \001(\005\022\017\n\007success\030\002" +
-      " \001(\010\022\026\n\016last_log_index\030\003 \001(\003\"&\n\020AddServe" +
-      "rRequest\022\022\n\nnew_server\030\001 \001(\005\"8\n\021AddServe" +
-      "rResponse\022\016\n\006status\030\001 \001(\010\022\023\n\013leader_hint" +
-      "\030\002 \001(\005\")\n\023RemoveServerRequest\022\022\n\nold_ser" +
-      "ver\030\001 \001(\005\";\n\024RemoveServerResponse\022\016\n\006sta" +
-      "tus\030\001 \001(\010\022\023\n\013leader_hint\030\002 \001(\005\"\216\001\n\026Insta" +
-      "llSnapshotRequest\022\014\n\004term\030\001 \001(\005\022\021\n\tleade" +
-      "r_id\030\002 \001(\005\022\033\n\023last_included_index\030\003 \001(\003\022" +
-      "\032\n\022last_included_term\030\004 \001(\003\022\014\n\004data\030\005 \001(" +
-      "\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnapshotRespon" +
-      "se\022\014\n\004term\030\001 \001(\005\";\n\017MetadataRequest\022\024\n\014m" +
-      "essage_type\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t\"\324\001" +
-      "\n\017AddGroupRequest\022\034\n\024leader_id_suggestio" +
-      "n\030\001 \001(\005\022\025\n\rstate_machine\030\002 \001(\t\022\034\n\024electi" +
-      "on_timeout_min\030\003 \001(\005\022\034\n\024election_timeout" +
-      "_max\030\004 \001(\005\022\017\n\007passive\030\005 \001(\010\022\032\n\022persisten" +
-      "t_storage\030\006 \001(\010\022\024\n\014segment_size\030\007 \001(\005\022\r\n" +
-      "\005nodes\030\010 \003(\005\"\"\n\020AddGroupResponse\022\016\n\006stat" +
-      "us\030\001 \001(\010B&\n\"io.github.zomky.transport.pr" +
-      "otobufP\001b\006proto3"
+      " \001(\010\022\026\n\016last_log_index\030\003 \001(\003\"2\n\016Heartbea" +
+      "tGroup\022\014\n\004term\030\001 \001(\005\022\022\n\ngroup_name\030\002 \001(\t" +
+      "\"I\n\024HeartbeatGroupStatus\022\014\n\004term\030\001 \001(\005\022\022" +
+      "\n\ngroup_name\030\002 \001(\t\022\017\n\007success\030\003 \001(\010\"Q\n\021H" +
+      "eartbeatsRequest\022\021\n\tleader_id\030\001 \001(\005\022)\n\020h" +
+      "eartbeat_groups\030\002 \003(\0132\017.HeartbeatGroup\"M" +
+      "\n\022HeartbeatsResponse\0227\n\030heartbeat_group_" +
+      "statuses\030\001 \003(\0132\025.HeartbeatGroupStatus\"&\n" +
+      "\020AddServerRequest\022\022\n\nnew_server\030\001 \001(\005\"8\n" +
+      "\021AddServerResponse\022\016\n\006status\030\001 \001(\010\022\023\n\013le" +
+      "ader_hint\030\002 \001(\005\")\n\023RemoveServerRequest\022\022" +
+      "\n\nold_server\030\001 \001(\005\";\n\024RemoveServerRespon" +
+      "se\022\016\n\006status\030\001 \001(\010\022\023\n\013leader_hint\030\002 \001(\005\"" +
+      "\216\001\n\026InstallSnapshotRequest\022\014\n\004term\030\001 \001(\005" +
+      "\022\021\n\tleader_id\030\002 \001(\005\022\033\n\023last_included_ind" +
+      "ex\030\003 \001(\003\022\032\n\022last_included_term\030\004 \001(\003\022\014\n\004" +
+      "data\030\005 \001(\014\022\014\n\004done\030\006 \001(\010\"\'\n\027InstallSnaps" +
+      "hotResponse\022\014\n\004term\030\001 \001(\005\";\n\017MetadataReq" +
+      "uest\022\024\n\014message_type\030\001 \001(\005\022\022\n\ngroup_name" +
+      "\030\002 \001(\t\"\324\001\n\017AddGroupRequest\022\034\n\024leader_id_" +
+      "suggestion\030\001 \001(\005\022\025\n\rstate_machine\030\002 \001(\t\022" +
+      "\034\n\024election_timeout_min\030\003 \001(\005\022\034\n\024electio" +
+      "n_timeout_max\030\004 \001(\005\022\017\n\007passive\030\005 \001(\010\022\032\n\022" +
+      "persistent_storage\030\006 \001(\010\022\024\n\014segment_size" +
+      "\030\007 \001(\005\022\r\n\005nodes\030\010 \003(\005\"\"\n\020AddGroupRespons" +
+      "e\022\016\n\006status\030\001 \001(\010B&\n\"io.github.zomky.tra" +
+      "nsport.protobufP\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -172,56 +199,80 @@ public final class Raft {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AppendEntriesResponse_descriptor,
         new java.lang.String[] { "Term", "Success", "LastLogIndex", });
-    internal_static_AddServerRequest_descriptor =
+    internal_static_HeartbeatGroup_descriptor =
       getDescriptor().getMessageTypes().get(6);
+    internal_static_HeartbeatGroup_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_HeartbeatGroup_descriptor,
+        new java.lang.String[] { "Term", "GroupName", });
+    internal_static_HeartbeatGroupStatus_descriptor =
+      getDescriptor().getMessageTypes().get(7);
+    internal_static_HeartbeatGroupStatus_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_HeartbeatGroupStatus_descriptor,
+        new java.lang.String[] { "Term", "GroupName", "Success", });
+    internal_static_HeartbeatsRequest_descriptor =
+      getDescriptor().getMessageTypes().get(8);
+    internal_static_HeartbeatsRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_HeartbeatsRequest_descriptor,
+        new java.lang.String[] { "LeaderId", "HeartbeatGroups", });
+    internal_static_HeartbeatsResponse_descriptor =
+      getDescriptor().getMessageTypes().get(9);
+    internal_static_HeartbeatsResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_HeartbeatsResponse_descriptor,
+        new java.lang.String[] { "HeartbeatGroupStatuses", });
+    internal_static_AddServerRequest_descriptor =
+      getDescriptor().getMessageTypes().get(10);
     internal_static_AddServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AddServerRequest_descriptor,
         new java.lang.String[] { "NewServer", });
     internal_static_AddServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(7);
+      getDescriptor().getMessageTypes().get(11);
     internal_static_AddServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AddServerResponse_descriptor,
         new java.lang.String[] { "Status", "LeaderHint", });
     internal_static_RemoveServerRequest_descriptor =
-      getDescriptor().getMessageTypes().get(8);
+      getDescriptor().getMessageTypes().get(12);
     internal_static_RemoveServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_RemoveServerRequest_descriptor,
         new java.lang.String[] { "OldServer", });
     internal_static_RemoveServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(9);
+      getDescriptor().getMessageTypes().get(13);
     internal_static_RemoveServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_RemoveServerResponse_descriptor,
         new java.lang.String[] { "Status", "LeaderHint", });
     internal_static_InstallSnapshotRequest_descriptor =
-      getDescriptor().getMessageTypes().get(10);
+      getDescriptor().getMessageTypes().get(14);
     internal_static_InstallSnapshotRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotRequest_descriptor,
         new java.lang.String[] { "Term", "LeaderId", "LastIncludedIndex", "LastIncludedTerm", "Data", "Done", });
     internal_static_InstallSnapshotResponse_descriptor =
-      getDescriptor().getMessageTypes().get(11);
+      getDescriptor().getMessageTypes().get(15);
     internal_static_InstallSnapshotResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_InstallSnapshotResponse_descriptor,
         new java.lang.String[] { "Term", });
     internal_static_MetadataRequest_descriptor =
-      getDescriptor().getMessageTypes().get(12);
+      getDescriptor().getMessageTypes().get(16);
     internal_static_MetadataRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MetadataRequest_descriptor,
         new java.lang.String[] { "MessageType", "GroupName", });
     internal_static_AddGroupRequest_descriptor =
-      getDescriptor().getMessageTypes().get(13);
+      getDescriptor().getMessageTypes().get(17);
     internal_static_AddGroupRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AddGroupRequest_descriptor,
         new java.lang.String[] { "LeaderIdSuggestion", "StateMachine", "ElectionTimeoutMin", "ElectionTimeoutMax", "Passive", "PersistentStorage", "SegmentSize", "Nodes", });
     internal_static_AddGroupResponse_descriptor =
-      getDescriptor().getMessageTypes().get(14);
+      getDescriptor().getMessageTypes().get(18);
     internal_static_AddGroupResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_AddGroupResponse_descriptor,
