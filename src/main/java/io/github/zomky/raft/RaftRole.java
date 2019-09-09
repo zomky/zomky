@@ -1,5 +1,6 @@
 package io.github.zomky.raft;
 
+import com.google.protobuf.ByteString;
 import io.github.zomky.Cluster;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 
 public interface RaftRole {
 
@@ -47,19 +49,30 @@ public interface RaftRole {
                     // 3. If an existing entry conflicts with a new one (same index
                     //    but different terms), delete the existing entry and all that
                     //    follow it
-                    if (raftStorage.getLastIndexedTerm().getIndex() > appendEntriesRequest.getPrevLogIndex()) {
-                        raftStorage.truncateFromIndex(appendEntriesRequest.getPrevLogIndex() + 1);
-                    }
-
                     // 4. Append any new entries not already in the log
-                    appendEntriesRequest.getEntriesList().forEach(entry -> {
+                    long lastIndex = raftStorage.getLastIndexedTerm().getIndex();
+                    long currentIndex = appendEntriesRequest.getPrevLogIndex();
+
+                    Iterator<ByteString> iterator = appendEntriesRequest.getEntriesList().iterator();
+                    boolean truncated = false;
+                    while (iterator.hasNext()) {
+                        currentIndex++;
+                        ByteString entry = iterator.next();
                         ByteBuffer byteBuffer = entry.asReadOnlyByteBuffer();
                         LogEntry logEntry = LogEntrySerializer.deserialize(byteBuffer);
+                        if (currentIndex <= lastIndex && !truncated) {
+                            if (logEntry.getTerm() == raftStorage.getTermByIndex(currentIndex)) {
+                                continue;
+                            } else {
+                                raftStorage.truncateFromIndex(currentIndex);
+                                truncated = true;
+                            }
+                        }
                         IndexedLogEntry indexedLogEntry = raftStorage.append(logEntry);
                         raftGroup.apply(indexedLogEntry);
-                    });
+                    }
 
-                    //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+                    // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
                     if (appendEntriesRequest.getLeaderCommit() > raftGroup.getCommitIndex()) {
                         raftGroup.setCommitIndex(Math.min(appendEntriesRequest.getLeaderCommit(), raftStorage.getLastIndexedTerm().getIndex()));
                     }

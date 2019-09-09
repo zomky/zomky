@@ -531,8 +531,8 @@ class FollowerRoleTest {
         initFollower();
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
-        raftStorage.append(commandEntry(1,  "val2"));
-        raftStorage.append(commandEntry(1,  "val3"));
+        raftStorage.append(commandEntry(2,  "val2"));
+        raftStorage.append(commandEntry(3,  "val3"));
 
         AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
                 .setPrevLogIndex(1)
@@ -550,6 +550,61 @@ class FollowerRoleTest {
                     assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(2);
                     assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val2".getBytes());
                     verify(raftGroup).setCommitIndex(2);
+                    verify(raftGroup, never()).convertToFollower(anyInt());
+                }).verifyComplete();
+    }
+
+    @Test
+    void appendEntriesOutdatedRPCReceived() {
+        initFollower();
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
+        raftStorage.append(commandEntry(1,  "val3"));
+
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(1)
+                .setPrevLogTerm(1)
+                .setTerm(1)
+                .setLeaderCommit(2)
+                .addEntries(entry(1, "val2"))
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    verify(raftGroup).appendEntriesCall();
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(3);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
+                    verify(raftGroup).setCommitIndex(2);
+                    verify(raftGroup, never()).convertToFollower(anyInt());
+                }).verifyComplete();
+    }
+
+    @Test
+    void appendEntriesOutdatedHeartbeatReceived() {
+        initFollower();
+        raftStorage.update(1, 0);
+        raftStorage.append(commandEntry(1,  "val1"));
+        raftStorage.append(commandEntry(1,  "val2"));
+        raftStorage.append(commandEntry(1,  "val3"));
+
+        AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.newBuilder()
+                .setPrevLogIndex(1)
+                .setPrevLogTerm(1)
+                .setTerm(1)
+                .setLeaderCommit(100)
+                .build();
+
+        StepVerifier.create(followerRole.onAppendEntries(cluster, raftGroup, raftStorage, appendEntriesRequest))
+                .assertNext(appendEntriesResponse -> {
+                    assertThat(appendEntriesResponse.getTerm()).isEqualTo(1);
+                    assertThat(appendEntriesResponse.getSuccess()).isEqualTo(true);
+                    verify(raftGroup).appendEntriesCall();
+                    assertThat(raftStorage.getLastIndexedTerm().getIndex()).isEqualTo(3);
+                    assertThat(((CommandEntry) raftStorage.getLastEntry().get().getLogEntry()).getValue()).isEqualTo("val3".getBytes());
+                    verify(raftGroup).setCommitIndex(3);
                     verify(raftGroup, never()).convertToFollower(anyInt());
                 }).verifyComplete();
     }
