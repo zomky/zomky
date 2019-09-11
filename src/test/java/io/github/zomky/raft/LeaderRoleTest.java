@@ -8,10 +8,7 @@ import io.github.zomky.transport.Sender;
 import io.github.zomky.transport.protobuf.AddServerRequest;
 import io.github.zomky.transport.protobuf.AppendEntriesRequest;
 import io.github.zomky.transport.protobuf.AppendEntriesResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -22,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.retry.Repeat;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -38,8 +34,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class LeaderRoleTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRoleTest.class);
-
-    private static final Repeat<Object> NO_REPEAT = Repeat.onlyIf(objectRepeatContext -> false);
 
     LeaderRole leaderRole;
 
@@ -63,16 +57,22 @@ class LeaderRoleTest {
         Mockito.lenient().when(cluster.onSenderUnavailable()).thenReturn(Flux.empty());
     }
 
+    @AfterEach
+    void tearDown() {
+        leaderRole.onExit(cluster, raftGroup, raftStorage);
+    }
+
     @Test
-    void leaderEmptyLog() {
+    void leaderEmptyLog() throws InterruptedException {
         // given
-        leaderRole = new LeaderRole(Repeat.times(0));
+        leaderRole = new LeaderRole(Duration.ZERO, Duration.ofSeconds(1));
         raftStorage.update(1, 0);
         given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
 
         // when
         leaderRole.onInit(cluster, raftGroup, raftStorage);
+        Thread.sleep(100);
 
         // then
         ArgumentCaptor<AppendEntriesRequest> argument = ArgumentCaptor.forClass(AppendEntriesRequest.class);
@@ -84,9 +84,9 @@ class LeaderRoleTest {
     }
 
     @Test
-    void leaderAtStartupAssumesFollowerHasAllEntries() {
+    void leaderAtStartupAssumesFollowerHasAllEntries() throws InterruptedException {
         // given
-        leaderRole = new LeaderRole(NO_REPEAT);
+        leaderRole = new LeaderRole(Duration.ZERO, Duration.ofSeconds(1));
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
@@ -95,6 +95,7 @@ class LeaderRoleTest {
 
         // when
         leaderRole.onInit(cluster, raftGroup, raftStorage);
+        Thread.sleep(100);
 
         // then
         List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(1));
@@ -104,7 +105,7 @@ class LeaderRoleTest {
     @Test
     void leaderEmptyAppendEntry() throws InterruptedException {
         // given
-        leaderRole = new LeaderRole(Repeat.once().fixedBackoff(Duration.ofMillis(20)));
+        leaderRole = new LeaderRole(Duration.ZERO, Duration.ZERO);
         raftStorage.update(1, 0);
         given(raftGroup.availableSenders()).willReturn(Flux.just(sender1));
         given(sender1.appendEntries(eq(raftGroup), any(AppendEntriesRequest.class))).willReturn(appendEntriesResponseSuccess(1));
@@ -112,28 +113,39 @@ class LeaderRoleTest {
 
         // when
         raftStorage.append(commandEntry(1,  "val1"));
+        leaderRole.markNewEntry(1L, System.currentTimeMillis());
+        Thread.sleep(100);
         raftStorage.append(commandEntry(1,  "val2"));
+        raftStorage.append(commandEntry(1,  "val3"));
+        leaderRole.markNewEntry(3L, System.currentTimeMillis());
+        Thread.sleep(100);
 
         // then
-        Thread.sleep(50);
-
         List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(2));
-        assertAppendEntriesRequest(0, 0, appendEntriesHistory, 1);
-        assertAppendEntriesRequest(0, 2, appendEntriesHistory, 2);
+        assertAppendEntriesRequest(0, 1, appendEntriesHistory, 1);
+        assertAppendEntriesRequest(1, 2, appendEntriesHistory, 2);
 
-        AppendEntriesRequest appendEntriesRequest = appendEntriesHistory.get(1);
+        AppendEntriesRequest appendEntriesRequest = appendEntriesHistory.get(0);
 
         assertThat(appendEntriesRequest.getEntriesList().stream()
                 .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
                 .map(CommandEntry::getValue)
                 .map(String::new)
-                .collect(Collectors.toList())).containsExactly("val1", "val2");
+                .collect(Collectors.toList())).containsExactly("val1");
+
+        appendEntriesRequest = appendEntriesHistory.get(1);
+
+        assertThat(appendEntriesRequest.getEntriesList().stream()
+                .map(byteString -> deserialize(byteString.asReadOnlyByteBuffer(), CommandEntry.class))
+                .map(CommandEntry::getValue)
+                .map(String::new)
+                .collect(Collectors.toList())).containsExactly("val2", "val3");
     }
 
     @Test
     void leaderLogNotEmptyAppendEntry() throws InterruptedException {
         // given
-        leaderRole = new LeaderRole(Repeat.once().fixedBackoff(Duration.ofMillis(100)));
+        leaderRole = new LeaderRole(Duration.ZERO, Duration.ofSeconds(1));
         raftStorage.update(1, 0);
         raftStorage.append(commandEntry(1,  "val1"));
         raftStorage.append(commandEntry(1,  "val2"));
@@ -142,10 +154,12 @@ class LeaderRoleTest {
         leaderRole.onInit(cluster, raftGroup, raftStorage);
 
         // when
+        Thread.sleep(50);
         raftStorage.append(commandEntry(1,  "val3"));
+        leaderRole.markNewEntry(3L, System.currentTimeMillis());
 
         // then
-        Thread.sleep(120);
+        Thread.sleep(100);
 
         List<AppendEntriesRequest> appendEntriesHistory = appendEntriesHistory(times(2));
         assertAppendEntriesRequest(2, 0, appendEntriesHistory, 1);

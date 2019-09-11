@@ -97,6 +97,8 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
                     if (raftGroup.quorum() == 1) {
                         raftGroup.setCommitIndex(logEntryInfo.getIndex());
                     }
+                    // maximum 256 in-flight entries
+                    raftGroup.markNewEntry(logEntryInfo.getIndex(), logEntryInfo.getLogEntry().getTimestamp());
                 } finally {
                     raftGroup.appendUnlock();
                 }

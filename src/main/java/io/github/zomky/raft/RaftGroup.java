@@ -61,9 +61,9 @@ public class RaftGroup {
 
     Lock appendLock = new ReentrantLock();
     Lock configurationLock = new ReentrantLock();
-    DirectProcessor<Long> directProcessor = DirectProcessor.create();
-    FluxSink<Long> sink = directProcessor.sink();
-    Disposable disposable;
+    DirectProcessor<Long> advanceStateMachineProcessor = DirectProcessor.create();
+    FluxSink<Long> advanceStateMachineSink = advanceStateMachineProcessor.sink();
+    Disposable advanceStateMachineDisposable;
 
     public void appendLock() {
         appendLock.lock();
@@ -78,7 +78,8 @@ public class RaftGroup {
     }
 
     void onInit() {
-        disposable = Flux.from(directProcessor)
+        advanceStateMachineDisposable = Flux.from(advanceStateMachineProcessor)
+                .onBackpressureDrop()
                 .doOnNext(i -> advanceStateMachine())
                 .subscribeOn(Schedulers.parallel())
                 .subscribe();
@@ -87,8 +88,12 @@ public class RaftGroup {
     }
 
     public void onExit() {
-        disposable.dispose();
-        sink.complete();
+        advanceStateMachineDisposable.dispose();
+        advanceStateMachineSink.complete();
+    }
+
+    boolean hasClients() {
+        return !lastAppliedListeners.isEmpty();
     }
 
     public RaftStorage getRaftStorage() {
@@ -237,7 +242,7 @@ public class RaftGroup {
             previousConfigurationId = currentConfigurationId;
         }
         confirmListeners.forEach(zomkyStorageConfirmListener -> zomkyStorageConfirmListener.handle(commitIndex));
-        sink.next(commitIndex);
+        advanceStateMachineSink.next(commitIndex);
     }
 
     public Duration nextElectionTimeout() {
@@ -264,6 +269,10 @@ public class RaftGroup {
 
     public Mono<RemoveServerResponse> onRemoveServer(RemoveServerRequest removeServerRequest) {
         return nodeState.onRemoveServer(cluster, this, this.raftStorage, removeServerRequest);
+    }
+
+    public void markNewEntry(long index, long timestamp) {
+        nodeState.markNewEntry(index, timestamp);
     }
 
     public void addConfigurationChangeListener(ConfigurationChangeListener configurationChangeListener) {
@@ -359,7 +368,6 @@ public class RaftGroup {
     }
 
     public void advanceStateMachine() {
-        // very inefficient
         while (logStorageReader.hasNext()) {
             final IndexedLogEntry indexedLogEntry = logStorageReader.next();
             LOGGER.debug("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);

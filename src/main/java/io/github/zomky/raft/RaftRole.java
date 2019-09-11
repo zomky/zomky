@@ -172,4 +172,7 @@ public interface RaftRole {
         return Flux.error(new RaftException(String.format("[Node %s] I am not a leader!", cluster.getLocalNodeId())));
     }
 
+    default void markNewEntry(long index, long timestamp) {
+        // no-op
+    }
 }
