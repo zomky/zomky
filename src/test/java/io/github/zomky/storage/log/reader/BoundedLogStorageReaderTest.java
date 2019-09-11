@@ -37,4 +37,29 @@ class BoundedLogStorageReaderTest {
 
         assertThat(actual).containsExactly(logEntry1, logEntry2);
     }
+
+    @Test
+    void getEntriesByIndexMaxBatchSize() {
+        when(logStorageReader.hasNext()).thenReturn(true);
+        when(logStorageReader.next()).thenReturn(logEntry1, logEntry2, logEntry3);
+        when(logEntry1.getSize()).thenReturn(50);
+        when(logEntry2.getSize()).thenReturn(50);
+        when(logEntry3.getSize()).thenReturn(50);
+
+        List<IndexedLogEntry> actual = boundedLogStorageReader.getEntriesByIndex(1, 3, 100);
+
+        assertThat(actual).containsExactly(logEntry1, logEntry2);
+    }
+
+    @Test
+    void getEntriesByIndexWhenEntryIsGreaterThanMaxBatchSize() {
+        when(logStorageReader.hasNext()).thenReturn(true);
+        when(logStorageReader.next()).thenReturn(logEntry1, logEntry2, logEntry3);
+        when(logEntry1.getSize()).thenReturn(200);
+
+        List<IndexedLogEntry> actual = boundedLogStorageReader.getEntriesByIndex(1, 3, 100);
+
+        assertThat(actual).containsExactly(logEntry1);
+    }
+
 }

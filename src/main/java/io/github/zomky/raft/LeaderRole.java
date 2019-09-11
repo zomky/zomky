@@ -30,6 +30,7 @@ public class LeaderRole implements RaftRole {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LeaderRole.class);
 
+    private static final int MAX_BATCH_SIZE = Integer.MAX_VALUE;
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(200);
     private static final Duration DELAY_INTERVAL = Duration.ofMillis(20);
     private static final int CATCH_UP_MAX_ROUNDS = 3;
@@ -358,7 +359,7 @@ public class LeaderRole implements RaftRole {
         AppendEntriesRequest.Builder builder = AppendEntriesRequest.newBuilder();
         long lastIndex = raftStorage.getLastIndexedTerm().getIndex();
         if (lastIndex >= senderNextIndex) {
-            Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderNextIndex, lastIndex);
+            Iterable<ByteBuffer> entries = logStorageReader.getRawEntriesByIndex(senderNextIndex, lastIndex, MAX_BATCH_SIZE);
             entries.forEach(rawLogEntry -> builder.addEntries(ByteString.copyFrom(rawLogEntry))); // always copy as ByteString is immutable
         }
 
