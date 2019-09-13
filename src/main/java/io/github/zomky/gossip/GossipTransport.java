@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
-import reactor.netty.resources.LoopResources;
 import reactor.netty.udp.UdpClient;
 
 class GossipTransport {
@@ -27,6 +26,10 @@ class GossipTransport {
 
     public Flux<Ack> ping(Ping ping) {
         return client(ping)
+                .doOnNext(connection -> connection.onDispose()
+                        .doFinally(signalType -> LOGGER.debug("connection disposed"))
+                        .subscribe()
+                )
                 .flatMapMany(connection ->
                     connection.outbound()
                             .sendByteArray(Mono.just(ping.toByteArray()))
@@ -36,6 +39,7 @@ class GossipTransport {
                                     .receiveObject()
                                     .cast(DatagramPacket.class)
                                     .map(this::toAck)
+                                    .doFinally(signalType -> connection.dispose())
                             )
                 );
     }
@@ -55,7 +59,8 @@ class GossipTransport {
     private Mono<? extends Connection> client(Ping ping) {
         return UdpClient.create()
                 .port(ping.getDirect() ? ping.getDestinationNodeId() + 20000 : ping.getRequestorNodeId() + 20000)
-                .runOn(LoopResources.create("gossip-" + ping.getRequestorNodeId()))
+                .doOnConnect(s -> LOGGER.debug("connect"))
+                .doOnDisconnected(s -> LOGGER.debug("disconnect"))
                 .connect()
                 .doOnCancel(() -> {
                     LOGGER.debug("[Node {}] Probe to {} has been cancelled", ping.getInitiatorNodeId(), ping.getDestinationNodeId());
@@ -67,7 +72,7 @@ class GossipTransport {
 
     private Ack toAck(DatagramPacket datagramPacket) {
         try {
-            return Ack.parseFrom(NettyUtils.toByteArray(datagramPacket.content().retain()));
+            return Ack.parseFrom(NettyUtils.toByteArray(datagramPacket.content()));
         } catch (InvalidProtocolBufferException e) {
             throw new GossipException("datagram packet cannot be converted to Ack", e);
         }
