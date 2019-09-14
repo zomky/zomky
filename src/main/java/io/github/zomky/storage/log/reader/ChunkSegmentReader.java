@@ -156,6 +156,8 @@ public class ChunkSegmentReader implements SegmentReader {
             nextPosition = position > 0 ? position : SegmentHeader.SIZE;
             segmentChannel.position(nextPosition);
             this.nextIndex = nextEntry;
+            this.current = null;
+            this.next = null;
         } catch (IOException e) {
             throw new StorageException(e);
         }

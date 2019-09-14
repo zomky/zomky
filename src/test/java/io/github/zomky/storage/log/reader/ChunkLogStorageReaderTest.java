@@ -61,7 +61,6 @@ class ChunkLogStorageReaderTest {
             assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(100);
-        assertThat(logStorageReader.hasNext()).isFalse();
     }
 
     @Test
@@ -78,7 +77,6 @@ class ChunkLogStorageReaderTest {
             assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(maxIndex);
-        assertThat(logStorageReader.hasNext()).isFalse();
     }
 
     @Test
@@ -104,13 +102,9 @@ class ChunkLogStorageReaderTest {
             assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(100);
-
-
-        assertThat(logStorageReader.hasNext()).isFalse();
     }
 
-    @Test // TODO
-    @Disabled
+    @Test
     void resetLogThatHasManySegmentsSameSegment() {
         logStorageReader = logStorage.openReader(1);
 
@@ -133,9 +127,46 @@ class ChunkLogStorageReaderTest {
             assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
         }
         assertThat(i).isEqualTo(100);
+    }
 
+    @Test
+    void resetLogThatHasManySegmentsBackwards() {
+        logStorageReader = logStorage.openReader(1);
 
-        assertThat(logStorageReader.hasNext()).isFalse();
+        long timestamp = System.currentTimeMillis();
+        appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
+        int i = 0;
+        while (logStorageReader.hasNext() && i < 30) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        }
+        assertThat(i).isEqualTo(30);
+
+        logStorageReader.reset(22);
+
+        i = 21;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        }
+        assertThat(i).isEqualTo(100);
+    }
+
+    @Test
+    void openReaderWithIndexGreaterThanOneThatHasManySegments() {
+        long timestamp = System.currentTimeMillis();
+        appendEntries(1, 100, entry -> timestamp + entry, entry -> "abc" + entry);
+
+        logStorageReader = logStorage.openReader(22);
+        int i = 21;
+        while (logStorageReader.hasNext()) {
+            i++;
+            String value = "abc" + i;
+            assertIndexLogEntry(logStorageReader.next(), commandEntry(i, timestamp + i, value), i, LogEntry.SIZE + 1 + value.length());
+        }
+        assertThat(i).isEqualTo(100);
     }
 
     private void assertIndexLogEntry(IndexedLogEntry actual, CommandEntry expectedEntry, long expectedIndex, int expectedSize) {
