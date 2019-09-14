@@ -1,16 +1,13 @@
 == Overview
 
-=== RSocket Raft
+=== Zomky
+Zomky is a Java library build on top of RSocket. It provides implementation of Gossip and Raft distributed systems protocols.
 
-Under development
+=== Dependencies
 
 [source,java,indent=0]
 ----
-include::{test-examples}/RsocketRaftDocumentation.java[tag=overview]
+include::{test-examples}/ZomkyDocumentation.java[tag=overview]
 ----
-<1> RSocket Raft
-
-
-
-
-
+<1> Bob
+<2> Alice

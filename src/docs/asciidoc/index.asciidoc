@@ -1,4 +1,4 @@
-= Rsocket-raft
+= Zomky
 Paweł Maćkowski <pawel.piotr.mackowski@gmail.com>
 0.1.0.BUILD-SNAPSHOT
 :doctype: book
@@ -8,6 +8,6 @@ Paweł Maćkowski <pawel.piotr.mackowski@gmail.com>
 :icons: font
 :hide-uri-scheme:
 
-:test-examples: ../../test/java/io/github/pmackowski/rsocket/raft/docs
+:test-examples: ../../test/java/io/github/zomky/docs
 
 include::overview.adoc[]
