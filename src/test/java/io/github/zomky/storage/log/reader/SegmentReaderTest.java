@@ -9,21 +9,25 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.BufferOverflowException;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class ChunkSegmentReaderTest {
+class SegmentReaderTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ChunkSegmentReaderTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SegmentReaderTest.class);
 
     private static final int SEGMENT_SIZE = 8 * 1024;
 
@@ -33,7 +37,7 @@ class ChunkSegmentReaderTest {
     Segments segments;
     Segment firstSegment;
     SegmentWriter segmentWriter;
-    ChunkSegmentReader segmentReader;
+    SegmentReader segmentReader;
 
     @BeforeEach
     void setUp() {
@@ -56,9 +60,17 @@ class ChunkSegmentReaderTest {
         segmentWriter.release();
     }
 
-    @Test
-    void noLogEntries() {
-        segmentReader = new ChunkSegmentReader(firstSegment, SEGMENT_SIZE / 4);
+    private static Stream<Function<Segment,SegmentReader>> noLogEntriesReaders() {
+        return Stream.of(
+                MappedSegmentReader::new,
+                segment -> new ChunkSegmentReader(segment, SEGMENT_SIZE / 4)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("noLogEntriesReaders")
+    void noLogEntries(Function<Segment,SegmentReader> func) {
+        segmentReader = func.apply(firstSegment);
 
         assertThat(segmentReader.hasNext()).isFalse();
         assertThat(segmentReader.hasNext()).isFalse();
@@ -66,14 +78,21 @@ class ChunkSegmentReaderTest {
                 .isInstanceOf(NoSuchElementException.class);
     }
 
-    @Test
-    void logEntriesPreInitialized() {
+    private static Stream<Function<Segment,SegmentReader>> logEntriesPreInitializedReaders() {
+        return Stream.of(
+                MappedSegmentReader::new,
+                segment -> new ChunkSegmentReader(segment, SEGMENT_SIZE / 4)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logEntriesPreInitializedReaders")
+    void logEntriesPreInitialized(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
-        int chunkSize = SEGMENT_SIZE / 4;
-        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
+        segmentReader = func.apply(firstSegment);
 
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(1);
         IntStream.rangeClosed(1, numberOfEntries).forEach(i -> {
@@ -86,15 +105,22 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(numberOfEntries);
     }
 
-    @Test
-    void logEntriesPreInitializedAndCurrentMaxIndexSupplierIsProvided() {
+    private static Stream<Function<Segment,SegmentReader>> logEntriesPreInitializedAndCurrentMaxIndexSupplierIsProvidedReaders() {
+        return Stream.of(
+                segment -> new MappedSegmentReader(segment, () -> 5L),
+                segment -> new ChunkSegmentReader(segment, SEGMENT_SIZE / 4, () -> 5L)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logEntriesPreInitializedAndCurrentMaxIndexSupplierIsProvidedReaders")
+    void logEntriesPreInitializedAndCurrentMaxIndexSupplierIsProvided(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
-        int chunkSize = SEGMENT_SIZE / 4;
         int maxIndex = 5;
-        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize, () -> (long) maxIndex);
+        segmentReader = func.apply(firstSegment);
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(1);
 
         IntStream.rangeClosed(1, maxIndex).forEach(i -> {
@@ -107,15 +133,22 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.hasNext()).isFalse();
     }
 
-    @Test
-    void logEntriesPreInitializedAndIndexGreaterThanFirstIndex() {
+    private static Stream<Function<Segment,SegmentReader>> logEntriesPreInitializedAndIndexGreaterThanFirstIndexProvidedReaders() {
+        return Stream.of(
+                segment -> new MappedSegmentReader(segment, 5L),
+                segment -> new ChunkSegmentReader(segment, 5L, SEGMENT_SIZE / 4)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logEntriesPreInitializedAndIndexGreaterThanFirstIndexProvidedReaders")
+    void logEntriesPreInitializedAndIndexGreaterThanFirstIndex(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
-        int chunkSize = SEGMENT_SIZE / 4;
         int index = 5;
-        segmentReader = new ChunkSegmentReader(firstSegment, index, chunkSize);
+        segmentReader = func.apply(firstSegment);
 
         assertThat(segmentReader.getCurrentIndex()).isEqualTo(5);
         IntStream.rangeClosed(index, numberOfEntries).forEach(i -> {
@@ -127,17 +160,23 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.hasNext()).isFalse();
     }
 
+    private static Stream<Function<Segment,SegmentReader>> logEntriesPreInitializedAndIndexGreaterThanFirstIndexAndCurrentMaxIndexSupplierIsProvidedReaders() {
+        return Stream.of(
+                segment -> new MappedSegmentReader(segment, 5L, () -> 7L),
+                segment -> new ChunkSegmentReader(segment, 5L, SEGMENT_SIZE / 4, () -> 7L)
+        );
+    }
 
-    @Test
-    void logEntriesPreInitializedAndIndexGreaterThanFirstIndexAndCurrentMaxIndexSupplierIsProvided() {
+    @ParameterizedTest
+    @MethodSource("logEntriesPreInitializedAndIndexGreaterThanFirstIndexAndCurrentMaxIndexSupplierIsProvidedReaders")
+    void logEntriesPreInitializedAndIndexGreaterThanFirstIndexAndCurrentMaxIndexSupplierIsProvided(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
         appendEntries(numberOfEntries, entry -> timestamp + entry, entry -> "abc" + entry);
 
-        int chunkSize = SEGMENT_SIZE / 4;
         int index = 5;
         int maxIndex = 7;
-        segmentReader = new ChunkSegmentReader(firstSegment, index, chunkSize, () -> (long) maxIndex);
+        segmentReader = func.apply(firstSegment);
 
         IntStream.rangeClosed(index, maxIndex).forEach(i -> {
             assertThat(segmentReader.hasNext()).isTrue();
@@ -231,8 +270,16 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.hasNext()).isFalse();
     }
 
-    @Test
-    void logEntriesFullyPreInitialized() {
+    private static Stream<Function<Segment,SegmentReader>> logEntriesFullyPreInitializedReaders() {
+        return Stream.of(
+                MappedSegmentReader::new,
+                segment -> new ChunkSegmentReader(segment, 104)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logEntriesFullyPreInitializedReaders")
+    void logEntriesFullyPreInitialized(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int entryPositionSize = Integer.BYTES;
 
@@ -247,8 +294,7 @@ class ChunkSegmentReaderTest {
             LOGGER.info("Segment size without header {}. Written data size {}", SEGMENT_SIZE - SegmentHeader.SIZE, totalSize);
         }
 
-        int chunkSize = 104;
-        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
+        segmentReader = func.apply(firstSegment);
 
         int j = 1;
         while (segmentReader.hasNext()) {
@@ -259,8 +305,16 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.hasNext()).isFalse();
     }
 
-    @Test
-    void logEntriesFullyPreInitializedAndReadLastCoupleOfEntries() {
+    private static Stream<BiFunction<Segment,Long, SegmentReader>> logEntriesFullyPreInitializedAndReadLastCoupleOfEntriesReaders() {
+        return Stream.of(
+                MappedSegmentReader::new,
+                (segment,index) -> new ChunkSegmentReader(segment, index,SEGMENT_SIZE / 4)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("logEntriesFullyPreInitializedAndReadLastCoupleOfEntriesReaders")
+    void logEntriesFullyPreInitializedAndReadLastCoupleOfEntries(BiFunction<Segment,Long, SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int entryPositionSize = Integer.BYTES;
 
@@ -277,9 +331,8 @@ class ChunkSegmentReaderTest {
             LOGGER.info("Segment size without header {}. Written data size {}. Last index {}", SEGMENT_SIZE - SegmentHeader.SIZE, totalSize, lastIndex);
         }
 
-        int chunkSize = SEGMENT_SIZE / 4;
         int lastEntries = 5;
-        segmentReader = new ChunkSegmentReader(firstSegment, lastIndex - lastEntries, chunkSize);
+        segmentReader = func.apply(firstSegment, lastIndex - lastEntries);
 
         long j = lastIndex - lastEntries;
         while (segmentReader.hasNext()) {
@@ -332,13 +385,21 @@ class ChunkSegmentReaderTest {
         assertThat(segmentReader.hasNext()).isFalse();
     }
 
-    @Test
-    void logEntriesAddedAfterReaderInitialization() {
+    private static Stream<Function<Segment,SegmentReader>> logEntriesAddedAfterReaderInitializationReaders() {
+        return Stream.of(
+                MappedSegmentReader::new,
+                segment -> new ChunkSegmentReader(segment, 2 * 1024)
+        );
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("logEntriesAddedAfterReaderInitializationReaders")
+    void logEntriesAddedAfterReaderInitialization(Function<Segment,SegmentReader> func) {
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 10;
 
-        int chunkSize = 2 * 1024;
-        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
+        segmentReader = func.apply(firstSegment);
 
         assertThat(segmentReader.hasNext()).isFalse();
 

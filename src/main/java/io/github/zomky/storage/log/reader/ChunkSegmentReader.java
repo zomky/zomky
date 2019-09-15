@@ -55,9 +55,8 @@ public class ChunkSegmentReader implements SegmentReader {
         this.segment = segment;
         this.segmentChannel = openChannel(segment.getSegmentPath());
         this.segmentIndexChannel = openChannel(segment.getSegmentIndexPath());
-        this.nextIndex = (int) (index - segment.getFirstIndex() + 1);
         this.currentMaxIndexSupplier = currentMaxIndexSupplier;
-        resetLocal(nextIndex);
+        reset(index);
     }
 
     @Override

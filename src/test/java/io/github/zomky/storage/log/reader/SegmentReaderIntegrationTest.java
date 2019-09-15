@@ -25,9 +25,9 @@ import java.util.function.Function;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-public class ChunkSegmentReaderIntegrationTest {
+class SegmentReaderIntegrationTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ChunkSegmentReaderTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SegmentReaderIntegrationTest.class);
 
     private static final int SEGMENT_SIZE = 32;
 
@@ -37,7 +37,7 @@ public class ChunkSegmentReaderIntegrationTest {
     Segments segments;
     Segment firstSegment;
     SegmentWriter segmentWriter;
-    ChunkSegmentReader segmentReader;
+    SegmentReader segmentReader;
 
     @BeforeEach
     void setUp() {
@@ -49,7 +49,6 @@ public class ChunkSegmentReaderIntegrationTest {
         );
         firstSegment = segments.getLastSegment();
         segmentWriter = new SegmentWriter(firstSegment);
-
     }
 
     @AfterEach
@@ -61,14 +60,23 @@ public class ChunkSegmentReaderIntegrationTest {
     }
 
     @Test
-    void concurrentWriteAndRead() {
+    void concurrentWriteAndReadForMappedReader() {
+        MappedSegmentReader segmentReader = new MappedSegmentReader(firstSegment);
+        concurrentWriteAndRead(segmentReader);
+    }
+
+    @Test
+    void concurrentWriteAndReadForChunkedReader() {
+        int chunkSize = 4 * 1024;
+        ChunkSegmentReader segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
+        concurrentWriteAndRead(segmentReader);
+    }
+
+    private void concurrentWriteAndRead(SegmentReader segmentReader) {
         final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(2);
 
         long timestamp = System.currentTimeMillis();
         int numberOfEntries = 1000_000;
-
-        int chunkSize = 4 * 1024;
-        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
 
         // READER
         final AtomicInteger j = new AtomicInteger(0);
@@ -119,6 +127,5 @@ public class ChunkSegmentReaderIntegrationTest {
     private IndexedLogEntry appendEntry(int i, Function<Integer, Long> timestampFunction, Function<Integer, String> valueFunction) {
         return segmentWriter.appendEntry(commandEntry(i, timestampFunction.apply(i), valueFunction.apply(i)));
     }
-
 
 }
