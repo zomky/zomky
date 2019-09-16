@@ -9,7 +9,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
-class StateMachineUtils {
+public class StateMachineUtils {
 
     static final String IO_GITHUB_ZOMKY = "io.github.zomky";
 
@@ -31,7 +31,7 @@ class StateMachineUtils {
         return result;
     }
 
-    static Map<String, StateMachineEntryConverter> stateMachineConverters() {
+    public static Map<String, StateMachineEntryConverter> stateMachineConverters() {
         Map<String, StateMachineEntryConverter> result = new HashMap<>();
         Reflections reflections = new Reflections(IO_GITHUB_ZOMKY);
         reflections.getSubTypesOf(StateMachineEntryConverter.class).forEach(type -> {

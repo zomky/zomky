@@ -23,14 +23,14 @@ public class KVStateMachine implements StateMachine<ByteBuffer> {
     }
 
     @Override
-    public ByteBuffer applyLogEntry(LogEntry entry) {
+    public ByteBuffer applyLogEntry(CommandEntry entry) {
         try {
-            CommandRequest commandRequest = CommandRequest.parseFrom(((CommandEntry) entry).getValue());
+            CommandRequest commandRequest = CommandRequest.parseFrom(entry.getValue());
             LOGGER.debug("[State machine({}) {}] [PUT] {} = {}", number, nodeId, commandRequest.getKey(), commandRequest.getValue());
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
-        return ByteBuffer.wrap(((CommandEntry) entry).getValue());
+        return ByteBuffer.wrap(entry.getValue());
     }
 
 }

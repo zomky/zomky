@@ -30,7 +30,9 @@ public class KVStoreClient {
         return leaderMono.flatMapMany(leader -> leader.requestChannel(payloads))
                          .map(payload -> {
                             try {
-                                return CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                                final CommandRequest commandRequest = CommandRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                                payload.release();
+                                return commandRequest;
                             } catch (InvalidProtocolBufferException e) {
                                 throw new RaftException(e);
                             }

@@ -372,7 +372,7 @@ public class RaftGroup {
             final IndexedLogEntry indexedLogEntry = logStorageReader.next();
             LOGGER.debug("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
             if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
-                ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry(indexedLogEntry.getLogEntry());
+                ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry((CommandEntry) indexedLogEntry.getLogEntry());
                 lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
                 LOGGER.debug("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
             }

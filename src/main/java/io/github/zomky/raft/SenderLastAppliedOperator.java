@@ -4,6 +4,7 @@ import io.github.zomky.listener.LastAppliedListener;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.CommandEntry;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
+import io.github.zomky.utils.NettyUtils;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
@@ -14,8 +15,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
 import reactor.core.publisher.Operators;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
@@ -50,7 +51,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
         private RaftGroup raftGroup;
         private RaftStorage raftStorage;
         private LastAppliedListener lastAppliedListener;
-        private final ConcurrentMap<Long, Payload> unconfirmed = new ConcurrentHashMap<>();
+        private final Set<Long> inFlight = ConcurrentHashMap.newKeySet();
         private Subscription subscription;
 
         public PublishLastAppliedSubscriber(Subscriber<? super Payload> subscriber, RaftGroup raftGroup, RaftStorage raftStorage) {
@@ -64,11 +65,11 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             if (Operators.validate(this.subscription, subscription)) {
                 lastAppliedListener = (index, response) -> {
                     try {
-                        Payload payload = unconfirmed.remove(index);
-                        if (payload != null) {
-                            subscriber.onNext(ByteBufPayload.create(response, payload.sliceData())); //TODO payload.sliceData() in metadata ???
+                        boolean removed = inFlight.remove(index);
+                        if (removed) {
+                            subscriber.onNext(ByteBufPayload.create(response));
                         }
-                        if (unconfirmed.size() == 0) {
+                        if (inFlight.size() == 0) {
                             maybeComplete();
                         }
                     } catch (Exception e) {
@@ -87,13 +88,14 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
             if (checkComplete(payload)) {
                 return;
             }
-
             try {
-                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), raftGroup.getRaftConfiguration().getStateMachineEntryConverter().convert(payload));
+                byte[] value = NettyUtils.toByteArray(payload.sliceData());
+                payload.release();
+                CommandEntry commandEntry = new CommandEntry(raftStorage.getTerm(), System.currentTimeMillis(), value);
                 raftGroup.appendLock();
                 try {
                     IndexedLogEntry logEntryInfo = raftStorage.append(commandEntry);
-                    unconfirmed.putIfAbsent(logEntryInfo.getIndex(), payload);
+                    inFlight.add(logEntryInfo.getIndex());
                     if (raftGroup.quorum() == 1) {
                         raftGroup.setCommitIndex(logEntryInfo.getIndex());
                     }
@@ -120,7 +122,7 @@ public class SenderLastAppliedOperator extends FluxOperator<Payload, Payload> {
 
         @Override
         public void onComplete() {
-            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && unconfirmed.isEmpty()) {
+            if (state.compareAndSet(SubscriberState.ACTIVE, SubscriberState.OUTBOUND_DONE) && inFlight.isEmpty()) {
                 maybeComplete();
             }
         }
