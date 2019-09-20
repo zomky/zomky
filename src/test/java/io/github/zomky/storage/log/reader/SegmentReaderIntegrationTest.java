@@ -53,22 +53,23 @@ class SegmentReaderIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        segments.release();
-        if (segmentReader != null)
-            segmentReader.close();
         segmentWriter.release();
+        if (segmentReader != null) {
+            segmentReader.close();
+        }
+        segments.release();
     }
 
     @Test
     void concurrentWriteAndReadForMappedReader() {
-        MappedSegmentReader segmentReader = new MappedSegmentReader(firstSegment);
+        segmentReader = new MappedSegmentReader(firstSegment);
         concurrentWriteAndRead(segmentReader);
     }
 
     @Test
     void concurrentWriteAndReadForChunkedReader() {
         int chunkSize = 4 * 1024;
-        ChunkSegmentReader segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
+        segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
         concurrentWriteAndRead(segmentReader);
     }
 
