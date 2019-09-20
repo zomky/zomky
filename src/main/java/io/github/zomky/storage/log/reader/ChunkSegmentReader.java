@@ -84,7 +84,6 @@ public class ChunkSegmentReader extends AbstractSegmentReader {
             if (entrySize > remaining - Integer.BYTES) {
                 segmentBuffer.reset();
                 ByteBuffer slice = segmentBuffer.slice();
-                int currentChunkSize = chunkSize + slice.capacity();
                 segmentBuffer.clear();
                 segmentBuffer.put(slice);
                 segmentChannel.read(segmentBuffer, nextPosition + remaining);
@@ -95,12 +94,12 @@ public class ChunkSegmentReader extends AbstractSegmentReader {
                     next = null;
                     return;
                 }
-                if (entrySize > currentChunkSize - Integer.BYTES) { // entry bigger than chunk size
-                    ByteBuffer entryBuffer = ByteBuffer.allocate(entrySize); // TODO expand existing one ?
-                    segmentChannel.read(entryBuffer, nextPosition + Integer.BYTES);
-                    entryBuffer.flip();
-                    readEntry(entryBuffer, entrySize);
-                    return;
+                if (entrySize > chunkSize) { // entry bigger than chunk size
+                    PlatformDependent.freeDirectBuffer(segmentBuffer);
+                    chunkSize = entrySize;
+                    segmentBuffer = ByteBuffer.allocateDirect(entrySize);
+                    segmentChannel.read(segmentBuffer, nextPosition + Integer.BYTES);
+                    segmentBuffer.flip();
                 }
             }
             readEntry(segmentBuffer, entrySize);
@@ -133,7 +132,7 @@ public class ChunkSegmentReader extends AbstractSegmentReader {
 
     private void resetLocal(int nextEntry) {
         try {
-            segmentBuffer = ByteBuffer.allocate(chunkSize);
+            segmentBuffer.clear();
             int position = getInt(segmentIndexChannel, (nextEntry-1) * Integer.BYTES);
             nextPosition = position > 0 ? position : SegmentHeader.SIZE;
             segmentChannel.position(nextPosition);
