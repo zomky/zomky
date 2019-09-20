@@ -24,7 +24,6 @@ import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -79,9 +78,8 @@ public class RaftGroup {
 
     void onInit() {
         advanceStateMachineDisposable = Flux.from(advanceStateMachineProcessor)
-                .onBackpressureDrop()
-                .doOnNext(i -> advanceStateMachine())
-                .subscribeOn(Schedulers.parallel())
+                .onBackpressureBuffer()
+                .doOnNext(this::advanceStateMachine)
                 .subscribe();
 
         nodeState.onInit(cluster, this, raftStorage);
@@ -367,14 +365,19 @@ public class RaftGroup {
         }
     }
 
-    public void advanceStateMachine() {
-        while (logStorageReader.hasNext()) {
-            final IndexedLogEntry indexedLogEntry = logStorageReader.next();
-            LOGGER.debug("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
-            if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
-                ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry((CommandEntry) indexedLogEntry.getLogEntry());
-                lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
-                LOGGER.debug("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
+    private void advanceStateMachine(long commitIndex) {
+        for (;;) {
+            boolean hasNext = logStorageReader.hasNext();
+            if (hasNext) {
+                final IndexedLogEntry indexedLogEntry = logStorageReader.next();
+                LOGGER.debug("[Server {}] advance state machine for group {}, next {}", cluster.getLocalNodeId(), groupName, indexedLogEntry);
+                if (indexedLogEntry.getLogEntry() instanceof CommandEntry) {
+                    ByteBuffer response = raftConfiguration.getStateMachine().applyLogEntry((CommandEntry) indexedLogEntry.getLogEntry());
+                    lastAppliedListeners.forEach(lastAppliedListener -> lastAppliedListener.handle(indexedLogEntry.getIndex(), Unpooled.wrappedBuffer(response)));
+                    LOGGER.debug("[Node {}, group {}] index {} has been applied to state machine", cluster.getLocalNodeId(), groupName, indexedLogEntry.getIndex());
+                }
+            } else {
+                if (logStorageReader.getCurrentIndex() >= commitIndex) break;
             }
         }
     }

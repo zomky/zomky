@@ -1,9 +1,9 @@
 package io.github.zomky.storage.log;
 
-import io.github.zomky.storage.BufferCleaner;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.LogEntry;
 import io.github.zomky.storage.log.serializer.LogEntrySerializer;
+import io.netty.util.internal.PlatformDependent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +80,8 @@ public class SegmentWriter {
         if (notReleased.getAndSet(false)) {
             segmentIndexWriter.release();
             try {
-                BufferCleaner.closeDirectBuffer(mappedSegmentBuffer);
+                mappedSegmentBuffer.force();
+                PlatformDependent.freeDirectBuffer(mappedSegmentBuffer);
             } catch (Exception e) {
                 LOGGER.error("Failed to unmap direct buffer", e);
             }
@@ -100,5 +101,9 @@ public class SegmentWriter {
             rewind(localIndex - 1);
         }
         return lastLogEntryIndex;
+    }
+
+    public void flush() {
+        mappedSegmentBuffer.force();
     }
 }

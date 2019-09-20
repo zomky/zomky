@@ -6,23 +6,19 @@ import io.github.zomky.storage.log.SegmentHeader;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.LogEntry;
 import io.github.zomky.utils.Preconditions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.util.internal.PlatformDependent;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
 import static io.github.zomky.storage.RaftStorageUtils.getInt;
 import static io.github.zomky.storage.RaftStorageUtils.openChannel;
 import static io.github.zomky.storage.log.serializer.LogEntrySerializer.deserialize;
 
-public class ChunkSegmentReader implements SegmentReader {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ChunkSegmentReader.class);
+public class ChunkSegmentReader extends AbstractSegmentReader {
 
     private Segment segment;
     private FileChannel segmentChannel;
@@ -32,8 +28,6 @@ public class ChunkSegmentReader implements SegmentReader {
     private int nextIndex;
     private int chunkSize;
 
-    private IndexedLogEntry current;
-    private IndexedLogEntry next;
     private long nextPosition;
     private Supplier<Long> currentMaxIndexSupplier;
 
@@ -56,30 +50,13 @@ public class ChunkSegmentReader implements SegmentReader {
         this.segmentChannel = openChannel(segment.getSegmentPath());
         this.segmentIndexChannel = openChannel(segment.getSegmentIndexPath());
         this.currentMaxIndexSupplier = currentMaxIndexSupplier;
+        this.segmentBuffer = ByteBuffer.allocateDirect(chunkSize);
         reset(index);
     }
 
     @Override
-    public boolean hasNext() {
-        if (next == null) {
-            readNext();
-        }
-        return next != null;
-    }
-
-    @Override
-    public IndexedLogEntry next() {
-        if (!hasNext()) {
-            throw new NoSuchElementException();
-        }
-        current = next;
-        next = null;
-        readNext();
-        return current;
-    }
-
-    private void readNext() {
-        if (nextIndex > currentMaxIndexSupplier.get() - segment.getFirstIndex() + 1) {
+    protected void readNext() {
+        if (currentMaxIndexSupplier.get() < segment.getFirstIndex() + nextIndex - 1) {
             return;
         }
         try {
@@ -98,7 +75,7 @@ public class ChunkSegmentReader implements SegmentReader {
             if (remaining >= Integer.BYTES) {
                 entrySize = segmentBuffer.getInt();
                 if (entrySize == 0) {
-                    segmentBuffer = ByteBuffer.allocate(chunkSize);
+                    segmentBuffer.clear();
                     next = null;
                     return;
                 }
@@ -108,31 +85,37 @@ public class ChunkSegmentReader implements SegmentReader {
                 segmentBuffer.reset();
                 ByteBuffer slice = segmentBuffer.slice();
                 int currentChunkSize = chunkSize + slice.capacity();
-                segmentBuffer = ByteBuffer.allocate(currentChunkSize);
+                segmentBuffer.clear();
                 segmentBuffer.put(slice);
                 segmentChannel.read(segmentBuffer, nextPosition + remaining);
                 segmentBuffer.flip();
                 entrySize = segmentBuffer.getInt();
                 if (entrySize == 0) {
-                    segmentBuffer = ByteBuffer.allocate(chunkSize);
+                    segmentBuffer.clear();
                     next = null;
                     return;
                 }
                 if (entrySize > currentChunkSize - Integer.BYTES) { // entry bigger than chunk size
-                    segmentBuffer = ByteBuffer.allocate(entrySize);
-                    segmentChannel.read(segmentBuffer, nextPosition + Integer.BYTES);
-                    segmentBuffer.flip();
+                    ByteBuffer entryBuffer = ByteBuffer.allocate(entrySize); // TODO expand existing one ?
+                    segmentChannel.read(entryBuffer, nextPosition + Integer.BYTES);
+                    entryBuffer.flip();
+                    readEntry(entryBuffer, entrySize);
+                    return;
                 }
             }
+            readEntry(segmentBuffer, entrySize);
 
-            LogEntry logEntry = deserialize(segmentBuffer, entrySize);
-            next = new IndexedLogEntry(logEntry, segment.getFirstIndex() -1 + nextIndex++, entrySize);
-            nextPosition = nextPosition + entrySize + Integer.BYTES;
         } catch (BufferUnderflowException e) {
             next = null;
         } catch (IOException e) {
             throw new StorageException(e);
         }
+    }
+
+    private void readEntry(ByteBuffer buffer, int entrySize) {
+        LogEntry logEntry = deserialize(buffer, entrySize);
+        next = new IndexedLogEntry(logEntry, segment.getFirstIndex() -1 + nextIndex++, entrySize);
+        nextPosition = nextPosition + entrySize + Integer.BYTES;
     }
 
     @Override
@@ -165,6 +148,7 @@ public class ChunkSegmentReader implements SegmentReader {
     @Override
     public void close() {
         try {
+            PlatformDependent.freeDirectBuffer(segmentBuffer);
             segmentChannel.close();
             segmentIndexChannel.close();
         } catch (IOException e) {

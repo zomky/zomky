@@ -32,7 +32,7 @@ public class ChunkLogStorageReader implements LogStorageReader {
         if (!currentSegmentReader.hasNext()) {
             Segment nextSegment = segments.getNextSegment(currentSegment.getFirstIndex());
             hasNext = false;
-            if (nextSegment != null) {
+            if (nextSegment != null && nextSegment.getFirstIndex() == getCurrentIndex() + 1) {
                 currentSegmentReader.close();
                 currentSegment = nextSegment;
                 currentSegmentReader = new ChunkSegmentReader(currentSegment, CHUNK_SIZE, currentMaxIndexSupplier);

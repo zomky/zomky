@@ -34,6 +34,7 @@ public class FileSystemRaftStorage implements RaftStorage {
     @Override
     public void commit(long commitIndex) {
         this.commitIndex = commitIndex;
+        this.logStorage.flush();
     }
 
     @Override

@@ -1,36 +1,29 @@
 package io.github.zomky.storage.log.reader;
 
-import io.github.zomky.storage.BufferCleaner;
 import io.github.zomky.storage.StorageException;
 import io.github.zomky.storage.log.Segment;
 import io.github.zomky.storage.log.SegmentHeader;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.LogEntry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.util.internal.PlatformDependent;
 
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
 import static io.github.zomky.storage.RaftStorageUtils.getInt;
 import static io.github.zomky.storage.RaftStorageUtils.openChannel;
 import static io.github.zomky.storage.log.serializer.LogEntrySerializer.deserialize;
 
-public class MappedSegmentReader implements SegmentReader {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MappedSegmentReader.class);
+// TODO should be shared with other readers and each instance use its own sliced buffer ??
+public class MappedSegmentReader extends AbstractSegmentReader {
 
     private Segment segment;
     private FileChannel segmentChannel;
     private FileChannel segmentIndexChannel;
     private MappedByteBuffer segmentBuffer;
     private int nextIndex;
-    private IndexedLogEntry current;
-    private IndexedLogEntry next;
-
     private Supplier<Long> currentMaxIndexSupplier;
 
     public MappedSegmentReader(Segment segment) {
@@ -60,29 +53,10 @@ public class MappedSegmentReader implements SegmentReader {
     }
 
     @Override
-    public boolean hasNext() {
-        if (next == null) {
-            readNext();
-        }
-        return next != null;
-    }
-
-    @Override
-    public IndexedLogEntry next() {
-        if (!hasNext()) {
-            throw new NoSuchElementException();
-        }
-        current = next;
-        next = null;
-        readNext();
-        return current;
-    }
-
-    private void readNext() {
-        if (nextIndex > currentMaxIndexSupplier.get() - segment.getFirstIndex() + 1) {
+    protected void readNext() {
+        if (currentMaxIndexSupplier.get() < segment.getFirstIndex() + nextIndex - 1) {
             return;
         }
-
         try {
             segmentBuffer.mark();
             int entrySize = segmentBuffer.getInt();
@@ -122,7 +96,7 @@ public class MappedSegmentReader implements SegmentReader {
     @Override
     public void close()  {
         try {
-            BufferCleaner.closeDirectBuffer(segmentBuffer);
+            PlatformDependent.freeDirectBuffer(segmentBuffer);
             segmentChannel.close();
             segmentIndexChannel.close();
         } catch (IOException e) {
