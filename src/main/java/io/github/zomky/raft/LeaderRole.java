@@ -47,19 +47,11 @@ public class LeaderRole implements RaftRole {
      */
     private Map<Integer, Long> nextIndex = new ConcurrentHashMap<>();
 
-    /**
-     * Reinitialized after election,
-     * index of highest log entry
-     * known to be replicated on server
-     * (initialized to 0, increases monotonically)
-     */
-    private Map<Integer, Long> matchIndex = new ConcurrentHashMap<>();
-
     private Map<Integer, Disposable> appendEntriesJobs = new ConcurrentHashMap<>();
 
     private Map<Integer, BoundedLogStorageReader> logStorageReaders = new ConcurrentHashMap<>();
 
-    private CommitIndexCalculator commitIndexCalculator;
+    private CommitIndexUpdater commitIndexUpdater;
 
     DirectProcessor<Long> newEntriesProcessor = DirectProcessor.create();
     FluxSink<Long> newEntriesSink = newEntriesProcessor.sink();
@@ -68,21 +60,21 @@ public class LeaderRole implements RaftRole {
     private volatile long lastNewEntry;
 
     public LeaderRole() {
-        this(new CommitIndexCalculator(), DELAY_INTERVAL, HEARTBEAT_TIMEOUT, CATCH_UP_MAX_ROUNDS);
+        this(new CommitIndexUpdater(), DELAY_INTERVAL, HEARTBEAT_TIMEOUT, CATCH_UP_MAX_ROUNDS);
     }
 
     public LeaderRole(int catchUpMaxRounds) {
-        this(new CommitIndexCalculator(), DELAY_INTERVAL, HEARTBEAT_TIMEOUT, catchUpMaxRounds);
+        this(new CommitIndexUpdater(), DELAY_INTERVAL, HEARTBEAT_TIMEOUT, catchUpMaxRounds);
     }
 
     public LeaderRole(Duration delayInterval, Duration heartbeatTimeout) {
-        this(new CommitIndexCalculator(), delayInterval, heartbeatTimeout, CATCH_UP_MAX_ROUNDS);
+        this(new CommitIndexUpdater(), delayInterval, heartbeatTimeout, CATCH_UP_MAX_ROUNDS);
     }
 
-    public LeaderRole(CommitIndexCalculator commitIndexCalculator, Duration delayInterval, Duration heartbeatTimeout, int catchUpMaxRounds) {
+    public LeaderRole(CommitIndexUpdater commitIndexUpdater, Duration delayInterval, Duration heartbeatTimeout, int catchUpMaxRounds) {
         this.delayInterval = delayInterval;
         this.heartbeatTimeout = heartbeatTimeout;
-        this.commitIndexCalculator = commitIndexCalculator;
+        this.commitIndexUpdater = commitIndexUpdater;
         this.catchUpMaxRounds = catchUpMaxRounds;
     }
 
@@ -260,7 +252,6 @@ public class LeaderRole implements RaftRole {
         try {
             long senderNextIndex = senderNextIndex(raftStorage);
             nextIndex.put(sender.getNodeId(), senderNextIndex);
-            matchIndex.put(sender.getNodeId(), 0L);
             appendEntriesJobs.put(sender.getNodeId(), appendEntriesJob(sender, raftStorage, cluster, raftGroup).subscribe());
             logStorageReaders.put(sender.getNodeId(), new BoundedLogStorageReader(raftStorage.openReader(senderNextIndex)));
         } catch (Exception e) {
@@ -306,15 +297,10 @@ public class LeaderRole implements RaftRole {
                                     } else {
                                         if (appendEntriesResponse.getSuccess()) {
                                             // If successful: update nextIndex and matchIndex for follower
-                                            long lastLogIndex = appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesCount();
-                                            long nextIdx = lastLogIndex + 1;
+                                            long matchIndex = appendEntriesRequest.getPrevLogIndex() + appendEntriesRequest.getEntriesCount();
+                                            long nextIdx = matchIndex + 1;
                                             nextIndex.put(sender.getNodeId(), nextIdx);
-                                            matchIndex.put(sender.getNodeId(), lastLogIndex);
-
-                                            long candidateCommitIndex = commitIndexCalculator.calculate(raftStorage, raftGroup, matchIndex, lastLogIndex);
-                                            if (candidateCommitIndex > raftGroup.getCommitIndex()) {
-                                                raftGroup.setCommitIndex(candidateCommitIndex);
-                                            }
+                                            commitIndexUpdater.update(raftStorage, raftGroup, sender.getNodeId(), matchIndex);
                                         } else {
                                             // If AppendEntries fails because of log inconsistency decrement nextIndex and retry
                                             fastTrack.set(true);
