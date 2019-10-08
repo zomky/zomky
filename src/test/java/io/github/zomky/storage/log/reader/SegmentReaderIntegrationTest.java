@@ -9,7 +9,7 @@ import io.github.zomky.storage.log.entry.CommandEntry;
 import io.github.zomky.storage.log.entry.IndexedLogEntry;
 import io.github.zomky.storage.log.entry.LogEntry;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -31,25 +31,10 @@ class SegmentReaderIntegrationTest {
 
     private static final int SEGMENT_SIZE = 32;
 
-    @TempDir
-    Path directory;
-
     Segments segments;
     Segment firstSegment;
     SegmentWriter segmentWriter;
     SegmentReader segmentReader;
-
-    @BeforeEach
-    void setUp() {
-        LOGGER.info("directory {}", directory);
-        segments = new Segments(RaftStorageConfiguration.builder()
-                .directory(directory)
-                .segmentSize(SizeUnit.megabytes, SEGMENT_SIZE)
-                .build()
-        );
-        firstSegment = segments.getLastSegment();
-        segmentWriter = new SegmentWriter(firstSegment);
-    }
 
     @AfterEach
     void tearDown() {
@@ -61,13 +46,33 @@ class SegmentReaderIntegrationTest {
     }
 
     @Test
-    void concurrentWriteAndReadForMappedReader() {
+    @Disabled
+    void concurrentWriteAndReadForMappedReader(@TempDir Path directory) {
+        LOGGER.info("directory {}", directory);
+        segments = new Segments(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.megabytes, SEGMENT_SIZE)
+                .build()
+        );
+        firstSegment = segments.getLastSegment();
+        segmentWriter = new SegmentWriter(firstSegment);
+
         segmentReader = new MappedSegmentReader(firstSegment);
         concurrentWriteAndRead(segmentReader);
     }
 
     @Test
-    void concurrentWriteAndReadForChunkedReader() {
+    @Disabled
+    void concurrentWriteAndReadForChunkedReader(@TempDir Path directory) {
+        LOGGER.info("directory {}", directory);
+        segments = new Segments(RaftStorageConfiguration.builder()
+                .directory(directory)
+                .segmentSize(SizeUnit.megabytes, SEGMENT_SIZE)
+                .build()
+        );
+
+        firstSegment = segments.getLastSegment();
+        segmentWriter = new SegmentWriter(firstSegment);
         int chunkSize = 4 * 1024;
         segmentReader = new ChunkSegmentReader(firstSegment, chunkSize);
         concurrentWriteAndRead(segmentReader);
