@@ -21,20 +21,9 @@ public class InMemoryRaftStorage implements RaftStorage {
     private List<IndexedLogEntry> entries = Collections.synchronizedList(new ArrayList<>());
 
     private IndexedLogEntry last;
-    private volatile long commitIndex;
     private volatile int term;
     private volatile int votedFor;
     private Configuration configuration;
-
-    @Override
-    public void commit(long commitIndex) {
-        this.commitIndex = commitIndex;
-    }
-
-    @Override
-    public long commitIndex() {
-        return commitIndex;
-    }
 
     @Override
     public int getTerm() {
@@ -75,7 +64,6 @@ public class InMemoryRaftStorage implements RaftStorage {
 
     @Override
     public void truncateFromIndex(long index) {
-        LOGGER.info("truncate index {}", index);
         if (index > entries.size()) {
             LOGGER.info("truncate index greater than entries size {}, entries size {}", index, entries.size());
         } else if (index > 0 && index <= entries.size()) {
@@ -124,13 +112,8 @@ public class InMemoryRaftStorage implements RaftStorage {
     }
 
     @Override
-    public LogStorageReader openCommittedEntriesReader() {
-        return new InMemoryLogStorageReader(entries, () -> commitIndex);
-    }
-
-    @Override
-    public LogStorageReader openCommittedEntriesReader(long index) {
-        return new InMemoryLogStorageReader(entries, index, () -> commitIndex);
+    public LogStorageReader openReader(Supplier<Long> maxIndexSupplier) {
+        return new InMemoryLogStorageReader(entries, maxIndexSupplier);
     }
 
     @Override

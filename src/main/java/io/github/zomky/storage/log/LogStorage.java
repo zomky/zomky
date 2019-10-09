@@ -61,7 +61,7 @@ public class LogStorage implements AutoCloseable {
         logEntries.forEach(this::append);
     }
 
-    public synchronized Optional<IndexedLogEntry> getEntryByIndex(long index) {
+    public Optional<IndexedLogEntry> getEntryByIndex(long index) {
         if (index == 0) {
             return Optional.empty();
         }

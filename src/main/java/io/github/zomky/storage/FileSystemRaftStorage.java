@@ -12,34 +12,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class FileSystemRaftStorage implements RaftStorage {
 
     private MetaStorage metaStorage;
     private LogStorage logStorage;
 
-    /**
-     * index of highest log entry known to be
-     * committed (initialized to 0, increases
-     * monotonically)
-     */
-    private volatile long commitIndex;
-
     public FileSystemRaftStorage(RaftStorageConfiguration configuration) {
         initialize(configuration);
         this.metaStorage = new MetaStorage(configuration);
         this.logStorage = new LogStorage(configuration);
-    }
-
-    @Override
-    public void commit(long commitIndex) {
-        this.commitIndex = commitIndex;
-        this.logStorage.flush();
-    }
-
-    @Override
-    public long commitIndex() {
-        return commitIndex;
     }
 
     @Override
@@ -78,13 +61,8 @@ public class FileSystemRaftStorage implements RaftStorage {
     }
 
     @Override
-    public LogStorageReader openCommittedEntriesReader() {
-        return logStorage.openReader(() -> this.commitIndex);
-    }
-
-    @Override
-    public LogStorageReader openCommittedEntriesReader(long index) {
-        return logStorage.openReader(index, () -> this.commitIndex);
+    public LogStorageReader openReader(Supplier<Long> maxIndexSupplier) {
+        return logStorage.openReader(maxIndexSupplier);
     }
 
     @Override

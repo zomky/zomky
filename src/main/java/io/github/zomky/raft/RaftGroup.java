@@ -38,6 +38,13 @@ public class RaftGroup {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftGroup.class);
 
+    /**
+     * index of highest log entry known to be
+     * committed (initialized to 0, increases
+     * monotonically)
+     */
+    private volatile long commitIndex;
+
     RaftStorage raftStorage;
     private Cluster cluster;
     private String groupName;
@@ -229,11 +236,11 @@ public class RaftGroup {
     }
 
     public long getCommitIndex() {
-        return raftStorage.commitIndex();
+        return commitIndex;
     }
 
     public void setCommitIndex(long commitIndex) {
-        raftStorage.commit(commitIndex);
+        this.commitIndex = commitIndex;
         if (commitIndex >= currentConfigurationId && currentConfigurationId > previousConfigurationId) {
             LOGGER.info("[Node {}] Configuration {} committed", cluster.getLocalNodeId(), currentConfiguration);
             raftStorage.updateConfiguration(currentConfiguration);
@@ -435,7 +442,7 @@ public class RaftGroup {
         public RaftGroup build() {
             RaftGroup raftGroup = new RaftGroup();
             raftGroup.raftStorage = raftStorage;
-            raftGroup.logStorageReader = raftStorage.openCommittedEntriesReader();
+            raftGroup.logStorageReader = raftStorage.openReader(() -> raftGroup.commitIndex);
             raftGroup.cluster = cluster;
             raftGroup.raftConfiguration = raftConfiguration;
             raftGroup.nodeState = role;

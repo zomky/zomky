@@ -8,12 +8,9 @@ import io.github.zomky.storage.meta.Configuration;
 
 import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public interface RaftStorage {
-
-    void commit(long commitIndex);
-
-    long commitIndex();
 
     int getTerm();
 
@@ -29,9 +26,7 @@ public interface RaftStorage {
 
     LogStorageReader openReader(long index);
 
-    LogStorageReader openCommittedEntriesReader();
-
-    LogStorageReader openCommittedEntriesReader(long index);
+    LogStorageReader openReader(Supplier<Long> maxIndexSupplier);
 
     void truncateFromIndex(long index);
 

@@ -21,6 +21,7 @@ class CommitIndexUpdater {
      * (initialized to 0, increases monotonically)
      */
     private Map<Integer, Long> matchIndexes = new ConcurrentHashMap<>();
+    private final Object lock = new Object();
 
     CommitIndexUpdater() {}
 
@@ -68,8 +69,11 @@ class CommitIndexUpdater {
         }
         log(start);
 
-        if (currentCommitIndex > raftGroup.getCommitIndex()) {
-            raftGroup.setCommitIndex(currentCommitIndex);
+        synchronized (lock) {
+            long commitIndex = raftGroup.getCommitIndex();
+            if (currentCommitIndex > commitIndex) {
+                raftGroup.setCommitIndex(currentCommitIndex);
+            }
         }
     }
 
