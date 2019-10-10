@@ -19,7 +19,7 @@ public class KVStoreClient {
 
     public KVStoreClient(int leaderId) {
         this.leaderMono = RSocketFactory.connect()
-                .transport(TcpClientTransport.create(leaderId + 10000))
+                .transport(TcpClientTransport.create(leaderId))
                 .start();
     }
 

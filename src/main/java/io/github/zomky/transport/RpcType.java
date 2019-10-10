@@ -15,7 +15,9 @@ public enum RpcType {
     JOIN(13, false),
     INIT_LEAVE(14, false),
     LEAVE(15, false),
-    PING(16, false);
+    PING(16, false),
+
+    CLIENT(20, false);
 
     private final byte code;
     private final boolean raftCommand;

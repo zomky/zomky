@@ -4,6 +4,7 @@ import io.github.zomky.Cluster;
 import io.github.zomky.listener.ConfigurationChangeListener;
 import io.github.zomky.listener.ConfirmListener;
 import io.github.zomky.listener.LastAppliedListener;
+import io.github.zomky.metrics.MetricsCollector;
 import io.github.zomky.storage.InMemoryRaftStorage;
 import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.log.entry.CommandEntry;
@@ -46,6 +47,7 @@ public class RaftGroup {
     private volatile long commitIndex;
 
     RaftStorage raftStorage;
+    private MetricsCollector metrics;
     private Cluster cluster;
     private String groupName;
     private RaftConfiguration raftConfiguration;
@@ -405,8 +407,14 @@ public class RaftGroup {
         private Cluster cluster;
         private String groupName;
         private RaftRole role;
+        private MetricsCollector metricsCollector;
 
         private Builder() {
+        }
+
+        public Builder metricsCollector(MetricsCollector metricsCollector) {
+            this.metricsCollector = metricsCollector;
+            return this;
         }
 
         public Builder raftStorage(RaftStorage raftStorage) {
@@ -441,6 +449,7 @@ public class RaftGroup {
 
         public RaftGroup build() {
             RaftGroup raftGroup = new RaftGroup();
+            raftGroup.metrics = metricsCollector;
             raftGroup.raftStorage = raftStorage;
             raftGroup.logStorageReader = raftStorage.openReader(() -> raftGroup.commitIndex);
             raftGroup.cluster = cluster;

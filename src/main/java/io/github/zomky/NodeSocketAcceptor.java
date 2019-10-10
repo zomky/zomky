@@ -12,14 +12,16 @@ import io.github.zomky.transport.protobuf.*;
 import io.github.zomky.utils.NettyUtils;
 import io.rsocket.*;
 import io.rsocket.util.ByteBufPayload;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class RaftSocketAcceptor implements SocketAcceptor  {
+class NodeSocketAcceptor implements SocketAcceptor  {
 
     private GossipProtocol gossipProtocol;
     private RaftProtocol raftProtocol;
 
-    public RaftSocketAcceptor(GossipProtocol gossipProtocol, RaftProtocol raftProtocol) {
+    public NodeSocketAcceptor(GossipProtocol gossipProtocol, RaftProtocol raftProtocol) {
         this.gossipProtocol = gossipProtocol;
         this.raftProtocol = raftProtocol;
     }
@@ -27,6 +29,12 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
     @Override
     public Mono<RSocket> accept(ConnectionSetupPayload setup, RSocket sendingSocket) {
         return Mono.just(new AbstractRSocket() {
+
+            @Override
+            public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
+                return raftProtocol.onClientRequests(payloads);
+            }
+
             @Override
             public Mono<Payload> requestResponse(Payload payload) {
                 MetadataRequest metadataRequest = toMetadataRequest(payload);
@@ -114,7 +122,9 @@ public class RaftSocketAcceptor implements SocketAcceptor  {
 
             private AppendEntriesRequest toAppendEntriesRequest(Payload payload) {
                 try {
-                    return AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    final AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    payload.release();
+                    return appendEntriesRequest;
                 } catch (InvalidProtocolBufferException e) {
                     throw new RaftException("Invalid pre-vote request!", e);
                 }

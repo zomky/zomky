@@ -1,12 +1,11 @@
 package io.github.zomky;
 
-import io.github.zomky.client.protobuf.InfoRequest;
-import io.github.zomky.client.protobuf.InfoResponse;
 import io.github.zomky.gossip.GossipProtocol;
 import io.github.zomky.gossip.protobuf.InitJoinRequest;
 import io.github.zomky.gossip.protobuf.InitJoinResponse;
+import io.github.zomky.metrics.MetricsCollector;
+import io.github.zomky.metrics.NoMetricsCollector;
 import io.github.zomky.raft.RaftProtocol;
-import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.server.CloseableChannel;
@@ -42,17 +41,21 @@ public class NodeFactory {
             return this;
         }
 
-        public Mono<RSocket> start() {
+        public Mono<ZomkyClient> start() {
             return RSocketFactory.connect()
-                    .transport(TcpClientTransport.create(port + 10000))
-                    .start();
+                    .transport(TcpClientTransport.create(port))
+                    .start()
+                    .map(ZomkyClient::new)
+                    .doOnNext(ZomkyClient::start);
         }
+
     }
 
     public static class ServerNodeFactory {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(Node.class);
 
+        private MetricsCollector metrics = new NoMetricsCollector();
         private NodeStorage nodeStorage;
         private String nodeName;
         private int port = 7000;
@@ -60,13 +63,18 @@ public class NodeFactory {
         private boolean retryJoin;
         // gossip
         private Duration baseProbeTimeout = Duration.ofMillis(500);
-        private Duration baseProbeInterval = Duration.ofMillis(1000);
+        private Duration baseProbeInterval = Duration.ofMillis(2000);
         private int subgroupSize = 3;
         private int maxGossips = 10;
         private float lambdaGossipSharedMultiplier = 1.5f;
         private float indirectDelayRatio = 0.3f;
         private float nackRatio = 0.6f;
         private int maxLocalHealthMultiplier = 8;
+
+        public ServerNodeFactory metrics(MetricsCollector metrics) {
+            this.metrics = metrics;
+            return this;
+        }
 
         public ServerNodeFactory storage(NodeStorage nodeStorage) {
             this.nodeStorage = nodeStorage;
@@ -158,7 +166,7 @@ public class NodeFactory {
                 gossipProtocol.nodeAvailable().subscribe(cluster::addMember);
                 gossipProtocol.nodeUnavailable().subscribe(cluster::removeMember);
 
-                RaftProtocol raftProtocol = new RaftProtocol(cluster);
+                RaftProtocol raftProtocol = new RaftProtocol(cluster, metrics);
 
                 Connection gossipReceiver = UdpServer.create()
                         .port(nodeId + 20000)
@@ -168,27 +176,17 @@ public class NodeFactory {
                         })
                         .bindNow(Duration.ofSeconds(1));
 
-                CloseableChannel raftReceiver = RSocketFactory.receive()
-                        .acceptor(new RaftSocketAcceptor(gossipProtocol, raftProtocol))
+                CloseableChannel nodeReceiver = RSocketFactory.receive()
+                        .acceptor(new NodeSocketAcceptor(gossipProtocol, raftProtocol))
                         .transport(TcpServerTransport.create(nodeId))
                         .start()
                         .block();
 
-                raftReceiver.onClose()
-                        .doFinally(signalType -> LOGGER.warn("[Node {}] Raft onClose", nodeId))
+                nodeReceiver.onClose()
+                        .doFinally(signalType -> LOGGER.warn("[Node {}] Node onClose", nodeId))
                         .subscribe();
 
-                CloseableChannel clientReceiver = RSocketFactory.receive()
-                        .acceptor(new ClientSocketAcceptor(raftProtocol))
-                        .transport(TcpServerTransport.create(nodeId + 10000))
-                        .start()
-                        .block();
-
-                clientReceiver.onClose()
-                        .doFinally(signalType -> LOGGER.warn("[Node {}] Client onClose", nodeId))
-                        .subscribe();
-
-                Node node = new InnerNode() {
+                Node node = new Node() {
                     @Override
                     public int getNodeId() {
                         return nodeId;
@@ -209,18 +207,8 @@ public class NodeFactory {
                     }
 
                     @Override
-                    public GossipProtocol getGossipProtocol() {
-                        return gossipProtocol;
-                    }
-
-                    @Override
                     public RaftProtocol getRaftProtocol() {
                         return raftProtocol;
-                    }
-
-                    @Override
-                    public Mono<InfoResponse> onInfoRequest(InfoRequest infoRequest) {
-                        return null;
                     }
 
                     @Override
@@ -231,8 +219,7 @@ public class NodeFactory {
                     @Override
                     public void dispose() {
                         gossipReceiver.dispose();
-                        raftReceiver.dispose();
-                        clientReceiver.dispose();
+                        nodeReceiver.dispose();
                     }
                 };
 

@@ -1,7 +1,7 @@
 package io.github.zomky.raft;
 
 import io.github.zomky.Cluster;
-import io.github.zomky.InnerNode;
+import io.github.zomky.metrics.MetricsCollector;
 import io.github.zomky.storage.FileSystemRaftStorage;
 import io.github.zomky.storage.InMemoryRaftStorage;
 import io.github.zomky.storage.RaftStorage;
@@ -19,21 +19,20 @@ import reactor.core.publisher.Mono;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class RaftProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
 
+    private MetricsCollector metricsCollector;
     private Cluster cluster;
     private Map<String, RaftGroup> raftGroups = new ConcurrentHashMap<>();
     private Map<String, StateMachine> stateMachines = new HashMap<>();
     private Map<String, StateMachineEntryConverter> stateMachineConverters = new HashMap<>();
 
-    public RaftProtocol(Cluster cluster) {
+    public RaftProtocol(Cluster cluster, MetricsCollector metricsCollector) {
         this.cluster = cluster;
+        this.metricsCollector = metricsCollector;
     }
 
     public void start() {
@@ -65,7 +64,8 @@ public class RaftProtocol {
                        Payload firstPayload = signal.get();
                        String groupName = firstPayload.getMetadataUtf8();
                        RaftGroup raftGroup = raftGroups.get(groupName);
-                       return raftGroup.onClientRequests(payloadFlux);
+                       return raftGroup.onClientRequests(payloadFlux)
+                                       .doOnNext(payload -> metricsCollector.incrementRequests());
                    }));
     }
 
@@ -123,6 +123,7 @@ public class RaftProtocol {
         @SuppressWarnings("unchecked")
         RaftGroup raftGroup = RaftGroup.builder()
                 .groupName(groupName)
+                .metricsCollector(metricsCollector)
                 .raftStorage(raftStorage)
                 .cluster(cluster)
                 .raftRole(raftRole)

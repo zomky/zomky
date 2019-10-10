@@ -1,6 +1,5 @@
 package io.github.zomky.gossip;
 
-import io.github.zomky.InnerNode;
 import io.github.zomky.gossip.protobuf.Ack;
 import io.github.zomky.gossip.protobuf.Gossip;
 import io.github.zomky.gossip.protobuf.Ping;
@@ -30,7 +29,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-//@MockitoSettings(strictness = Strictness.LENIENT)
 class GossipProtocolTest {
 
     private static final int NUMBER_OF_PEERS = 4;
@@ -40,7 +38,6 @@ class GossipProtocolTest {
     private static final InetSocketAddress SENDER = InetSocketAddress.createUnresolved("localhost", SENDER_NODE_ID);
     private static final InetSocketAddress RECIPIENT = InetSocketAddress.createUnresolved("localhost", RECIPIENT_NODE_ID);
 
-    @Mock InnerNode node;
     @Mock Peers peers;
     @Mock Gossips gossips;
     @Mock RandomGossipProbe randomGossipProbe;
