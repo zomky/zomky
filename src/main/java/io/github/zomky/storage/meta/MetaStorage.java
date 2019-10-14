@@ -8,8 +8,10 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class MetaStorage implements AutoCloseable{
+public class MetaStorage implements AutoCloseable {
 
     private static final String ZOMKY_NODE_DATA = "meta.data";
 
@@ -17,6 +19,7 @@ public class MetaStorage implements AutoCloseable{
 
     private RandomAccessFile nodeDataFile;
     private FileChannel nodeDataFileChannel;
+    private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public MetaStorage(RaftStorageConfiguration configuration) {
         this.configuration = configuration;
@@ -31,11 +34,12 @@ public class MetaStorage implements AutoCloseable{
                 update(0, 0);
             }
         } catch (Exception e) {
-            throw  new StorageException(e);
+            throw new StorageException(e);
         }
     }
 
-    public synchronized int getTerm() {
+    public int getTerm() {
+        lock.readLock().lock();
         try {
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
             nodeDataFileChannel.read(metadataBuffer, 0);
@@ -43,10 +47,13 @@ public class MetaStorage implements AutoCloseable{
             return metadataBuffer.getInt();
         } catch (IOException e) {
             throw new StorageException(e);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
-    public synchronized int getVotedFor() {
+    public int getVotedFor() {
+        lock.readLock().lock();
         try {
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES);
             nodeDataFileChannel.read(metadataBuffer, Integer.BYTES);
@@ -54,10 +61,13 @@ public class MetaStorage implements AutoCloseable{
             return metadataBuffer.getInt();
         } catch (IOException e) {
             throw new StorageException(e);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
-    public synchronized Configuration getConfiguration() {
+    public Configuration getConfiguration() {
+        lock.readLock().lock();
         try {
             int members = (int) (nodeDataFileChannel.size() / Integer.BYTES - 2);
             ByteBuffer metadataBuffer = ByteBuffer.allocate(Integer.BYTES * members);
@@ -70,10 +80,13 @@ public class MetaStorage implements AutoCloseable{
             return configuration.getMembers().isEmpty() ? null : configuration; // TODO
         } catch (IOException e) {
             throw new StorageException(e);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
-    public synchronized void update(int term, int votedFor) {
+    public void update(int term, int votedFor) {
+        lock.writeLock().lock();
         try {
             nodeDataFileChannel.position(0);
             ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Integer.BYTES);
@@ -83,20 +96,23 @@ public class MetaStorage implements AutoCloseable{
             nodeDataFileChannel.write(byteBuffer);
         } catch (IOException e) {
             throw new StorageException(e);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
-    public synchronized void updateConfiguration(Configuration configuration) {
+    public void updateConfiguration(Configuration configuration) {
+        lock.writeLock().lock();
         try {
             nodeDataFileChannel.position(2 * Integer.BYTES);
             ByteBuffer byteBuffer = ByteBuffer.allocate(configuration.membersCount() * Integer.BYTES);
-            configuration.getMembers().forEach(member -> {
-                byteBuffer.putInt(member);
-            });
+            configuration.getMembers().forEach(byteBuffer::putInt);
             byteBuffer.flip();
             nodeDataFileChannel.write(byteBuffer);
         } catch (IOException e) {
             throw new StorageException(e);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
