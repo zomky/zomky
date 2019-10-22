@@ -8,6 +8,7 @@ public enum RpcType {
     ADD_SERVER(4, true),
     REMOVE_SERVER(5, true),
     ADD_GROUP(6, true),
+    HEARTBEAT(7, true),
 
     INFO(10, false),
     STATE_SYNC(11, false),
@@ -43,6 +44,7 @@ public enum RpcType {
             case 4: return ADD_SERVER;
             case 5: return REMOVE_SERVER;
             case 6: return ADD_GROUP;
+            case 7: return HEARTBEAT;
 
             // TODO move somewhere else ??
             case 10: return INFO;

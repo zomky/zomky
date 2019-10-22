@@ -1,5 +1,6 @@
 package io.github.zomky.raft;
 
+import com.google.common.collect.Lists;
 import io.github.zomky.Cluster;
 import io.github.zomky.metrics.MetricsCollector;
 import io.github.zomky.storage.FileSystemRaftStorage;
@@ -8,21 +9,34 @@ import io.github.zomky.storage.RaftStorage;
 import io.github.zomky.storage.RaftStorageConfiguration;
 import io.github.zomky.storage.log.SizeUnit;
 import io.github.zomky.storage.meta.Configuration;
+import io.github.zomky.transport.RpcType;
 import io.github.zomky.transport.protobuf.*;
 import io.rsocket.Payload;
+import io.rsocket.RSocket;
+import io.rsocket.RSocketFactory;
+import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.util.ByteBufPayload;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class RaftProtocol {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RaftProtocol.class);
+    private static final Duration HEARTBEAT_TIMEOUT = Duration.ofMillis(200);
 
     private MetricsCollector metricsCollector;
     private Cluster cluster;
@@ -40,7 +54,38 @@ public class RaftProtocol {
         stateMachines.putAll(StateMachineUtils.stateMachines(cluster.getLocalNodeId()));
         stateMachineConverters.putAll(StateMachineUtils.stateMachineConverters());
 
-        raftGroups.values().forEach(raftGroup -> raftGroup.onInit());
+        raftGroups.values().forEach(RaftGroup::onInit);
+        Flux.interval(Duration.ZERO, HEARTBEAT_TIMEOUT)
+            .onBackpressureDrop()
+            .flatMap(i -> {
+                Map<Integer, List<Tuple3<Integer, String, Integer>>> byPeer = raftGroups.values().stream()
+                        .filter(RaftGroup::isLeader)
+                        .flatMap(RaftGroup::peerIdAndGroupNameAndTerm)
+                        .collect(Collectors.groupingBy(Tuple2::getT1));
+
+                List<Tuple2<Integer, HeartbeatRequest>> hearbeats = new ArrayList<>();
+                byPeer.forEach((peerId, peerList) -> {
+                    HeartbeatRequest.Builder builder = HeartbeatRequest.newBuilder();
+                    peerList.forEach(tuple -> builder.addHeartbeats(
+                            Heartbeat.newBuilder().setGroupName(tuple.getT2()).setTerm(tuple.getT3()).build())
+                    );
+                    hearbeats.add(Tuples.of(peerId, builder.build()));
+                });
+                return Flux.fromIterable(hearbeats);
+            })
+            .flatMap(heartbeatTuple -> RSocketFactory.connect()
+                    .transport(TcpClientTransport.create(heartbeatTuple.getT1()))
+                    .start()
+                    .flatMapMany(rSocket -> rSocket.fireAndForget(ByteBufPayload.create(heartbeatTuple.getT2().toByteArray(), metadataRequest(RpcType.HEARTBEAT))))
+            )
+            .subscribe();
+    }
+
+    private byte[] metadataRequest(RpcType rpcType) {
+        MetadataRequest metadataRequest = MetadataRequest.newBuilder()
+                .setMessageType(rpcType.getCode())
+                .build();
+        return metadataRequest.toByteArray();
     }
 
     public void addGroup(RaftGroup raftGroup) {
@@ -141,5 +186,14 @@ public class RaftProtocol {
 
     public RaftGroup getByName(String groupName) {
         return raftGroups.get(groupName);
+    }
+
+    public Mono<Void> onLeaderHeartbeat(HeartbeatRequest heartbeatRequest) {
+        return Mono.fromRunnable(() -> {
+            heartbeatRequest.getHeartbeatsList().forEach(heartbeat -> {
+                String groupName = heartbeat.getGroupName();
+                int term = heartbeat.getTerm();
+            });
+        });
     }
 }

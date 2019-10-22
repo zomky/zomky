@@ -31,6 +31,19 @@ class NodeSocketAcceptor implements SocketAcceptor  {
         return Mono.just(new AbstractRSocket() {
 
             @Override
+            public Mono<Void> fireAndForget(Payload payload) {
+                MetadataRequest metadataRequest = toMetadataRequest(payload);
+                RpcType rpcType = RpcType.fromCode(metadataRequest.getMessageType());
+                switch (rpcType) {
+                    case HEARTBEAT:
+                        HeartbeatRequest heartbeatRequest = toHeartbeatRequest(payload);
+                        return raftProtocol.onLeaderHeartbeat(heartbeatRequest);
+                    default:
+                        return Mono.error(new RaftException("??"));
+                }
+            }
+
+            @Override
             public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                 return raftProtocol.onClientRequests(payloads);
             }
@@ -127,6 +140,16 @@ class NodeSocketAcceptor implements SocketAcceptor  {
                     return appendEntriesRequest;
                 } catch (InvalidProtocolBufferException e) {
                     throw new RaftException("Invalid pre-vote request!", e);
+                }
+            }
+
+            private HeartbeatRequest toHeartbeatRequest(Payload payload) {
+                try {
+                    final HeartbeatRequest heartbeatRequest = HeartbeatRequest.parseFrom(NettyUtils.toByteArray(payload.sliceData()));
+                    payload.release();
+                    return heartbeatRequest;
+                } catch (InvalidProtocolBufferException e) {
+                    throw new RaftException("Invalid heartbeat request!", e);
                 }
             }
 

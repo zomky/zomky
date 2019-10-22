@@ -25,6 +25,8 @@ import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -34,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 public class RaftGroup {
 
@@ -97,6 +100,14 @@ public class RaftGroup {
     public void onExit() {
         advanceStateMachineDisposable.dispose();
         advanceStateMachineSink.complete();
+    }
+
+    // peerId, groupName, term
+    Stream<Tuple3<Integer, String, Integer>> peerIdAndGroupNameAndTerm() {
+        return raftConfiguration.getConfiguration()
+                .allMembersExcept(cluster.getLocalNodeId())
+                .stream()
+                .map(peerId -> Tuples.of(peerId, groupName, raftStorage.getTerm()));
     }
 
     boolean hasClients() {

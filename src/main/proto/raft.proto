@@ -91,3 +91,12 @@ message AddGroupRequest {
 message AddGroupResponse {
     bool status = 1; // OK if group was added successfully
 }
+
+message HeartbeatRequest {
+    repeated Heartbeat heartbeats = 1;
+}
+
+message Heartbeat {
+    string group_name = 1;
+    int32 term = 2; // leader’s term
+}
